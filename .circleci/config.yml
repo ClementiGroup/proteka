@@ -1,0 +1,22 @@
+version: 2.0
+
+jobs:
+  test:
+    docker:
+      - image: nec4/pytorch_geometric_cpu:v1.1
+    steps:
+      - checkout
+      - run:
+          name: "Install dependencies and repo"
+          command: |
+            pip3 install -r requirements.txt
+            pip3 install --use-feature=in-tree-build .
+      - run:
+          name: "Run tests"
+          command: "pytest ."
+
+workflows:
+  version: 2
+  build_and_test:
+    jobs:
+      - test
