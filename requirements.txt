@@ -1,0 +1,12 @@
+mdtraj
+pyyaml>=6.0
+jsonargparse[signatures]
+tqdm
+numpy
+h5py
+scipy
+
+# developer tools
+pytest
+black[jupyter]
+
