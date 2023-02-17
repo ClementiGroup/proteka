@@ -30,6 +30,5 @@ setup(
     + "\u0301"
     + "lix Musil,  Iryna Zaporozhets, Yoayi Chen, Andreas Kramer",
     install_requires=install_requires,
-    scripts=[
-    ],
+    scripts=[],
 )
