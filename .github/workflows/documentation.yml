@@ -1,0 +1,37 @@
+name: Build the latest Documentation
+on: # [push]
+  push:
+    branches:
+      - main
+jobs:
+  build-and-push-doc:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@v2
+        with:
+          ref: gh-pages
+      - name: Merge main -> gh-pages
+        uses: devmasx/merge-branch@master
+        with:
+          type: now
+          from_branch: main
+          target_branch: gh-pages
+          github_token: ${{ github.token }}
+      - name: Set up Python
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.9
+      - name: Install Python dependencies
+        run: pip install sphinx sphinx_rtd_theme sphinx-autodoc-typehints
+      - name: Build Documentation
+        run: sphinx-build -b html ${{ github.workspace }}/docs/source ${{ github.workspace }}/docs/
+      - name: Commit updated Doc
+        uses: EndBug/add-and-commit@v7
+        with:
+          default_author: github_actions
+          branch: gh-pages
+          add: ${{ github.workspace }}/docs/*
+          message: 'automatic update of the online doc'
+          github_token: ${{ github.token }}
+
