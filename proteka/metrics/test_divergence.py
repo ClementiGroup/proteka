@@ -16,11 +16,20 @@ for i in [1, 2]:
     reference_kld +=  target_histogram[i]*np.log(target_histogram[i]/reference_histogram[i])
 
 def test_kl_divergence():
+    """
+    Test basic functionality
+    """
     assert kl_divergence(target_histogram, reference_histogram) == reference_kld
 
 def test_kl_divergence_normalized():
+     """
+     Test normalization feature
+     """
      assert kl_divergence(target_histogram*scaling, reference_histogram*scaling, normalized=False) == reference_kld
 
 def test_kl_divergence_shapes_match():
+    """
+    Test behavior when input shape mismatch
+    """
     with pytest.raises(AssertionError):
         kl_divergence(target_histogram[1::], reference_histogram)
