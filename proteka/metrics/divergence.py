@@ -18,7 +18,7 @@ def kl_divergence(
      The algorithm is the same as one used in CPPTRAJ (https://amber-md.github.io/cpptraj/CPPTRAJ.xhtml)
 
 
-     Paramseters
+     Parameters
      -----------
 
      target, reference : np.ndarray
@@ -37,7 +37,7 @@ def kl_divergence(
     """
     assert (
         target.shape == reference.shape
-    ), f"Dimension mismatch: target: {target.shape} referece: {reference.shape}"
+    ), f"Dimension mismatch: target: {target.shape} reference: {reference.shape}"
 
     target_norm = np.sum(target)
     reference_norm = np.sum(reference)
@@ -55,7 +55,7 @@ def kl_divergence(
         reference_normalized = reference / reference_norm
 
     terms = rel_entr(target_normalized, reference_normalized)
-    # In scipy implementation, 0 reference and nonzero target lead to infinit values
+    # In scipy implementation, 0 reference and nonzero target lead to infinite values
     # During summation, they are masked with
     return np.ma.masked_invalid(terms).sum()
 
@@ -63,11 +63,11 @@ def js_divergence(target: np.ndarray, reference: np.ndarray, normalized: bool = 
     """
      Compute Jensen_Shannon divergence between specified data sets.
      
-     Paramseters
+     Parameters
      -----------
 
      target, reference : np.typing.ArrayLike
-                             Tarkget and reference probability distributions (histograms).
+                             Target and reference probability distributions (histograms).
                              Should have the same shape
 
      normalized : bool, True
