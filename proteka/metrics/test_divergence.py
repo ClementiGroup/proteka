@@ -3,8 +3,9 @@ test proteka.metrics.divergence module
 """
 import numpy as np
 import pytest
+from scipy.spatial.distance import jensenshannon as js
 
-from proteka.metrics.divergence import kl_divergence
+from proteka.metrics.divergence import kl_divergence, js_divergence
 
 
 target_histogram = np.array([0.1, 0.2, 0.7, 0.0])
@@ -13,7 +14,10 @@ scaling = 5
 
 reference_kld = 0e0
 for i in [1, 2]:
-    reference_kld +=  target_histogram[i]*np.log(target_histogram[i]/reference_histogram[i])
+    reference_kld += target_histogram[i] * np.log(
+        target_histogram[i] / reference_histogram[i]
+    )
+
 
 def test_kl_divergence():
     """
@@ -21,11 +25,20 @@ def test_kl_divergence():
     """
     assert kl_divergence(target_histogram, reference_histogram) == reference_kld
 
+
 def test_kl_divergence_normalized():
-     """
-     Test normalization feature
-     """
-     assert kl_divergence(target_histogram*scaling, reference_histogram*scaling, normalized=False) == reference_kld
+    """
+    Test normalization feature
+    """
+    assert (
+        kl_divergence(
+            target_histogram * scaling,
+            reference_histogram * scaling,
+            normalized=False,
+        )
+        == reference_kld
+    )
+
 
 def test_kl_divergence_shapes_match():
     """
@@ -33,3 +46,14 @@ def test_kl_divergence_shapes_match():
     """
     with pytest.raises(AssertionError):
         kl_divergence(target_histogram[1::], reference_histogram)
+
+
+def test_js_divergence():
+    """
+    Test basic functionality
+    """
+    # scipy.spatial.distance.jensenshannon doesn't support
+    # simultaneuos calculation along several axis
+    fn_output = js_divergence(target_histogram, reference_histogram)
+    reference = js(target_histogram, reference_histogram) ** 2
+    assert np.isclose(fn_output, reference)
