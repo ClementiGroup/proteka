@@ -114,13 +114,14 @@ class MetaQuantity(MetaArray, Quantity):
         return self._attrs["unit"]
 
     @staticmethod
-    def from_hdf5(h5dt):
-        """Create an instance from the content of HDF5 dataset `h5dt`."""
+    def from_hdf5(h5dt, suppress_unit_warn=False):
+        """Create an instance from the content of HDF5 dataset `h5dt`. If no `unit` is present in the attributes, then assumed as dimensionless with warning."""
         meta_array = MetaArray.from_hdf5(h5dt)
         if "unit" not in meta_array.attrs:
-            warn(
-                f'Input HDF5 dataset {h5dt.name} does not contain a "unit" field, treating as dimensionless.'
-            )
+            if not suppress_unit_warn:
+                warn(
+                    f'Input HDF5 dataset {h5dt.name} does not contain a "unit" field, treating as dimensionless.'
+                )
             unit = "dimensionless"
         else:
             unit = meta_array.attrs.pop("unit")

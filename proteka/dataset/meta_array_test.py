@@ -16,3 +16,15 @@ def test_meta_array():
             ma2 = MetaArray.from_hdf5(hdf_root["test_dt"])
     assert np.allclose(ma2[1:, 1:3], value[1:, 1:3])
     assert ma2.attrs["test"] == "metadata_no1"
+
+
+def test_str_meta_array():
+    # test both the support for a scalar and for a string
+    value = np.asarray("asadfghjk", dtype="O")
+    ma = MetaArray(value)
+    with TemporaryFile() as fp:
+        with h5py.File(fp, "w") as hdf_root:
+            ma.write_to_hdf5(hdf_root, "test_dt")
+        with h5py.File(fp, "r") as hdf_root:
+            ma2 = MetaArray.from_hdf5(hdf_root["test_dt"])
+    assert ma2[()] == "asadfghjk".encode("utf8")

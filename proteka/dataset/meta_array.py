@@ -13,8 +13,6 @@ class MetaArray:
     def __init__(self, value, attrs={}):
         if not isinstance(value, np.ndarray):
             raise ValueError("Input is not a np.ndarray.")
-        if np.isscalar(value):
-            raise ValueError("Scalar array is not supported.")
         self._value = value
         self._attrs = attrs
 
@@ -26,7 +24,7 @@ class MetaArray:
         return self._value[key]
 
     def __setitem__(self, key, value):
-        """Mimicking the assigning behavior of a HDF5 dataset. If in `meta_array[:] = new_values` the `new_values` are not broadcastable to the original array shape, the meta_array is rebinded and no ValueError is thrown."""
+        """Mimicking the assigning behavior of a HDF5 dataset. If in `meta_array[...] = new_values` the `new_values` are not broadcastable to the original array shape, the meta_array is rebinded and no ValueError is thrown."""
 
         def is_full_slice(slice_):
             return (
@@ -56,7 +54,7 @@ class MetaArray:
             raise ValueError(
                 f"Input {h5dt}'s type is {type(h5dt)}, expecting a h5py.Dataset."
             )
-        dt = MetaArray(h5dt[:])
+        dt = MetaArray(h5dt[...])
         for k, v in h5dt.attrs.items():
             dt.attrs[k] = v
         return dt
@@ -69,7 +67,7 @@ class MetaArray:
             warn(
                 f"Input `{input_pattern}` correponds to existing Dataset with name {dataset_node.name}. Overwritting..."
             )
-            dataset_node[:] = self._value
+            dataset_node[...] = self._value
             for k, v in self.attrs.items():
                 dataset_node.attrs[k] = v
 
