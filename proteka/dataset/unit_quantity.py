@@ -1,7 +1,14 @@
 import mdtraj as md
 import numpy as np
+from .meta_array import MetaArray
 
-__all__ = ["format_unit", "unit_conv", "is_unit_convertible", "Quantity"]
+__all__ = [
+    "format_unit",
+    "unit_conv",
+    "is_unit_convertible",
+    "Quantity",
+    "MetaQuantity",
+]
 
 
 def format_unit(unit_):
@@ -89,3 +96,35 @@ class Quantity:
                 f"Quantity unit {self.unit} is not compatible with desired unit {target_unit}."
             )
         return self.raw_value * unit_conv(self.unit, target_unit)
+
+
+class MetaQuantity(MetaArray, Quantity):
+    """Quantity with metadata (`attrs`). Specialized MetaArray with `unit` as a mandatory field in the metadata. Can be converted"""
+
+    def __init__(self, value, unit="dimensionless", attrs={}):
+        if "unit" in attrs:
+            raise ValueError(
+                'Ambigious `unit` assignment: "unit" should not appear in `attrs`.'
+            )
+        attrs["unit"] = unit
+        super().__init__(np.asarray(value), attrs)
+
+    @property
+    def unit(self):
+        return self._attrs["unit"]
+
+    @staticmethod
+    def from_hdf5(h5dt):
+        """Create an instance from the content of HDF5 dataset `h5dt`."""
+        meta_array = MetaArray.from_hdf5(h5dt)
+        if "unit" not in meta_array.attrs:
+            warn(
+                f'Input HDF5 dataset {h5dt.name} does not contain a "unit" field, treating as dimensionless.'
+            )
+            unit = "dimensionless"
+        else:
+            unit = meta_array.attrs.pop("unit")
+        return MetaQuantity(meta_array._value, unit, attrs=meta_array.attrs)
+
+    def __repr__(self):
+        return f'<MetaQuantity: shape {self.raw_value.shape}, type "{self.raw_value.dtype}", unit "{self.unit}">'
