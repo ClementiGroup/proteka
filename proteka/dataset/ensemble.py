@@ -322,7 +322,7 @@ class Ensemble(HDF5Group):
         else:
             return {k: slice(*trj) for k, trj in self._trjs.items()}
 
-    def list_quantities():
+    def list_quantities(self):
         """List the name of quantities stored in the `Ensemble`."""
         return list(self._data)
 
@@ -374,9 +374,7 @@ class Ensemble(HDF5Group):
         if not isinstance(quant, BaseQuantity):
             if preset_unit is None:
                 preset_unit = "dimensionless"
-            print(
-                f'Assuming unit of input "{key}" to be in unit {preset_unit}.'
-            )
+            print(f'Assuming unit of input "{key}" to be "{preset_unit}".')
             quant = toQuantity(quant, preset_unit)
         else:
             if isinstance(quant, BaseQuantity) and not isinstance(
