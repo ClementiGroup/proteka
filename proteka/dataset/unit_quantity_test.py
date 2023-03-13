@@ -67,9 +67,9 @@ def test_unit_convertible(input_unit, output_unit):
     "input_unit, output_unit, scale_factor",
     zip(test_input_units, test_output_units, test_output_values),
 )
-def test_quantity(input_unit, output_unit, scale_factor):
+def test_base_quantity(input_unit, output_unit, scale_factor):
     # make a quantity with input_unit and convert it to the output unit
-    quant = Quantity(5.0, unit=input_unit)
+    quant = BaseQuantity(5.0, unit=input_unit)
     assert quant.in_unit_of(output_unit) == 5.0 * scale_factor
 
 
@@ -77,15 +77,15 @@ def test_quantity(input_unit, output_unit, scale_factor):
     "input_unit, output_unit, scale_factor",
     zip(test_input_units, test_output_units, test_output_values),
 )
-def test_meta_quantity(input_unit, output_unit, scale_factor):
-    # make a meta quantity with input_unit and convert it to the output unit
-    mquant = MetaQuantity(
-        np.ones(1), unit=input_unit, attrs={"test": "metadata_no1"}
+def test_quantity(input_unit, output_unit, scale_factor):
+    # make a Quantity with input_unit and convert it to the output unit
+    mquant = Quantity(
+        np.ones(1), unit=input_unit, metadata={"test": "metadata_no1"}
     )
     with TemporaryFile() as fp:
         with h5py.File(fp, "w") as hdf_root:
             mquant.write_to_hdf5(hdf_root, "test_dt")
         with h5py.File(fp, "r") as hdf_root:
-            mquant2 = MetaQuantity.from_hdf5(hdf_root["test_dt"])
+            mquant2 = Quantity.from_hdf5(hdf_root["test_dt"])
     assert mquant2.in_unit_of(output_unit) == 1.0 * scale_factor
-    assert mquant2.attrs["test"] == "metadata_no1"
+    assert mquant2.metadata["test"] == "metadata_no1"
