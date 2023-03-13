@@ -10,14 +10,14 @@ class MetaArray:
     Warning: the MetaArray is a wrapper, the underlying `value` array is not copied.
     """
 
-    def __init__(self, value, attrs={}):
+    def __init__(self, value, metadata=None):
         if not isinstance(value, np.ndarray):
             raise ValueError("Input is not a np.ndarray.")
-        self._value = value
-        self._attrs = attrs
+        self._value = value.copy()
+        self._attrs = metadata if metadata is not None else dict()
 
     @property
-    def attrs(self):
+    def metadata(self):
         return self._attrs
 
     def __getitem__(self, key):
@@ -56,7 +56,7 @@ class MetaArray:
             )
         dt = MetaArray(h5dt[...])
         for k, v in h5dt.attrs.items():
-            dt.attrs[k] = v
+            dt.metadata[k] = v
         return dt
 
     def write_to_hdf5(self, h5_node, name=None):
@@ -68,7 +68,7 @@ class MetaArray:
                 f"Input `{input_pattern}` correponds to existing Dataset with name {dataset_node.name}. Overwritting..."
             )
             dataset_node[...] = self._value
-            for k, v in self.attrs.items():
+            for k, v in self.metadata.items():
                 dataset_node.attrs[k] = v
 
         if isinstance(h5_node, h5py.Dataset):
@@ -88,7 +88,7 @@ class MetaArray:
             else:
                 # create a new Dataset under h5_node
                 h5_node[name] = self._value
-                for k, v in self.attrs.items():
+                for k, v in self.metadata.items():
                     h5_node[name].attrs[k] = v
         else:
             raise ValueError(
