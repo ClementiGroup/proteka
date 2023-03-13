@@ -21,6 +21,8 @@ from .unit_quantity import (
 from types import MappingProxyType
 from .top_utils import json2top, top2json
 
+__all__ = ["Ensemble"]
+
 
 class HDF5Group:
     """Interface for saving and loading from a HDF5 Group which contains only Datasets (i.e., leaf group)."""
