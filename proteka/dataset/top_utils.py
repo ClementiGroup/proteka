@@ -71,13 +71,11 @@ def dict2top(top_dict):
                             element = md.element.virtual
                         top.add_atom(name, element, residue)
                     except:
-                        print(f"Error in parsing atom #{atom_id}")
-                        raise
+                        raise RuntimeError(f"Error in parsing atom #{atom_id}")
             except:
-                print(
+                raise RuntimeError(
                     f"Error in parsing residue #{res_id} in chain #{chain_id}:"
                 )
-                raise
     # parsing the bond list
     for bond_id, bond in enumerate(top_dict["bonds"]):
         try:
@@ -128,16 +126,8 @@ def json2top(top_json_string):
     Raises `ValueError` when the input does not contain keys required by a topology
     or the value is in a different format or order in the transformation `top2json`.
     """
-    try:
-        top_dict = json.loads(top_json_string)
-    except:
-        print(f"Input `top_json_string` is not a valid json string:")
-        raise
-    try:
-        top = dict2top(top_dict)
-    except:
-        print(f"Error in processing the `dict` from JSON string:")
-        raise
+    top_dict = json.loads(top_json_string)
+    top = dict2top(top_dict)
     return top
 
 
