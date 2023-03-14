@@ -27,7 +27,7 @@ class HDF5Group:
     """Interface for saving and loading from a HDF5 Group which contains only one Dataset (i.e., leaf group)."""
 
     def __init__(self, data, metadata=None):
-        """`data` is a dictionary of `MetaArray`s, while `metadata` will become the attributes."""
+        """`data` is a dictionary of `Quantity`s, while `metadata` will become the attributes."""
         self._data = data
         if metadata is None:
             metadata = {}
@@ -47,24 +47,36 @@ class HDF5Group:
         return key in self._data
 
     def write_to_hdf5(
-        self, h5_node, name=None, overwrite_strategy="replace_all"
+        self, h5_node, name=None, overwrite_strategy="do_not_replace"
     ):
         """Write the content to a HDF5 group at `h5_node` or `h5_node[name]` when `name` is not `None`.
-        If"""
+        If the desired group already exists and `overwrite_strategy` is "replace_all", then the original
+        content will be discarded.
+        """
         if isinstance(h5_node, h5py.Group):
             # h5_node correponds to a Group in HDF5 file
+            if name is None:
+                name = "."  # path: current group
             if name in h5_node:
-                # TODO: properly handle the case where the group already exists
-                raise ValueError(f"Group {h5_node[name]} already exists.")
-                # overwrite(h5_node[name], "h5_node[name]")
+                # TODO: more intelligent incremental update
+                if overwrite_strategy != "replace_all":
+                    raise ValueError(
+                        f"Group/Dataset {h5_node[name]} already exists."
+                    )
+                grp = h5_node[name]
+                # delete everything existing
+                for child_name in grp:
+                    del grp[child_name]
+                for attr_name in grp.attrs:
+                    del fo.attrs[attr_name]
             else:
                 # create a new group under h5_node
                 grp = h5_node.create_group(name)
-                for dt_name, dt in self._data.items():
-                    # dt is a MetaArray
-                    dt.write_to_hdf5(grp, name=dt_name)
-                for attr_k, attr_v in self._attrs.items():
-                    grp.attrs[attr_k] = attr_v
+            for dt_name, dt in self._data.items():
+                # dt is a Quantity
+                dt.write_to_hdf5(grp, name=dt_name)
+            for attr_k, attr_v in self._attrs.items():
+                grp.attrs[attr_k] = attr_v
         else:
             raise ValueError(
                 "Input `h5_node` should be an instance of `h5py.Group`."
@@ -158,21 +170,23 @@ class Ensemble(HDF5Group):
         coords,
         quantities=None,
         metadata=None,
+        trajectory_slices=None,
         unit_system="nm-g/mol-ps-kJ/mol",
     ):
         """Initialize an Ensemble with following inputs:
         - name (str): a human-readable name of the system. Not necessarily corresponding to the HDF5 group name
         - top (mdtraj.Topology): the molecular topology of the system
         - coords (Quantity or numpy.ndarray): 3D coordinates with shape (n_frames, n_atoms, 3) and dimension [L]
-        - quantities (Mapping[str, np.ndarray | Quantity]): optional fields, for example:
+        - quantities (None | Mapping[str, np.ndarray | Quantity]): optional fields, for example:
             - forces: (n_frames, n_atoms, 3) _ATOMIC_VECTOR_.
             - velocities: (n_frames, n_atoms, 3) _ATOMIC_VECTOR_ with dimension [L]/[T].
             - time: (n_frames,) _per-frame_ scalar indicating the elapsed simulation time with dimension [T].
-        - metadata (Mapping[str, str]): metadata to be saved, e.g., simulation temperature, forcefield information,
+        - metadata (None | Mapping[str, str]): metadata to be saved, e.g., simulation temperature, forcefield information,
                                         saving time stride, etc
+        - trajectory_slices (None | Mapping[str, slice]): a dictionary for trajectory name and its range expressed as a python slice object (similar to the usage of a [start:stop:stride] for indexing.)
         - unit_system (str): in format "[L]-[M]-[T]-[E(nergy)]" for units of builtin quantities
         """
-        top_str = top2json(top) # let `top2json` do the type check
+        top_str = top2json(top)  # let `top2json` do the type check
         if (
             len(coords.shape) != 3
             or coords.shape[1] != top.n_atoms
@@ -183,11 +197,12 @@ class Ensemble(HDF5Group):
             )
         self._unit_system = parse_unit_system(unit_system)
         super().__init__({}, metadata=metadata)
-        self.coords = (
+        self._save_quantity(
+            "coords",
             coords,
-            coords.shape,
+            shape=coords.shape,
         )  # overriding shape checks, which depend on coords themselves
-        self.save_quantity("top", toQuantity(top_str), None)
+        self._save_quantity("top", toQuantity(top_str), shape=None)
         # self.top = top_str
         self.metadata["name"] = name
         self.metadata["unit_system"] = unit_system_to_str(self._unit_system)
@@ -274,7 +289,7 @@ class Ensemble(HDF5Group):
             k: slice_.indices(self.n_frames)
             for k, slice_ in dict_of_slices.items()
         }
-        self.save_quantity(
+        self._save_quantity(
             "trjs",
             toQuantity(json.dumps(trjs)),
             shape=None,
@@ -338,32 +353,32 @@ class Ensemble(HDF5Group):
             return None
 
     def __getattr__(self, key):
+        # this is the fallback attribute error
+        # if not raising an AttributeError, then `hasattr()` does not work properly
+        if key not in self:
+            raise AttributeError(f"Quantity `{key}` does not exist")
         return self.get_quantity(key)[...]
 
-    def __setattr__(self, key, quant_w_shape_hint):
+    def __setattr__(self, key, quant):
         if key.startswith("_"):
             # not to block normal class initializations of `HDF5Group` which has `_data` and `_attrs` attributes
-            object.__setattr__(self, key, quant_w_shape_hint)
+            object.__setattr__(self, key, quant)
             return
-        if isinstance(quant_w_shape_hint, tuple):
-            # case 1: quant_w_shape_hint = (quant, shape_hint)
-            if len(quant_w_shape_hint) == 2:
-                quant, shape_hint = quant_w_shape_hint
-            else:
-                raise ValueError(
-                    "Expecting either a `Quantity` without `shape_hint` or a `Tuple[Quantity, shape_hint(:=str)]`"
-                )
-        else:
-            # case 2: quant_w_shape_hint = quant
-            quant = quant_w_shape_hint
-            shape_hint = None
-        preset_unit = None
+        self.set_quantity(key, quant)
+
+    def set_quantity(self, key, quant):
+        """
+        Store `quant` (Quantity | numpy.ndarray) under name `key` (str).
+        When `quant` is a plain `numpy.ndarray`, the unit is assumed according to `.unit_system` if the `key` is one of the `BUILTIN_QUANTITIES`, or `dimensionless` otherwise.
+        * When `key` is one of the `BUILTIN_QUANTITIES`, the unit and shape of `quant` need to be compatible.
+        """
         # built-in quantities?
         if key in BUILTIN_QUANTITIES:
-            # TODO: check whether the shape hint matches
-            if shape_hint is None:
-                shape_hint = BUILTIN_QUANTITIES[key][0]
+            shape_hint = BUILTIN_QUANTITIES[key][0]
             preset_unit = get_preset_unit(key, self._unit_system)
+        else:
+            shape_hint = None
+            preset_unit = None
         # check and convert `quant` to a Quantity
         if not isinstance(quant, BaseQuantity):
             if preset_unit is None:
@@ -380,7 +395,7 @@ class Ensemble(HDF5Group):
             if preset_unit is not None:
                 # print(f"Convert \"{key}\" to internal unit {preset_unit}")
                 quant = quant.to_quantity_with_unit(preset_unit)
-        self.save_quantity(key, quant, shape_hint)
+        self._save_quantity(key, quant, shape=shape_hint)
 
     def get_all_in_one_mdtraj(self):
         """Pack all `coords` into one `Trajectory` object (maybe not suitable for kinetic analyses, such as TICA and MSM!)"""
@@ -408,7 +423,7 @@ class Ensemble(HDF5Group):
         trj = self.get_all_in_one_mdtraj()
         return {k: trj[slice_] for k, slice_ in self.trajectory_slices.items()}
 
-    def save_quantity(
+    def _save_quantity(
         self,
         name,
         quantity,
