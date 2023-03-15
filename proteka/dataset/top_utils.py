@@ -5,6 +5,7 @@ __all__ = ["dict2top", "top2dict", "json2top", "top2json"]
 
 import mdtraj as md
 import json
+from warnings import warn
 
 
 def dict2top(top_dict):
@@ -66,9 +67,12 @@ def dict2top(top_dict):
                         elem_sym = atom["element"]
                         try:
                             element = md.element.get_by_symbol(elem_sym)
-                        except:
+                        except KeyError as e:
                             # unknown element or virtual sites?
                             element = md.element.virtual
+                            warn(
+                                f'Unknown element or virtual site "{elem_sym}" for atom #{atom_id}.'
+                            )
                         top.add_atom(name, element, residue)
                     except:
                         raise RuntimeError(f"Error in parsing atom #{atom_id}")
@@ -80,9 +84,10 @@ def dict2top(top_dict):
     for bond_id, bond in enumerate(top_dict["bonds"]):
         try:
             top.add_bond(top.atom(int(bond[0])), top.atom(int(bond[1])))
-        except:
-            print(f"Error in parsing bond #{bond_id}:")
-            raise
+        except IndexError as e:
+            raise ValueError(
+                f"Error in parsing bond #{bond_id}: {bond}, atom index out of range."
+            )
     return top
 
 
