@@ -1,3 +1,4 @@
-from .divergence import kl_divergence
+from .divergence import kl_divergence, js_divergence
+from .featurizer import Featurizer
 
-__all__ = ["kl_divergence"]
+__all__ = ["kl_divergence", "js_divergence", "Featurizer"]
