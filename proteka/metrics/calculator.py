@@ -68,3 +68,14 @@ class StructuralIntegrityMetrics(IMetrics):
         std = 0.05
         z = (d_ca_ca - mean) / std
         return {"max z-score": np.max(z), "rms z-score": np.sqrt(np.mean(z ** 2))}
+    
+class EnsembleQualityMetrics(IMetrics):
+    """Metrics to compare a target ensemble to the reference enseble
+    """
+
+    def compute(self, ensemble: Ensemble, reference: Ensemble):
+        """
+        Compute the metrics of interest for 
+        """
+    
+        
