@@ -68,7 +68,7 @@ class HDF5Group:
                 for child_name in grp:
                     del grp[child_name]
                 for attr_name in grp.attrs:
-                    del fo.attrs[attr_name]
+                    del grp.attrs[attr_name]
             else:
                 # create a new group under h5_node
                 grp = h5_node.create_group(name)
@@ -352,19 +352,17 @@ class Ensemble(HDF5Group):
         else:
             return None
 
-    def __getattr__(self, key):
-        # this is the fallback attribute error
-        # if not raising an AttributeError, then `hasattr()` does not work properly
-        if key not in self:
-            raise AttributeError(f"Quantity `{key}` does not exist")
-        return self.get_quantity(key)[...]
-
     def __setattr__(self, key, quant):
         if key.startswith("_"):
             # not to block normal class initializations of `HDF5Group` which has `_data` and `_attrs` attributes
             object.__setattr__(self, key, quant)
             return
         self.set_quantity(key, quant)
+
+    def __delattr__(self, key):
+        if key in self._data:
+            self._data.pop(key)
+        super().__delattr__(key)
 
     def set_quantity(self, key, quant):
         """
@@ -459,6 +457,7 @@ class Ensemble(HDF5Group):
                     )
         # save data
         self._data[name] = quantity
+        self.__dict__[name] = quantity
 
     @classmethod
     def from_hdf5(cls, h5grp, unit_system="nm-g/mol-ps-kJ/mol"):
