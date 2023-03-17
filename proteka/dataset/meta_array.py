@@ -6,11 +6,25 @@ __all__ = ["MetaArray"]
 
 
 class MetaArray:
-    """Array with metadata: a wrapper for Tuple(np.ndarray, dict) similar to a HDF5 Dataset. It can be converted from and to a HDF5 dataset.
-    Warning: the MetaArray is a wrapper, the underlying `value` array is not copied.
+    """Array with metadata: a wrapper for Tuple(np.ndarray, dict) similar to a HDF5
+    Dataset. It can be converted from and to a HDF5 dataset.
     """
 
     def __init__(self, value, metadata=None):
+        """Initialize a `MetaArray` that wraps around the input `value` and `metadata`.
+
+        Parameters
+        ----------
+        value : numpy.ndarray
+            The array to be wrapped.
+        metadata : dict, optional
+            Metadata to be wrapped, a mapping from str to str or arrays, by default None
+
+        Raises
+        ------
+        ValueError
+            When the input `value` is not a valid numpy array.
+        """
         if not isinstance(value, np.ndarray):
             raise ValueError("Input is not a np.ndarray.")
         self._value = value.copy()
@@ -18,13 +32,35 @@ class MetaArray:
 
     @property
     def metadata(self):
+        """Access the metadata.
+
+        Returns
+        -------
+        dict
+            The dictionary holding the metadata.
+        """
         return self._attrs
 
     def __getitem__(self, key):
+        """Implements the bracket indexing getter.
+
+        Parameters
+        ----------
+        key : int | slice
+            The usual input to index a numpy array.
+
+        Returns
+        -------
+        numpy.ndarray
+            Same as from indexing the underlying wrapped array.
+        """
         return self._value[key]
 
     def __setitem__(self, key, value):
-        """Mimicking the assigning behavior of a HDF5 dataset. If in `meta_array[...] = new_values` the `new_values` are not broadcastable to the original array shape, the meta_array is rebinded and no ValueError is thrown."""
+        """Mimicking the assigning behavior of a HDF5 dataset. If in
+        `meta_array[...] = new_values` the `new_values` are not broadcastable to the
+        original array shape, the meta_array is rebinded and no ValueError is thrown.
+        """
 
         def is_full_slice(slice_):
             return (
@@ -49,7 +85,23 @@ class MetaArray:
 
     @staticmethod
     def from_hdf5(h5dt):
-        """Create an instance from the content of HDF5 dataset `h5dt`."""
+        """Create an instance from the content of HDF5 dataset `h5dt`.
+
+        Parameters
+        ----------
+        h5dt : h5py.Dataset
+            A HDF5 Dataset.
+
+        Returns
+        -------
+        MetaArray
+            Its value and metadata come from `h5dt`'s data and attributes, respectively.
+
+        Raises
+        ------
+        ValueError
+            When the input `h5dt` is not a valid h5py.Dataset.
+        """
         if not isinstance(h5dt, h5py.Dataset):
             raise ValueError(
                 f"Input {h5dt}'s type is {type(h5dt)}, expecting a h5py.Dataset."
@@ -60,7 +112,18 @@ class MetaArray:
         return dt
 
     def write_to_hdf5(self, h5_node, name=None):
-        """Write the content to a HDF5 dataset at `h5_node` or `h5_node[name]` when `name` is not `None`."""
+        """Write the content to a HDF5 dataset at `h5_node` or `h5_node[name]` when
+        `name` is not `None`.
+
+        Parameters
+        ----------
+        h5_node : h5py.Group | h5py.Dataset
+            When it is a `h5py.Group`, then write to `h5_node[name]`; otherwise write to
+            `h5_node`.
+        name : str, optional
+            The name of the target Dataset when `h5_node` is a `h5py.Group`, by default
+            None
+        """
 
         def overwrite(dataset_node, input_pattern="h5_node"):
             # overwrite an existing Dataset in HDF5 file
