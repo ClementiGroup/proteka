@@ -10,6 +10,9 @@ class IMetrics(metaclass=ABCMeta):
     """Abstract class defining interface for metrics calculators
     """
     
+    @abstractmethod
+    def __call__(self, ensemble: Ensemble)
+    
     def __init__(self):
         self.results = {}
     
@@ -29,8 +32,11 @@ class IMetrics(metaclass=ABCMeta):
 class StructuralIntegrityMetrics(IMetrics):
     """Class takes a dataset and checks if for chemical integrity
     """
+    def __call__(self, ensemble: Ensemble, resolution="CA"):
+        self.compute(ensemble, resolution)
+        return self.report()
 
-    def compute(self, ensemble, resolution="CA"):
+    def compute(self, ensemble: Ensemble, resolution: str ="CA"):
         """Method to compute the metrics
         """
         # Compute CA features first
@@ -65,6 +71,7 @@ class StructuralIntegrityMetrics(IMetrics):
         
         # Get the mean and std of d_ca_ca
         # TODO: Find correct values for Calpha-Calpha distance standard deviation
+        # TODO:  names: compute_
         mean = 0.38
         std = 0.05
         z = (d_ca_ca - mean) / std
@@ -73,6 +80,10 @@ class StructuralIntegrityMetrics(IMetrics):
 class EnsembleQualityMetrics(IMetrics):
     """Metrics to compare a target ensemble to the reference ensemble
     """
+    
+    def __call__(self, target: Ensemble, reference: Ensemble):
+        self.compute(target, reference)
+        return self.report()
 
     def compute(self, target: Ensemble, reference: Ensemble):
         """
@@ -80,10 +91,7 @@ class EnsembleQualityMetrics(IMetrics):
         """
         self.results.update(end2end_distance_kl_div(target,reference))
         return
-        
-        
-    
-    
+  
     @staticmethod    
     def end2end_distance_kl_div(target: Ensemble, reference: Ensemble) -> dict:
         """Computes maximum and rms z-score for d_ca_ca bonds over ensemble.
