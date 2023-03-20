@@ -33,6 +33,9 @@ class Featurizer:
         self.validate_c_alpha()
 
         # Get the pairs of consecutive CA atoms
+        # TODO support for wrong order/multiple chains(NetworkX)
+        # TODO register Quantity with an ensemble instead of returning
+        # it 
         ca_pairs = [
             [ca_atoms[i], ca_atoms[i + 1]] for i in range(len(ca_atoms) - 1)
         ]
