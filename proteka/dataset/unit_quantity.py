@@ -32,6 +32,7 @@ BUILTIN_QUANTITIES = {
     "velocities": (PFQ.ATOMIC_VECTOR, "[L]/[T]"),
     "cell_lengths": (PFQ.BOX_QUANTITIES, "[L]"),
     "cell_angles": (PFQ.BOX_QUANTITIES, "degree"),
+    "weights": (PFQ.SCALAR, "dimensionless"),
 }
 
 
