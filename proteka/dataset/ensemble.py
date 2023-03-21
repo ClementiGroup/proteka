@@ -24,10 +24,20 @@ __all__ = ["Ensemble"]
 
 
 class HDF5Group:
-    """Interface for saving and loading from a HDF5 Group which contains only one Dataset (i.e., leaf group)."""
+    """Interface for saving and loading from a HDF5 Group which contains only one
+    Dataset (i.e., leaf group).
+    """
 
     def __init__(self, data, metadata=None):
-        """`data` is a dictionary of `Quantity`s, while `metadata` will become the attributes."""
+        """Initialize a `HDF5Group` object.
+
+        Parameters
+        ----------
+        data : Dict[str, Quantity]
+            A dictionary of `Quantity`s, which map to HDF5's Datasets under a Group
+        metadata : Dict[str, str | ...], optional
+            Metadata, which map to HDF5's Group Attributes, by default None
+        """
         self._data = data
         if metadata is None:
             metadata = {}
@@ -35,6 +45,13 @@ class HDF5Group:
 
     @property
     def metadata(self):
+        """Accessor of the `metadata` field.
+
+        Returns
+        -------
+        dict
+            The `metadata` field.
+        """
         return self._attrs
 
     def __getitem__(self, key):
@@ -49,9 +66,27 @@ class HDF5Group:
     def write_to_hdf5(
         self, h5_node, name=None, overwrite_strategy="do_not_replace"
     ):
-        """Write the content to a HDF5 group at `h5_node` or `h5_node[name]` when `name` is not `None`.
-        If the desired group already exists and `overwrite_strategy` is "replace_all", then the original
-        content will be discarded.
+        """Write the content to a HDF5 group at `h5_node` or `h5_node[name]` when `name`
+        is not `None`. If the desired group already exists and `overwrite_strategy` is
+        "replace_all", then the original content will be discarded.
+
+        Parameters
+        ----------
+        h5_node : h5py.Group
+            The target of dumping is `h5_node`, or `h5_node[name]` if `name` is not
+            `None`.
+        name : str, optional
+            The subgroup to create or overwrite, by default None
+        overwrite_strategy : str, optional
+            When equals "replace_all", will overwrite the existing group under
+            `h5_node`, by default "do_not_replace"
+
+        Raises
+        ------
+        ValueError
+            When input `h5_node` is not a valid h5py.Group
+        ValueError
+            When destination group already exists
         """
         if isinstance(h5_node, h5py.Group):
             # h5_node correponds to a Group in HDF5 file
@@ -84,8 +119,28 @@ class HDF5Group:
 
     @staticmethod
     def from_hdf5(h5grp, skip=None):
-        """Create an instance from the content of HDF5 Group `h5grp`. The Datasets under `h5grp`, except for those contained in `skip`, will be read in and interpreted as a `Quantity`. The attributes on `h5grp` will be interpreted as metadata.
-        skip (List[str]): the names of entries to skip, e.g., when it is a subgroup or not compatible with `Quantity`.
+        """Create an instance from the content of HDF5 Group `h5grp`. The Datasets under
+        `h5grp`, except for those contained in `skip`, will be read in and interpreted
+        as a `Quantity`. The attributes on `h5grp` will be interpreted as metadata.
+
+        Parameters
+        ----------
+        h5grp : h5py.Group
+            The HDF5 Group to be read in.
+        skip : List[str], optional
+            The names of entries to skip, e.g., when it is a subgroup or not compatible
+            with `Quantity`, by default None
+
+        Returns
+        -------
+        HDF5Group
+            An instance with the content from input `h5grp`.
+
+        Raises
+        ------
+        ValueError
+            When `h5grp` is not a `h5py.Group` or when it has child that is not a valid
+            HDF5 Dataset.
         """
         if not isinstance(h5grp, h5py.Group):
             raise ValueError(
@@ -125,42 +180,68 @@ def toQuantity(array_like, unit="dimensionless"):
 
 
 class Ensemble(HDF5Group):
-    """An `Ensemble` is an in-memory data structure consisting of sample coordinates and other quantities for a certain system at a certain thermodynamic state.
-    The samples usually correspond to a Boltzmann distribution. An `Ensemble` must have `name`, `top` (molecular topology) and `coords` (3D coordinates).
-    In addition, a `unit_system` has to be provided in format "[L]-[M]-[T]-[E(nergy)]" to specify the units used internally, default "nm-g/mol-ps-kJ/mol".
+    """An `Ensemble` is an in-memory data structure consisting of sample coordinates and
+    other quantities for a certain system at a certain thermodynamic state. The samples
+    usually correspond to a Boltzmann distribution.
 
-    About `Quantity`:
-    A `Quantity` wraps a `numpy.ndarray` and a `unit` (defined in `proteka.dataset.unit_quantity`).
-    Assigning a `Quantity` to an `Ensemble` either during initialization or via the dot (.) notation as an attribute:
-    - If the input is a plain `numpy.ndarray`, then the unit is assumed as "dimensionless"
+    An `Ensemble` must have `name`, `top` (molecular topology) and `coords` (3D
+    coordinates). In addition, a `unit_system` has to be provided in format
+    "[L]-[M]-[T]-[E(nergy)]" to specify the units used internally, default
+    "nm-g/mol-ps-kJ/mol".
+
+    ## About `Quantity`:
+    > A `Quantity` wraps a `numpy.ndarray` and a `unit` (defined in
+    `proteka.dataset.unit_quantity`). Assigning a `Quantity` to an `Ensemble` either
+    during initialization or via the dot (.) notation as an attribute:
+    - If the input is a plain `numpy.ndarray`, then the unit is assumed as
+    "dimensionless"
     - If the input is a `Quantity`, the input unit will be stored
+
     Retrieving saved `Quantity`:
-    - Accessing as an attribute (via dot (.)): returns a `numpy.ndarray` with the value of the `Quantity` in unit of the stored unit
-    - Via index bracket ([]): returns the stored `Quantity` object, allowing flexible automated unit conversion
+    - Accessing as an attribute (via dot (.)): returns a `numpy.ndarray` with the value
+    of the `Quantity` in unit of the stored unit
+    - Via index bracket ([]): returns the stored `Quantity` object, allowing flexible
+    automated unit conversion
+
     List stored quantities:
     - .list_quantities()
-    * Special cases are "builtin quantities", whose stored units are dictated by the `unit_system` (also used instead of the default "dimensionless" during assignment):
+
+    * Special cases are "builtin quantities", whose stored units are dictated by the
+    `unit_system` (also used instead of the default "dimensionless" during assignment):
     - "coords" (ATOMIC_VECTOR): [L]
     - "time" (_per-frame_ SCALAR): [T]
     - "forces" (ATOMIC_VECTOR): [E]/[L]
     - "velocities" (ATOMIC_VECTOR): [L]/[T]
     - "cell_lengths" (BOX_QUANTITIES): [L]
     - "cell_angles": (BOX_QUANTITIES): degree
-    In addition, the above quantities are tied to the system molecule via the shape, i.e., each _per-frame_ quantity having the same number of frames as `self.coords`, and correspond to the same number of atoms as indicated by `self.top`, if it is an _ATOMIC_VECTOR_.
+    In addition, the above quantities are tied to the system molecule via the shape,
+    i.e., each _per-frame_ quantity having the same number of frames as `self.coords`,
+    and correspond to the same number of atoms as indicated by `self.top`, if it is an
+    _ATOMIC_VECTOR_.
 
-    Trajectories:
-    Storing the information about which samples contained in the `Ensemble` come from which trajectory.
-    Trajectories are sequential. Therefore, samples from different trajectories are expected to be non-overlapping slices.
-    Trajectories info is supposed to be stored after Ensemble initialization with `.register_trjs` method.
+    ## Trajectories:
+    Storing the information about which samples contained in the `Ensemble` come from
+    which trajectory.
+    Trajectories are sequential. Therefore, samples from different trajectories are
+    expected to be non-overlapping slices.
+    Trajectories info is supposed to be stored either during the Ensemble initialization
+    or after with `.register_trjs` method.
+
     Properties:
     - `.n_trjs` (int): number of trajectories
-    - `.trj_n_frames` (Dict[str, int]): dictionary of number of frames in each trajectory
-    - `.trajectory_slices` or `.trjs` or `.trajectories` (Dict[str, slice]): Python `slice`s for slicing Ensemble quantities according to the `.trjs` records
-    - `.trj_indices` (Dict[str, np.ndarray]): indices for different trajectories according to the `.trjs` records
+    - `.trj_n_frames` (Dict[str, int]): dictionary of number of frames in each
+    trajectory
+    - `.trajectory_slices` or `.trjs` or `.trajectories` (Dict[str, slice]): Python
+    `slice`s for slicing Ensemble quantities according to the `.trjs` records
+    - `.trj_indices` (Dict[str, np.ndarray]): indices for different trajectories
+    according to the `.trjs` records
 
-    `mdtraj` interface:
-    - .get_mdtraj() (-> Dict[str, mdtraj.Trajectory]): pack an `Ensemble`'s `top` and `coords` (and unitcell + simulation times, if available) into a dictionary of `Trajectory` for analyses according to `self.trjs`
-    - .get_all_in_one_mdtraj(): pack all `coords` into one `Trajectory` object (maybe not suitable for kinetic analyses, such as TICA and MSM!)
+    ## `mdtraj` interface:
+    - `.get_mdtrajs()` (-> Dict[str, mdtraj.Trajectory]): pack an `Ensemble`'s `top` and
+    `coords` (and unitcell + simulation times, if available) into a dictionary of
+    `mdtraj.Trajectory` for analyses according to `self.trjs`
+    - `.get_all_in_one_mdtraj()`: pack all `coords` into one `Trajectory` object (maybe
+    not suitable for kinetic analyses, such as TICA and MSM!)
     """
 
     def __init__(
@@ -174,17 +255,39 @@ class Ensemble(HDF5Group):
         unit_system="nm-g/mol-ps-kJ/mol",
     ):
         """Initialize an Ensemble with following inputs:
-        - name (str): a human-readable name of the system. Not necessarily corresponding to the HDF5 group name
-        - top (mdtraj.Topology): the molecular topology of the system
-        - coords (Quantity or numpy.ndarray): 3D coordinates with shape (n_frames, n_atoms, 3) and dimension [L]
-        - quantities (None | Mapping[str, np.ndarray | Quantity]): optional fields, for example:
+
+        Parameters
+        ----------
+        name : str
+            a human-readable name of the system. Not necessarily corresponding to the
+            HDF5 group name
+        top : mdtraj.Topology
+            the molecular topology of the system
+        coords : Quantity or numpy.ndarray
+            3D coordinates with shape (n_frames, n_atoms, 3) and dimension [L]
+        quantities : Dict[str, np.ndarray | Quantity], optional
+            Example key and value pairs for builtin quantities:
             - forces: (n_frames, n_atoms, 3) _ATOMIC_VECTOR_.
             - velocities: (n_frames, n_atoms, 3) _ATOMIC_VECTOR_ with dimension [L]/[T].
-            - time: (n_frames,) _per-frame_ scalar indicating the elapsed simulation time with dimension [T].
-        - metadata (None | Mapping[str, str]): metadata to be saved, e.g., simulation temperature, forcefield information,
-                                        saving time stride, etc
-        - trajectory_slices (None | Mapping[str, slice]): a dictionary for trajectory name and its range expressed as a python slice object (similar to the usage of a [start:stop:stride] for indexing.)
-        - unit_system (str): in format "[L]-[M]-[T]-[E(nergy)]" for units of builtin quantities
+            - time: (n_frames,) _per-frame_ scalar indicating the elapsed simulation
+            time with dimension [T].
+            - weights: (n_frames,) _per-frame_ scalar indicating the Boltzmann weight of
+            each frame.
+        metadata : dict, optional
+            Metadata to be saved, e.g., simulation temperature, forcefield information,
+            saving time stride, etc, by default None
+        trajectory_slices : Dict[str, slice], optional
+            a dictionary for trajectory name and its range expressed as a python slice
+            object (similar to the usage of a [start:stop:stride] for indexing.), by
+            default None
+        unit_system : str, optional
+            In format "[L]-[M]-[T]-[E(nergy)]" for units of builtin quantities, by
+            default "nm-g/mol-ps-kJ/mol"
+
+        Raises
+        ------
+        ValueError
+            When input `coords` does not correspond to the input `top`.
         """
         top_str = top2json(top)  # let `top2json` do the type check
         if (
@@ -215,9 +318,12 @@ class Ensemble(HDF5Group):
                     warn('Omitting input `quantities["top"]`')
                     continue
                 self.__setattr__(k, v)
-        # register a default sequence for the whole length for compatibility
-        self.register_trjs({"default": slice(None)})  # same as [:]
-        self._data.pop("trjs")
+        if trajectory_slices is not None:
+            self.register_trjs(trajectory_slices)
+        else:
+            # register a default sequence for the whole length for compatibility
+            self.register_trjs({"default": slice(None)})  # same as [:]
+            self._data.pop("trjs")
 
     @property
     def name(self):
@@ -231,12 +337,24 @@ class Ensemble(HDF5Group):
 
     @property
     def unit_system(self):
-        """Return a read-only dict of the unit system used by the Ensemble."""
+        """Return a read-only `dict` of the unit system used by the `Ensemble`.
+
+        Returns
+        -------
+        dict
+            A read-only mapping between dimension "[X]" (X = L, M, T, E) and the builtin
+            unit
+        """
         return MappingProxyType(self._unit_system)
 
     @property
     def top(self):
-        """Return the topology of the molecular system."""
+        """Return the topology of the molecular system. Alias to `.top`.
+
+        Returns
+        -------
+        mdtraj.Topology
+        """
         if not hasattr(self, "_top"):
             self._top = json2top(self._data["top"][()])
         return self._top
@@ -249,25 +367,62 @@ class Ensemble(HDF5Group):
 
     @property
     def topology(self):
-        """Return the topology of the molecular system. Alias to self.top."""
+        """Return the topology of the molecular system. Alias to `.top`.
+
+        Returns
+        -------
+        mdtraj.Topology
+        """
         return self.top
 
     @property
     def n_atoms(self):
-        """Return the number of atoms of the molecular system."""
+        """Return the number of atoms of the molecule defined in `top`.
+
+        Returns
+        -------
+        int
+            Number of atoms contained in the molecule.
+        """
         return self.top.n_atoms
 
     @property
     def n_frames(self):
-        """Number of frames."""
+        """Return the number of frames.
+
+        Returns
+        -------
+        int
+            Number of frames contained in this `Ensemble`.
+        """
         return self._data["coords"].shape[0]
 
     @property
     def trajectories(self):
+        """Get the slices corresponding to each trajectory. These python slice objects
+        can be used to retrive the correct portion for the corresponding trajectory for
+        each _per-frame_ quantity (e.g., coords, forces, ...) via bracket ([]) operator.
+        Alias to `.trajectory_slices`.
+
+        Returns
+        -------
+        Dict[str, slice]
+            Key-slice pairs for each registered trajectory
+        """
         return self.trajectory_slices
 
     @property
     def trjs(self):
+        """Get the slices corresponding to each trajectory. These python slice objects
+        can be used to retrive the correct portion for the corresponding trajectory for
+        each _per-frame_ quantity (e.g., coords, forces, ...) via bracket ([]) operator.
+        Alias to `.trajectory_slices`.
+
+        Returns
+        -------
+        Dict[str, slice]
+            Key-slice pairs for each registered trajectory
+        """
         return self.trajectory_slices
 
     @trajectories.setter
@@ -283,8 +438,14 @@ class Ensemble(HDF5Group):
         )
 
     def register_trjs(self, dict_of_slices):
-        """Use input slices to indicate the Ensemble samples for trajectories.
-        dict_of_slices (Mapping[str, slice])."""
+        """The input slices will be used to indicate which slice of the Ensemble samples
+        (and other quantities) correspond to which trajectory.
+
+        Parameters
+        ----------
+        dict_of_slices : Mapping[str, slice]
+            Name and range of a trajectory.
+        """
         trjs = {
             k: slice_.indices(self.n_frames)
             for k, slice_ in dict_of_slices.items()
@@ -299,7 +460,12 @@ class Ensemble(HDF5Group):
 
     @property
     def n_trjs(self):
-        """Number of trajectories in the Ensemble."""
+        """Number of trajectories in the Ensemble.
+
+        Returns
+        -------
+        int
+        """
         if hasattr(self, "_trjs"):
             return len(self._trjs)
         else:
@@ -307,7 +473,12 @@ class Ensemble(HDF5Group):
 
     @property
     def trj_n_frames(self):
-        """Number of frames contained by each trajectory."""
+        """Number of frames contained by each trajectory.
+
+        Returns
+        -------
+        int
+        """
         if self.n_trjs == 0:
             return None
         else:
@@ -317,7 +488,15 @@ class Ensemble(HDF5Group):
 
     @property
     def trajectory_slices(self):
-        """Generate python `slice`s for subsetting the _per-frame_ quantities for each Trajectory."""
+        """Get the slices corresponding to each trajectory. These python slice objects
+        can be used to retrive the correct portion for the corresponding trajectory for
+        each _per-frame_ quantity (e.g., coords, forces, ...) via bracket ([]) operator.
+
+        Returns
+        -------
+        Dict[str, slice]
+            Key-slice pairs for each registered trajectory
+        """
         if self.n_trjs == 0:
             return None
         else:
@@ -325,25 +504,66 @@ class Ensemble(HDF5Group):
 
     @property
     def trajectory_indices(self):
-        """Indices of frame belonging to each Trajectory."""
+        """Indices of frame belonging to each Trajectory.
+
+        Returns
+        -------
+        int
+        """
         if self.n_trjs == 0:
             return None
         else:
             return {k: slice(*trj) for k, trj in self._trjs.items()}
 
     def list_quantities(self):
-        """List the name of quantities stored in the `Ensemble`."""
+        """List the name of quantities stored in the `Ensemble`.
+
+        Returns
+        -------
+        List[str]
+            Quantity names
+        """
         return list(self._data)
 
     def get_quantity(self, key):
-        """Retrieve a Quantity in the `Ensemble`."""
+        """Retrieve a Quantity in the `Ensemble`.
+
+        Parameters
+        ----------
+        key : str
+            The name of the Quantity
+
+        Returns
+        -------
+        Quantity
+            The Quantity under the name `key` in the `Ensemble`
+
+        Raises
+        ------
+        KeyError
+            When `key` does not correspond to a Quantity existing in the current
+            `Ensemble`.
+        """
         if key in self:
             return self[key]
         else:
             raise KeyError(f"Quantity `{key}` does not exist")
 
     def get_unit(self, key):
-        """Retrieve the storage unit for a `Quantity` under name `key` in the Ensemble, or alternatively the preset unit of a builtin `Quantity`. If neither is the case, return `None`."""
+        """Retrieve the builtin unit for a `Quantity` under name `key` in the Ensemble,
+        or alternatively the preset unit of a builtin `Quantity`. If neither is the
+        case, return `None`.
+
+        Parameters
+        ----------
+        key : str
+            Name of the Quantity
+
+        Returns
+        -------
+        str | None
+            The bulitin unit of the Quantity under name `key`
+        """
         if key in self._data:
             return self.get_quantity(key).unit
         elif key in BUILTIN_QUANTITIES:
@@ -365,10 +585,20 @@ class Ensemble(HDF5Group):
         super().__delattr__(key)
 
     def set_quantity(self, key, quant):
-        """
-        Store `quant` (Quantity | numpy.ndarray) under name `key` (str).
-        When `quant` is a plain `numpy.ndarray`, the unit is assumed according to `.unit_system` if the `key` is one of the `BUILTIN_QUANTITIES`, or `dimensionless` otherwise.
-        * When `key` is one of the `BUILTIN_QUANTITIES`, the unit and shape of `quant` need to be compatible.
+        """Store `quant` (Quantity | numpy.ndarray) under name `key` (str).
+        When `quant` is a plain `numpy.ndarray`, the unit is assumed according to
+        `.unit_system` if the `key` is one of the `BUILTIN_QUANTITIES`, or
+        `dimensionless` otherwise.
+        * When `key` is one of the `BUILTIN_QUANTITIES`, the unit and shape of `quant`
+        need to be compatible.
+
+        Parameters
+        ----------
+        name : str
+            The name/key to store the string.
+        quantity : numpy.ndarray | Quantity
+            The quantity to be saved. When input is a raw numpy array, the unit is
+            assumed to be either the builtin unit (when exists) or "dimensionless".
         """
         # built-in quantities?
         if key in BUILTIN_QUANTITIES:
@@ -381,7 +611,8 @@ class Ensemble(HDF5Group):
         if not isinstance(quant, BaseQuantity):
             if preset_unit is None:
                 preset_unit = "dimensionless"
-            print(f'Assuming unit of input "{key}" to be "{preset_unit}".')
+            if preset_unit != "dimensionless":
+                print(f'Assuming unit of input "{key}" to be "{preset_unit}".')
             quant = toQuantity(quant, preset_unit)
         else:
             if isinstance(quant, BaseQuantity) and not isinstance(
@@ -396,7 +627,15 @@ class Ensemble(HDF5Group):
         self._save_quantity(key, quant, shape=shape_hint)
 
     def get_all_in_one_mdtraj(self):
-        """Pack all `coords` into one `Trajectory` object (maybe not suitable for kinetic analyses, such as TICA and MSM!)"""
+        """Pack all `coords` into one `Trajectory` object (maybe not suitable for
+        kinetic analyses, such as TICA and MSM!)
+
+        Returns
+        -------
+        mdtraj.Trajectory
+            A trajectory, whose topology (and unitcell dimensions, if applicable) come
+            from the `Ensemble` object and coordinates from `coords` concatenated
+        """
         time = self["time"].in_unit_of("ps") if "time" in self else None
         cell_lengths = (
             self["cell_lengths"].in_unit_of("nm")
@@ -417,7 +656,15 @@ class Ensemble(HDF5Group):
         )
 
     def get_mdtrajs(self):
-        """(-> Dict[str, mdtraj.Trajectory]): pack an `Ensemble`'s `top` and `coords` (and unitcell + simulation times, if available) into a dictionary of `Trajectory` for analyses according to `self.trjs`"""
+        """Pack this `Ensemble`'s `top` and `coords` (and unitcell + simulation times,
+        if available) into a dictionary of `Trajectory` for analyses, according to
+        the slicing given by `self.trjs`.
+
+        Returns
+        -------
+        Dict[str, mdtraj.Trajectory]
+            A dictionary containing all mdtraj Trjectories implied by the `self.trjs`.
+        """
         trj = self.get_all_in_one_mdtraj()
         return {k: trj[slice_] for k, slice_ in self.trajectory_slices.items()}
 
@@ -428,10 +675,27 @@ class Ensemble(HDF5Group):
         shape="[n_frames, n_atoms, 3]",
         verbose=True,
     ):
-        """
-        Save a `quantity` (Quantity) under name `name` (str) with the shape defined by `shape` (str | Tuple | None).
-        * In `shape`: n_frames, n_atoms will be interpreted with actual values.
-        * Set `shape` to `None` to bypass shape checks.
+        """Save a `quantity` under name `name` with the shape defined by `shape`.
+
+        Parameters
+        ----------
+        name : str
+            The name/key to store the string.
+        quantity : numpy.ndarray | Quantity
+            The quantity to be saved. When input is a raw numpy array, the unit is
+            assumed to be either the builtin unit (when exists) or "dimensionless".
+        shape : str | Tuple, optional
+            A shape string/tuple to indicate the allowed shape of input; for string,
+            the "n_frames" and "n_atoms" will be substituted automatically to
+            `Ensemble`'s property; shape check is bypassed when set to `None`, by
+            default "[n_frames, n_atoms, 3]"
+        verbose : bool, optional
+            Whether to notify about overwriting an existing Quantity, by default True
+
+        Raises
+        ------
+        ValueError
+            When the shape check fails
         """
         # parsing the shape hint
         if shape is not None:
@@ -453,7 +717,8 @@ class Ensemble(HDF5Group):
                 print(f"Overwriting the previously saved record {name}.")
                 if not quantity.is_unit_convertible_with(old_quant):
                     warn(
-                        f"Overwriting record {name} with incompatible unit: {old_quant.unit} -> {quantity.unit}."
+                        f"Overwriting record {name} with incompatible unit: "
+                        f"{old_quant.unit} -> {quantity.unit}."
                     )
         # save data
         self._data[name] = quantity
@@ -462,11 +727,32 @@ class Ensemble(HDF5Group):
     @classmethod
     def from_hdf5(cls, h5grp, unit_system="nm-g/mol-ps-kJ/mol"):
         """Create an instance from the content of HDF5 Group `h5grp` (h5py.Group).
-        `unit_system` (str "[L]-[M]-[T]-[E(nergy)]"): for units of builtin quantities (see class docstring).
-        When given `unit_system` differs from the stored record, units will be converted when reading the `Quantity` into memory.
-        Required Datasets under `h5grp`:
-        - top: serialized topology
-        - coords (with Attribute "unit")
+        When given `unit_system` differs from the stored record, units will be converted
+        when reading the `Quantity` into memory.
+
+        Parameters
+        ----------
+        h5grp : h5py.Group
+            The group should contain all necessary information to initialize an
+            `Ensemble`. Notablly, the following Datasets are required:
+            - top: serialized topology
+            - coords (with Attribute "unit")
+            And all Datasets should come with an Attribute `unit` for the physical unit
+            used in storage.
+        unit_system : str, optional
+            Should have the format "[L]-[M]-[T]-[E(nergy)]" for units of builtin
+            quantities (see class docstring), by default "nm-g/mol-ps-kJ/mol"
+
+        Returns
+        -------
+        Ensemble
+            An instance containing all compatible content from HDF5 Group `h5grp`.
+
+        Raises
+        ------
+        ValueError
+            When the Dataset corresponding to `top`, `coords` or other fields does not
+            exist or has invalid format.
         """
         hdf5grp = HDF5Group.from_hdf5(h5grp)
         dataset_unit_system_str = unit_system_to_str(
@@ -481,7 +767,8 @@ class Ensemble(HDF5Group):
             )
             if dataset_unit_system_str != formatted_unit_system_str:
                 print(
-                    f'Adapting unit system from "{dataset_unit_system_str}" (storage) to "{formatted_unit_system_str}" (memory).'
+                    f'Adapting unit system from "{dataset_unit_system_str}" (storage) '
+                    f'to "{formatted_unit_system_str}" (memory).'
                 )
         try:
             coords = hdf5grp["coords"]
@@ -515,9 +802,13 @@ class Ensemble(HDF5Group):
                 new_ensemble._trjs = trjs_dict
             except:
                 raise ValueError(
-                    f"Invalid `subsets` information in the input HDF5 Group `{h5grp.name}`."
+                    f"Invalid `trjs` (trajectories) information in the input HDF5 Group"
+                    f" `{h5grp.name}`."
                 )
         return new_ensemble
 
     def __repr__(self):
-        return f'<Ensemble for molecule "{self.name}" with {self.n_atoms} atoms and {self.n_frames} frames>'
+        return (
+            f'<Ensemble for molecule "{self.name}" with {self.n_atoms} atoms and '
+            f"{self.n_frames} frames>"
+        )
