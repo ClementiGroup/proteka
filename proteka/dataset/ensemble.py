@@ -187,6 +187,9 @@ class Ensemble(HDF5Group):
     string in format of "[L]-[M]-[T]-[E(nergy)]" to specify the units used internally,
     default "nm-g/mol-ps-kJ/mol".
 
+    Alternative to the default `__init__` method, an `Ensemble` can also be created from
+    a `mdtraj.Trajectory` object.
+
     ## About `Quantity`:
     > A `Quantity` wraps a `numpy.ndarray` and a `unit` (defined in
     `proteka.dataset.unit_quantity`). Assigning a `Quantity` to an `Ensemble` either
@@ -329,6 +332,73 @@ class Ensemble(HDF5Group):
             # register a default sequence for the whole length for compatibility
             self.register_trjs({"default": slice(None)})  # same as [:]
             self._data.pop("trjs")
+
+    @staticmethod
+    def from_mdtraj(
+        name,
+        traj,
+        quantities=None,
+        metadata=None,
+        trajectory_slices=None,
+        unit_system="nm-g/mol-ps-kJ/mol",
+    ):
+        """Create an `Ensemble` instance from `mdtraj.Trajectory`.
+
+        Parameters
+        ----------
+        name : str
+            a human-readable name of the system. Not necessarily corresponding to the
+            HDF5 group name
+        traj : mdtraj.Trajectory
+            A trajectory, whose topology and coordinates (and when applicable also the
+            unit cell information) will be stored in the created `Ensemble`.
+        quantities : Dict[str, np.ndarray | Quantity], optional
+            Example key and value pairs for builtin quantities:
+            - forces: (n_frames, n_atoms, 3) _ATOMIC_VECTOR_.
+            - velocities: (n_frames, n_atoms, 3) _ATOMIC_VECTOR_ with dimension [L]/[T].
+            - time: (n_frames,) _per-frame_ scalar indicating the elapsed simulation
+            time with dimension [T].
+            - weights: (n_frames,) _per-frame_ scalar indicating the Boltzmann weight of
+            each frame.
+        metadata : dict, optional
+            Metadata to be saved, e.g., simulation temperature, forcefield information,
+            saving time stride, etc, by default None
+        trajectory_slices : Dict[str, slice], optional
+            a dictionary for trajectory name and its range expressed as a python slice
+            object (similar to the usage of a [start:stop:stride] for indexing.), by
+            default None
+        unit_system : str | UnitSystem object, optional
+            In format "[L]-[M]-[T]-[E(nergy)]" for units of builtin quantities, by
+            default "nm-g/mol-ps-kJ/mol"; alternatively, you can provide an existing
+            `UnitSystem` or a JSON-serialized such object
+
+        Returns
+        -------
+        Ensemble
+            An instance containing all information from the .
+
+        Raises
+        ------
+        ValueError
+        """
+        coords = Quantity(traj.xyz, "nm")
+        if quantities is None:
+            quantities = {}
+        if traj.time is not None:
+            quantities["time"] = Quantity(traj.time, "ps")
+        if traj.unitcell_angles is not None:
+            quantities["cell_angles"] = Quantity(traj.unitcell_angles, "degree")
+        if traj.unitcell_lengths is not None:
+            quantities["cell_lengths"] = Quantity(traj.unitcell_lengths, "nm")
+        return Ensemble(
+            name,
+            traj.top,
+            coords,
+            quantities=quantities,
+            metadata=metadata,
+            trajectory_slices=trajectory_slices,
+            unit_system=unit_system,
+        )
 
     @property
     def name(self):
