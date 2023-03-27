@@ -1,6 +1,7 @@
 import pytest
 import numpy as np
-from .unit_quantity import *
+from .unit import *
+from .quantity import *
 from tempfile import TemporaryFile
 import h5py
 

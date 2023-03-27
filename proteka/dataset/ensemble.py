@@ -9,15 +9,12 @@ import mdtraj as md
 
 # from .unit_utils import format_unit, unit_conv, is_unit_compatible
 import h5py
-from .unit_quantity import (
+from proteka.quantity import (
     BaseQuantity,
     Quantity,
-    BUILTIN_QUANTITIES,
-    parse_unit_system,
-    unit_system_to_str,
-    get_preset_unit,
+    PRESET_BUILTIN_QUANTITIES,
+    UnitSystem,
 )
-from types import MappingProxyType
 from .top_utils import json2top, top2json
 
 __all__ = ["Ensemble"]
@@ -185,9 +182,10 @@ class Ensemble(HDF5Group):
     usually correspond to a Boltzmann distribution.
 
     An `Ensemble` must have `name`, `top` (molecular topology) and `coords` (3D
-    coordinates). In addition, a `unit_system` has to be provided in format
-    "[L]-[M]-[T]-[E(nergy)]" to specify the units used internally, default
-    "nm-g/mol-ps-kJ/mol".
+    coordinates). In addition, a `unit_system` has to be provided either as a
+    pre-defined `UnitSystem` object or a seralized JSON version of `UnitSystem` or a
+    string in format of "[L]-[M]-[T]-[E(nergy)]" to specify the units used internally,
+    default "nm-g/mol-ps-kJ/mol".
 
     ## About `Quantity`:
     > A `Quantity` wraps a `numpy.ndarray` and a `unit` (defined in
@@ -280,9 +278,10 @@ class Ensemble(HDF5Group):
             a dictionary for trajectory name and its range expressed as a python slice
             object (similar to the usage of a [start:stop:stride] for indexing.), by
             default None
-        unit_system : str, optional
+        unit_system : str | UnitSystem object, optional
             In format "[L]-[M]-[T]-[E(nergy)]" for units of builtin quantities, by
-            default "nm-g/mol-ps-kJ/mol"
+            default "nm-g/mol-ps-kJ/mol"; alternatively, you can provide an existing
+            `UnitSystem` or a JSON-serialized such object
 
         Raises
         ------
@@ -298,7 +297,13 @@ class Ensemble(HDF5Group):
             raise ValueError(
                 f"Invalid input `coords`, expecting shape [N_frames, {top.n_atoms}, 3]."
             )
-        self._unit_system = parse_unit_system(unit_system)
+        if isinstance(unit_system, UnitSystem):
+            # serialize and
+            self._unit_system = UnitSystem.parse_from_json(
+                unit_system.to_json()
+            )
+        else:
+            self._unit_system = UnitSystem.parse_from_str(unit_system)
         super().__init__({}, metadata=metadata)
         self._save_quantity(
             "coords",
@@ -308,7 +313,7 @@ class Ensemble(HDF5Group):
         self._save_quantity("top", toQuantity(top_str), shape=None)
         # self.top = top_str
         self.metadata["name"] = name
-        self.metadata["unit_system"] = unit_system_to_str(self._unit_system)
+        self.metadata["unit_system"] = self._unit_system.to_json()
         if quantities is not None:
             for k, v in quantities.items():
                 if k == "coords":
@@ -337,15 +342,15 @@ class Ensemble(HDF5Group):
 
     @property
     def unit_system(self):
-        """Return a read-only `dict` of the unit system used by the `Ensemble`.
+        """Return a the unit system used by the `Ensemble`.
 
         Returns
         -------
-        dict
-            A read-only mapping between dimension "[X]" (X = L, M, T, E) and the builtin
-            unit
+        UnitSystem
+            The unit system containing units for basic dimension "[X]" (X = L, M, T, E)
+            and units for builtin quantities
         """
-        return MappingProxyType(self._unit_system)
+        return self._unit_system
 
     @property
     def top(self):
@@ -566,8 +571,8 @@ class Ensemble(HDF5Group):
         """
         if key in self._data:
             return self.get_quantity(key).unit
-        elif key in BUILTIN_QUANTITIES:
-            preset_unit = get_preset_unit(key, self._unit_system)
+        elif key in PRESET_BUILTIN_QUANTITIES:
+            preset_unit = self._unit_system.get_preset_unit(key)
             return preset_unit
         else:
             return None
@@ -587,9 +592,9 @@ class Ensemble(HDF5Group):
     def set_quantity(self, key, quant):
         """Store `quant` (Quantity | numpy.ndarray) under name `key` (str).
         When `quant` is a plain `numpy.ndarray`, the unit is assumed according to
-        `.unit_system` if the `key` is one of the `BUILTIN_QUANTITIES`, or
+        `.unit_system` if the `key` is one of the `PRESET_BUILTIN_QUANTITIES`, or
         `dimensionless` otherwise.
-        * When `key` is one of the `BUILTIN_QUANTITIES`, the unit and shape of `quant`
+        * When `key` is one of the `PRESET_BUILTIN_QUANTITIES`, the unit and shape of `quant`
         need to be compatible.
 
         Parameters
@@ -601,9 +606,9 @@ class Ensemble(HDF5Group):
             assumed to be either the builtin unit (when exists) or "dimensionless".
         """
         # built-in quantities?
-        if key in BUILTIN_QUANTITIES:
-            shape_hint = BUILTIN_QUANTITIES[key][0]
-            preset_unit = get_preset_unit(key, self._unit_system)
+        if key in PRESET_BUILTIN_QUANTITIES:
+            shape_hint = PRESET_BUILTIN_QUANTITIES[key][0]
+            preset_unit = self._unit_system.get_preset_unit(key)
         else:
             shape_hint = None
             preset_unit = None
@@ -755,15 +760,15 @@ class Ensemble(HDF5Group):
             exist or has invalid format.
         """
         hdf5grp = HDF5Group.from_hdf5(h5grp)
-        dataset_unit_system_str = unit_system_to_str(
-            parse_unit_system(hdf5grp.metadata["unit_system"])
+        dataset_unit_system_str = str(
+            UnitSystem.parse_from_str(hdf5grp.metadata["unit_system"])
         )
         if unit_system is None:
             # no unit system given, fall back to the unit system stored in the h5 file
             formatted_unit_system_str = dataset_unit_system_str
         else:
-            formatted_unit_system_str = unit_system_to_str(
-                parse_unit_system(unit_system)
+            formatted_unit_system_str = str(
+                UnitSystem.parse_from_str(unit_system)
             )
             if dataset_unit_system_str != formatted_unit_system_str:
                 print(
