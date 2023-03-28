@@ -1,5 +1,5 @@
-
 import pytest
+
 
 @pytest.fixture()
 def example_json_topology():

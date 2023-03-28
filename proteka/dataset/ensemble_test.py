@@ -1,4 +1,3 @@
-
 import h5py
 
 from pathlib import Path
@@ -9,12 +8,13 @@ import numpy as np
 from .top_utils import json2top, top2json
 
 
-
 @pytest.fixture
 def example_ensemble(example_json_topology):
     """Create a dataset from a json topology."""
     top = json2top(example_json_topology)
-    ensemble = Ensemble(name="example_ensemble", top=top, coords=np.zeros((10, top.n_atoms, 3)))
+    ensemble = Ensemble(
+        name="example_ensemble", top=top, coords=np.zeros((10, top.n_atoms, 3))
+    )
     assert top2json(ensemble.top) == example_json_topology
     return ensemble
 
@@ -27,20 +27,23 @@ def test_casting(example_ensemble):
     assert example_ensemble["forces"].unit == "kilojoules/mole/nanometers"
     with pytest.raises(ValueError):
         # incompatible unit
-        example_ensemble.forces = Quantity(np.zeros((10, example_ensemble.n_atoms, 3)), "nanometers")
+        example_ensemble.forces = Quantity(
+            np.zeros((10, example_ensemble.n_atoms, 3)), "nanometers"
+        )
     with pytest.raises(ValueError):
         # incompatible shape
         example_ensemble.forces = np.zeros((10, example_ensemble.n_atoms, 2))
-    #assert isinstance(example_ensemble["forces"], np.ndarray)
+    # assert isinstance(example_ensemble["forces"], np.ndarray)
     example_ensemble.velocities = np.zeros((10, example_ensemble.n_atoms, 3))
     assert example_ensemble["velocities"].unit == "nanometers/picoseconds"
     example_ensemble.weights = np.ones((10,))
     assert example_ensemble["weights"].unit == "dimensionless"
 
-    example_ensemble.velocities = Quantity(np.ones((10, example_ensemble.n_atoms, 3)), "Angstrom/picoseconds")
+    example_ensemble.velocities = Quantity(
+        np.ones((10, example_ensemble.n_atoms, 3)), "Angstrom/picoseconds"
+    )
     assert example_ensemble["velocities"].unit == "nanometers/picoseconds"
     assert example_ensemble["velocities"][0, 0, 0] == 0.1
-
 
 
 def test_ensemble_attributes(example_ensemble):
@@ -58,17 +61,23 @@ def test_ensemble_attributes(example_ensemble):
 def test_ensemble_trajectories(example_ensemble):
     """Test trajectory utilities."""
     with pytest.raises(TypeError):
-        example_ensemble.trajectory_slices["test_slice"] = slice(0,10,1)
+        example_ensemble.trajectory_slices["test_slice"] = slice(0, 10, 1)
 
     assert ("default",) == tuple(example_ensemble.trajectory_slices.keys())
     assert ("default",) == tuple(example_ensemble.trajectories.keys())
     assert ("default",) == tuple(example_ensemble.trajectory_indices.keys())
 
-    example_ensemble.register_trjs({"part1": slice(0, 5, 1), "part2": slice(5, 10, 1)})
+    example_ensemble.register_trjs(
+        {"part1": slice(0, 5, 1), "part2": slice(5, 10, 1)}
+    )
     assert "default" not in example_ensemble.trajectory_slices
-    assert ("part1", "part2") == tuple(example_ensemble.trajectory_slices.keys())
+    assert ("part1", "part2") == tuple(
+        example_ensemble.trajectory_slices.keys()
+    )
     assert ("part1", "part2") == tuple(example_ensemble.trajectories.keys())
-    assert ("part1", "part2") == tuple(example_ensemble.trajectory_indices.keys())
+    assert ("part1", "part2") == tuple(
+        example_ensemble.trajectory_indices.keys()
+    )
 
     trajectories = example_ensemble.get_mdtrajs()
     assert len(trajectories) == 2

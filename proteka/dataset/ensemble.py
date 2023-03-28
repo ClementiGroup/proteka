@@ -315,7 +315,9 @@ class Ensemble(HDF5Group):
             self._unit_system = UnitSystem.parse_from_str(unit_system)
         super().__init__({}, metadata=metadata)
         if not isinstance(coords, BaseQuantity):
-            coords = Quantity(coords, self._unit_system.get_preset_unit("coords"))
+            coords = Quantity(
+                coords, self._unit_system.get_preset_unit("coords")
+            )
         self._save_quantity(
             "coords",
             coords,
@@ -566,9 +568,12 @@ class Ensemble(HDF5Group):
             return None
         else:
             # immutable to discourage assignment to the returned value
-            return MappingProxyType({
-                k: (trj[1] - trj[0]) // trj[2] for k, trj in self._trjs.items()
-            })
+            return MappingProxyType(
+                {
+                    k: (trj[1] - trj[0]) // trj[2]
+                    for k, trj in self._trjs.items()
+                }
+            )
 
     @property
     def trajectory_slices(self):
@@ -585,7 +590,9 @@ class Ensemble(HDF5Group):
             return None
         else:
             # immutable to discourage assignment to the returned value
-            return MappingProxyType({k: slice(*trj) for k, trj in self._trjs.items()})
+            return MappingProxyType(
+                {k: slice(*trj) for k, trj in self._trjs.items()}
+            )
 
     @property
     def trajectory_indices(self):
@@ -599,7 +606,9 @@ class Ensemble(HDF5Group):
             return None
         else:
             # immutable to discourage assignment to the returned value
-            return MappingProxyType({k: slice(*trj) for k, trj in self._trjs.items()})
+            return MappingProxyType(
+                {k: slice(*trj) for k, trj in self._trjs.items()}
+            )
 
     def list_quantities(self):
         """List the name of quantities stored in the `Ensemble`.
