@@ -2,6 +2,7 @@
 a certain thermodynamic state. The samples usually correspond to a
 Boltzmann distribution.
 """
+from typing import Iterable
 from warnings import warn
 import json
 import numpy as np
@@ -50,6 +51,9 @@ class HDF5Group:
             The `metadata` field.
         """
         return self._attrs
+
+    def __dir__(self) -> Iterable[str]:
+        return (*super().__dir__(), *self._data.keys())
 
     def __getitem__(self, key):
         return self._data[key]
