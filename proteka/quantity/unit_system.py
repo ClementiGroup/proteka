@@ -324,3 +324,6 @@ class UnitSystem:
                 f'Quantity "{quant_name}"\'s unit is preserved as "{quant.unit}".'
             )
         return quant
+
+    def __eq__(self, other):
+        return self._unit_dict == other._unit_dict

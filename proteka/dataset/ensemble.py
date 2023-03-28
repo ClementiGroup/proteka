@@ -2,6 +2,9 @@
 a certain thermodynamic state. The samples usually correspond to a
 Boltzmann distribution.
 """
+from typing import Iterable
+from types import MappingProxyType
+from itertools import chain
 from warnings import warn
 import json
 import numpy as np
@@ -50,6 +53,9 @@ class HDF5Group:
             The `metadata` field.
         """
         return self._attrs
+
+    def __dir__(self) -> list[str]:
+        return [*super().__dir__(), *self._data.keys()]
 
     def __getitem__(self, key):
         return self._data[key]
@@ -160,7 +166,7 @@ class HDF5Group:
         return HDF5Group(data, metadata)
 
 
-def toQuantity(array_like, unit="dimensionless"):
+def _to_quantity(array_like, unit="dimensionless"):
     # check and convert `quant` to a Quantity
     try:
         if isinstance(array_like, str):
@@ -308,12 +314,14 @@ class Ensemble(HDF5Group):
         else:
             self._unit_system = UnitSystem.parse_from_str(unit_system)
         super().__init__({}, metadata=metadata)
+        if not isinstance(coords, BaseQuantity):
+            coords = Quantity(coords, self._unit_system.get_preset_unit("coords"))
         self._save_quantity(
             "coords",
             coords,
             shape=coords.shape,
         )  # overriding shape checks, which depend on coords themselves
-        self._save_quantity("top", toQuantity(top_str), shape=None)
+        self._save_quantity("top", _to_quantity(top_str), shape=None)
         # self.top = top_str
         self.metadata["name"] = name
         self.metadata["unit_system"] = self._unit_system.to_json()
@@ -527,7 +535,7 @@ class Ensemble(HDF5Group):
         }
         self._save_quantity(
             "trjs",
-            toQuantity(json.dumps(trjs)),
+            _to_quantity(json.dumps(trjs)),
             shape=None,
             verbose=hasattr(self, "_trjs"),
         )
@@ -557,9 +565,10 @@ class Ensemble(HDF5Group):
         if self.n_trjs == 0:
             return None
         else:
-            return {
+            # immutable to discourage assignment to the returned value
+            return MappingProxyType({
                 k: (trj[1] - trj[0]) // trj[2] for k, trj in self._trjs.items()
-            }
+            })
 
     @property
     def trajectory_slices(self):
@@ -575,7 +584,8 @@ class Ensemble(HDF5Group):
         if self.n_trjs == 0:
             return None
         else:
-            return {k: slice(*trj) for k, trj in self._trjs.items()}
+            # immutable to discourage assignment to the returned value
+            return MappingProxyType({k: slice(*trj) for k, trj in self._trjs.items()})
 
     @property
     def trajectory_indices(self):
@@ -588,7 +598,8 @@ class Ensemble(HDF5Group):
         if self.n_trjs == 0:
             return None
         else:
-            return {k: slice(*trj) for k, trj in self._trjs.items()}
+            # immutable to discourage assignment to the returned value
+            return MappingProxyType({k: slice(*trj) for k, trj in self._trjs.items()})
 
     def list_quantities(self):
         """List the name of quantities stored in the `Ensemble`.
@@ -688,7 +699,7 @@ class Ensemble(HDF5Group):
                 preset_unit = "dimensionless"
             if preset_unit != "dimensionless":
                 print(f'Assuming unit of input "{key}" to be "{preset_unit}".')
-            quant = toQuantity(quant, preset_unit)
+            quant = _to_quantity(quant, preset_unit)
         else:
             if isinstance(quant, BaseQuantity) and not isinstance(
                 quant, Quantity
@@ -797,7 +808,7 @@ class Ensemble(HDF5Group):
                     )
         # save data
         self._data[name] = quantity
-        self.__dict__[name] = quantity
+        self.__dict__[name] = quantity.raw_value
 
     @classmethod
     def from_hdf5(cls, h5grp, unit_system="nm-g/mol-ps-kJ/mol"):
