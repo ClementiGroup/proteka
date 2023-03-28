@@ -596,18 +596,19 @@ class Ensemble(HDF5Group):
 
     @property
     def trajectory_indices(self):
-        """Indices of frame belonging to each Trajectory.
+        """Indices of frames belonging to each Trajectory.
 
         Returns
         -------
-        int
+        Dict[str, numpy.ndarray]
+            Key-(list of int) pairs for each registered trajectory
         """
         if self.n_trjs == 0:
             return None
         else:
             # immutable to discourage assignment to the returned value
             return MappingProxyType(
-                {k: slice(*trj) for k, trj in self._trjs.items()}
+                {k: np.arange(*trj) for k, trj in self._trjs.items()}
             )
 
     def list_quantities(self):
