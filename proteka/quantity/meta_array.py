@@ -6,25 +6,24 @@ __all__ = ["MetaArray"]
 
 
 class MetaArray:
-    """Array with metadata: a wrapper for Tuple(np.ndarray, dict) similar to a HDF5
-    Dataset. It can be converted from and to a HDF5 dataset.
+    """Array with metadata: a wrapper for Tuple(np.ndarray, dict) for `value` and
+    `metadata` similar to a HDF5 Dataset. It can be converted from and to a HDF5
+    dataset with method `from_hdf5` and `write_to_hdf5`.
+
+    Parameters
+    ----------
+    value : numpy.ndarray
+        The array to be wrapped.
+    metadata : dict, optional
+        Metadata to be wrapped, a mapping from str to str or arrays, by default None
+
+    Raises
+    ------
+    ValueError
+        When the input `value` is not a valid numpy array.
     """
 
     def __init__(self, value, metadata=None):
-        """Initialize a `MetaArray` that wraps around the input `value` and `metadata`.
-
-        Parameters
-        ----------
-        value : numpy.ndarray
-            The array to be wrapped.
-        metadata : dict, optional
-            Metadata to be wrapped, a mapping from str to str or arrays, by default None
-
-        Raises
-        ------
-        ValueError
-            When the input `value` is not a valid numpy array.
-        """
         if not isinstance(value, np.ndarray):
             raise ValueError("Input is not a np.ndarray.")
         self._value = value.copy()

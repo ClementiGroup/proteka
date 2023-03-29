@@ -26,18 +26,16 @@ __all__ = ["Ensemble"]
 class HDF5Group:
     """Interface for saving and loading from a HDF5 Group which contains only one
     Dataset (i.e., leaf group).
+
+    Parameters
+    ----------
+    data : Dict[str, Quantity]
+        A dictionary of `Quantity`s, which map to HDF5's Datasets under a Group
+    metadata : Dict[str, str | ...], optional
+        Metadata, which map to HDF5's Group Attributes, by default None
     """
 
     def __init__(self, data, metadata=None):
-        """Initialize a `HDF5Group` object.
-
-        Parameters
-        ----------
-        data : Dict[str, Quantity]
-            A dictionary of `Quantity`s, which map to HDF5's Datasets under a Group
-        metadata : Dict[str, str | ...], optional
-            Metadata, which map to HDF5's Group Attributes, by default None
-        """
         self._data = data
         if metadata is None:
             metadata = {}
@@ -193,6 +191,42 @@ class Ensemble(HDF5Group):
     string in format of "[L]-[M]-[T]-[E(nergy)]" to specify the units used internally,
     default "nm-g/mol-ps-kJ/mol".
 
+    Parameters
+    ----------
+    name : str
+        a human-readable name of the system. Not necessarily corresponding to the HDF5
+        group name
+    top : mdtraj.Topology
+        the molecular topology of the system
+    coords : Quantity or numpy.ndarray
+        3D coordinates with shape (n_frames, n_atoms, 3) and dimension [L]
+    quantities : Dict[str, np.ndarray | Quantity], optional
+        Example key and value pairs for builtin quantities:
+        - forces: (n_frames, n_atoms, 3) _ATOMIC_VECTOR_.
+        - velocities: (n_frames, n_atoms, 3) _ATOMIC_VECTOR_ with dimension [L]/[T].
+        - time: (n_frames,) _per-frame_ scalar indicating the elapsed simulation time
+        with dimension [T].
+        - weights: (n_frames,) _per-frame_ scalar indicating the Boltzmann weight of
+        each frame.
+    metadata : dict, optional
+        Metadata to be saved, e.g., simulation temperature, forcefield information,
+        saving time stride, etc, by default None
+    trajectory_slices : Dict[str, slice], optional
+        a dictionary for trajectory name and its range expressed as a python slice
+        object (similar to the usage of a [start:stop:stride] for indexing.), by default
+        None
+    unit_system : str | UnitSystem object, optional
+        In format "[L]-[M]-[T]-[E(nergy)]" for units of builtin quantities, by default
+        "nm-g/mol-ps-kJ/mol"; alternatively, you can provide an existing `UnitSystem` or
+        a JSON-serialized such object
+
+    Raises
+    ------
+    ValueError
+        When input `coords` does not correspond to the input `top`.
+
+    Notes
+    -----
     Alternative to the default `__init__` method, an `Ensemble` can also be created from
     a `mdtraj.Trajectory` object.
 
@@ -261,42 +295,6 @@ class Ensemble(HDF5Group):
         trajectory_slices=None,
         unit_system="nm-g/mol-ps-kJ/mol",
     ):
-        """Initialize an Ensemble with following inputs:
-
-        Parameters
-        ----------
-        name : str
-            a human-readable name of the system. Not necessarily corresponding to the
-            HDF5 group name
-        top : mdtraj.Topology
-            the molecular topology of the system
-        coords : Quantity or numpy.ndarray
-            3D coordinates with shape (n_frames, n_atoms, 3) and dimension [L]
-        quantities : Dict[str, np.ndarray | Quantity], optional
-            Example key and value pairs for builtin quantities:
-            - forces: (n_frames, n_atoms, 3) _ATOMIC_VECTOR_.
-            - velocities: (n_frames, n_atoms, 3) _ATOMIC_VECTOR_ with dimension [L]/[T].
-            - time: (n_frames,) _per-frame_ scalar indicating the elapsed simulation
-            time with dimension [T].
-            - weights: (n_frames,) _per-frame_ scalar indicating the Boltzmann weight of
-            each frame.
-        metadata : dict, optional
-            Metadata to be saved, e.g., simulation temperature, forcefield information,
-            saving time stride, etc, by default None
-        trajectory_slices : Dict[str, slice], optional
-            a dictionary for trajectory name and its range expressed as a python slice
-            object (similar to the usage of a [start:stop:stride] for indexing.), by
-            default None
-        unit_system : str | UnitSystem object, optional
-            In format "[L]-[M]-[T]-[E(nergy)]" for units of builtin quantities, by
-            default "nm-g/mol-ps-kJ/mol"; alternatively, you can provide an existing
-            `UnitSystem` or a JSON-serialized such object
-
-        Raises
-        ------
-        ValueError
-            When input `coords` does not correspond to the input `top`.
-        """
         top_str = top2json(top)  # let `top2json` do the type check
         if (
             len(coords.shape) != 3

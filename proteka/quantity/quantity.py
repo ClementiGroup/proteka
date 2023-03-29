@@ -10,20 +10,21 @@ __all__ = ["BaseQuantity", "Quantity"]
 class BaseQuantity:
     """Numbers or numpy arrays with a `unit` field. Retrive the value by `in_unit_of`
     method for unit compatibility.
+
+    Parameters
+    ----------
+    value : numpy.ndarray or any array-like input
+        The raw value of the quantity.
+    unit : str, optional
+        The unit of the quantity, by default "dimensionless"
+
+    Notes
+    -----
+    This is only a wrapper around the actual array, so changing the array will change
+    the quantity value as well, and vise versa.
     """
 
     def __init__(self, value, unit="dimensionless"):
-        """Initialize a `BaseQuantity` object. Note that it is only a wrapper around the
-        actual array, so changing the array will change the quantity value as well, and
-        vise versa.
-
-        Parameters
-        ----------
-        value : numpy.ndarray or any array-like input
-            The raw value of the quantity.
-        unit : str, optional
-            The unit of the quantity, by default "dimensionless"
-        """
         self._value = np.array(value)
         self._unit = format_unit(unit)
 
@@ -140,27 +141,25 @@ class Quantity(MetaArray, BaseQuantity):
     """Quantity (numpy.ndarray + unit str) with metadata (`metadata`). Specialized
     MetaArray with `unit` as a mandatory field in the metadata. Can be converted to and
     from a HDF5 Dataset.
+
+    Parameters
+    ----------
+    value : numpy.ndarray or any array-like input
+        The raw value of the quantity.
+    unit : str, optional
+        The unit of the quantity, by default "dimensionless"
+    metadata : dict, optional
+        Metadata to be wrapped, a mapping from str to str or arrays, by default None
+
+    Raises
+    ------
+    ValueError
+        When the `unit` is a key in `metadata` and the value is not the identical as
+        the argument. Recommended to double check and either remove the `unit` in
+        `metadata` or make it identical with the argument.
     """
 
     def __init__(self, value, unit="dimensionless", metadata=None):
-        """Initialize a `Quantity` object.
-
-        Parameters
-        ----------
-        value : numpy.ndarray or any array-like input
-            The raw value of the quantity.
-        unit : str, optional
-            The unit of the quantity, by default "dimensionless"
-        metadata : dict, optional
-            Metadata to be wrapped, a mapping from str to str or arrays, by default None
-
-        Raises
-        ------
-        ValueError
-            When the `unit` is a key in `metadata` and the value is not the identical as
-            the argument. Recommended to double check and either remove the `unit` in
-            `metadata` or make it identical with the argument.
-        """
         if metadata is None:
             metadata = {}
         if "unit" in metadata and unit != metadata["unit"]:

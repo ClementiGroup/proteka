@@ -6,12 +6,37 @@ from .quantity_shapes import PRESET_BUILTIN_QUANTITIES
 
 class UnitSystem:
     """A class to handle the recognition and conversion of (some) physical units in
-    molecular systems.
+    molecular systems. Ensuring the quantities for a system always have the correct and
+    desired units for storage and analyses.
 
-    Purpose:
-    Ensuring the quantities for a system always have the correct and desired units for
-    storage and analyses.
+    Initialize a `UnitSystem` with given units for base quantities.
 
+    Parameters
+    ----------
+    length_unit : str, optional
+        [L]'s unit, by default "nm"
+    mass_unit : str, optional
+        [M]'s unit, by default "g/mol"
+    time_unit : str, optional
+        [T]'s unit, by default "ps"
+    energy_unit : str, optional
+        Overriding [E]'s unit, when None, uses ([M]'s unit)([L]'s unit)^2/([T]'s
+        unit)^2
+    extra_builtin_quantities : dict, optional
+        A dictionary `name: str` -> `(shape_hint: str|None, unit: str)`, the
+        `shape_hint` is a str in the form of a printed list (examples can be found
+        in quantity_shapes.PerFrameQuantity; definition of units can carry
+        expression with multiple [X] where X = L, M, T or E; overwrites when
+        containing pairs that already exists in PRESET_BUILTIN_QUANTITIES; by
+        default None
+
+    Raises
+    ------
+    ValueError
+        When input units are not valid strings of corresponding units.
+
+    Notes
+    -----
     The unit system is designed as the following:
     The user has to provide the units for base quantities [L], [M], [T] (and optionally
     an overriding [E]), e.g., "[L]": "nm", [T]: "ps". In the meantime, define derived
@@ -57,33 +82,6 @@ class UnitSystem:
         energy_unit=None,
         extra_preset_quantities=None,
     ):
-        """Initialize a `UnitSystem` with given units for base quantities.
-
-        Parameters
-        ----------
-        length_unit : str, optional
-            [L]'s unit, by default "nm"
-        mass_unit : str, optional
-            [M]'s unit, by default "g/mol"
-        time_unit : str, optional
-            [T]'s unit, by default "ps"
-        energy_unit : str, optional
-            Overriding [E]'s unit, when None, uses ([M]'s unit)([L]'s unit)^2/([T]'s
-            unit)^2
-        extra_builtin_quantities : dict, optional
-            A dictionary `name: str` -> `(shape_hint: str|None, unit: str)`, the
-            `shape_hint` is a str in the form of a printed list (examples can be found
-            in quantity_shapes.PerFrameQuantity; definition of units can carry
-            expression with multiple [X] where X = L, M, T or E; overwrites when
-            containing pairs that already exists in PRESET_BUILTIN_QUANTITIES; by
-            default None
-
-        Raises
-        ------
-        ValueError
-            When input units are not valid strings of corresponding units.
-        """
-
         def check_unit(name, inp_str, unit_convertible_with):
             if not isinstance(inp_str, str):
                 raise ValueError(f"Expecting `{name}` to be a string.")
