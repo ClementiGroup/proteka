@@ -773,9 +773,8 @@ class Ensemble(HDF5Group):
         ----------
         name : str
             The name/key to store the string.
-        quantity : numpy.ndarray | Quantity
-            The quantity to be saved. When input is a raw numpy array, the unit is
-            assumed to be either the builtin unit (when exists) or "dimensionless".
+        quantity : Quantity
+            The quantity to be saved.
         shape : str | Tuple, optional
             A shape string/tuple to indicate the allowed shape of input; for string,
             the "n_frames" and "n_atoms" will be substituted automatically to
