@@ -2,9 +2,7 @@
 a certain thermodynamic state. The samples usually correspond to a
 Boltzmann distribution.
 """
-from typing import Iterable
 from types import MappingProxyType
-from itertools import chain
 from warnings import warn
 import json
 import numpy as np
@@ -228,7 +226,7 @@ class Ensemble(HDF5Group):
     Notes
     -----
     Alternative to the default `__init__` method, an `Ensemble` can also be created from
-    a `mdtraj.Trajectory` object.
+    a `mdtraj.Trajectory` object (see `from_mdtraj_trj`).
 
     ## About `Quantity`:
     > A `Quantity` wraps a `numpy.ndarray` and a `unit` (defined in
@@ -278,11 +276,11 @@ class Ensemble(HDF5Group):
     according to the `.trjs` records
 
     ## `mdtraj` interface:
-    - `.get_mdtrajs()` (-> Dict[str, mdtraj.Trajectory]): pack an `Ensemble`'s `top` and
-    `coords` (and unitcell + simulation times, if available) into a dictionary of
+    - `.get_mdtraj_trjs()` (-> Dict[str, mdtraj.Trajectory]): pack an `Ensemble`'s `top`
+    and `coords` (and unitcell + simulation times, if available) into a dictionary of
     `mdtraj.Trajectory` for analyses according to `self.trjs`
-    - `.get_all_in_one_mdtraj()`: pack all `coords` into one `Trajectory` object (maybe
-    not suitable for kinetic analyses, such as TICA and MSM!)
+    - `.get_all_in_one_mdtraj_trj()`: pack all `coords` into one `Trajectory` object
+    (maybe not suitable for kinetic analyses, such as TICA and MSM!)
     """
 
     def __init__(
@@ -342,9 +340,9 @@ class Ensemble(HDF5Group):
             self._data.pop("trjs")
 
     @staticmethod
-    def from_mdtraj(
+    def from_mdtraj_trj(
         name,
-        traj,
+        trj,
         quantities=None,
         metadata=None,
         trajectory_slices=None,
@@ -357,7 +355,7 @@ class Ensemble(HDF5Group):
         name : str
             a human-readable name of the system. Not necessarily corresponding to the
             HDF5 group name
-        traj : mdtraj.Trajectory
+        trj : mdtraj.Trajectory
             A trajectory, whose topology and coordinates (and when applicable also the
             unit cell information) will be stored in the created `Ensemble`.
         quantities : Dict[str, np.ndarray | Quantity], optional
@@ -389,18 +387,18 @@ class Ensemble(HDF5Group):
         ------
         ValueError
         """
-        coords = Quantity(traj.xyz, "nm")
+        coords = Quantity(trj.xyz, "nm")
         if quantities is None:
             quantities = {}
-        if traj.time is not None:
-            quantities["time"] = Quantity(traj.time, "ps")
-        if traj.unitcell_angles is not None:
-            quantities["cell_angles"] = Quantity(traj.unitcell_angles, "degree")
-        if traj.unitcell_lengths is not None:
-            quantities["cell_lengths"] = Quantity(traj.unitcell_lengths, "nm")
+        if trj.time is not None:
+            quantities["time"] = Quantity(trj.time, "ps")
+        if trj.unitcell_angles is not None:
+            quantities["cell_angles"] = Quantity(trj.unitcell_angles, "degree")
+        if trj.unitcell_lengths is not None:
+            quantities["cell_lengths"] = Quantity(trj.unitcell_lengths, "nm")
         return Ensemble(
             name,
-            traj.top,
+            trj.top,
             coords,
             quantities=quantities,
             metadata=metadata,
@@ -720,7 +718,7 @@ class Ensemble(HDF5Group):
                 quant = quant.to_quantity_with_unit(preset_unit)
         self._save_quantity(key, quant, shape=shape_hint)
 
-    def get_all_in_one_mdtraj(self):
+    def get_all_in_one_mdtraj_trj(self):
         """Pack all `coords` into one `Trajectory` object (maybe not suitable for
         kinetic analyses, such as TICA and MSM!)
 
@@ -749,7 +747,7 @@ class Ensemble(HDF5Group):
             unitcell_angles=cell_angles,
         )
 
-    def get_mdtrajs(self):
+    def get_mdtraj_trjs(self):
         """Pack this `Ensemble`'s `top` and `coords` (and unitcell + simulation times,
         if available) into a dictionary of `Trajectory` for analyses, according to
         the slicing given by `self.trjs`.
@@ -759,7 +757,7 @@ class Ensemble(HDF5Group):
         Dict[str, mdtraj.Trajectory]
             A dictionary containing all mdtraj Trjectories implied by the `self.trjs`.
         """
-        trj = self.get_all_in_one_mdtraj()
+        trj = self.get_all_in_one_mdtraj_trj()
         return {k: trj[slice_] for k, slice_ in self.trajectory_slices.items()}
 
     def _save_quantity(

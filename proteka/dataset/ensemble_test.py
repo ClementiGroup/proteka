@@ -79,19 +79,19 @@ def test_ensemble_trajectories(example_ensemble):
         example_ensemble.trajectory_indices.keys()
     )
 
-    trajectories = example_ensemble.get_mdtrajs()
+    trajectories = example_ensemble.get_mdtraj_trjs()
     assert len(trajectories) == 2
     assert trajectories["part1"].n_frames == 5
     assert trajectories["part2"].n_frames == 5
 
-    trajectory = example_ensemble.get_all_in_one_mdtraj()
+    trajectory = example_ensemble.get_all_in_one_mdtraj_trj()
     assert trajectory.n_frames == 10
 
 
 def test_ensemble_from_trajectory(example_ensemble):
     """Test ensemble creation from an mdtraj.Trajectory."""
-    trajectory = example_ensemble.get_all_in_one_mdtraj()
-    ensemble2 = Ensemble.from_mdtraj(traj=trajectory, name="ensemble2")
+    trajectory = example_ensemble.get_all_in_one_mdtraj_trj()
+    ensemble2 = Ensemble.from_mdtraj_trj(trj=trajectory, name="ensemble2")
     assert ensemble2.n_frames == 10
     assert np.allclose(ensemble2.coords, example_ensemble.coords)
 
