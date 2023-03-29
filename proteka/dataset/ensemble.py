@@ -268,7 +268,7 @@ class Ensemble(HDF5Group):
 
     Properties:
     - `.n_trjs` (int): number of trajectories
-    - `.trj_n_frames` (Dict[str, int]): dictionary of number of frames in each
+    - `.n_frames_per_trj` (Dict[str, int]): dictionary of number of frames in each
     trajectory
     - `.trajectory_slices` or `.trjs` or `.trajectories` (Dict[str, slice]): Python
     `slice`s for slicing Ensemble quantities according to the `.trjs` records
@@ -553,7 +553,7 @@ class Ensemble(HDF5Group):
             return 0
 
     @property
-    def trj_n_frames(self):
+    def n_frames_per_trj(self):
         """Number of frames contained by each trajectory.
 
         Returns
