@@ -86,11 +86,26 @@ class StructuralIntegrityMetrics(IMetrics):
         return {"max z-score": np.max(z), "rms z-score": np.sqrt(np.mean(z ** 2))}
     
 class EnsembleQualityMetrics(IMetrics):
-    """Metrics to compare a target ensemble to the reference ensemble
-    """
-    
-    def __call__(self, target: Ensemble, reference: Ensemble):
-        self.compute(target, reference)
+    """Metrics to compare a target ensemble to the reference ensemble"""
+
+    def __init__(self):
+        super().__init__()
+        self.metrics_dict = {
+            "end2end_distance_kl_div": self.end2end_distance_kl_div,
+            "rg_kl_div": self.rg_kl_div,
+            "ca_distance_kl_div": self.ca_distance_kl_div,
+            "ca_distance_js_div": self.ca_distance_js_div,
+            "tica_kl_div": self.tica_kl_div,
+            "tica_js_div": self.tica_js_div,
+        }
+
+    def __call__(
+        self,
+        target: Ensemble,
+        reference: Ensemble,
+        metrics: Union[Iterable[str], str] = 'all',
+    ):
+        self.compute(target, reference, metrics)
         return self.report()
 
     def compute(
@@ -102,6 +117,8 @@ class EnsembleQualityMetrics(IMetrics):
         """
         Compute the metrics that compare the target ensemble to the reference
         """
+        if metrics == 'all':
+            metrics = self.metrics_dict.keys()
         for metric in metrics:
             self.results.update(self.metrics_dict[metric](target, reference))
         return
