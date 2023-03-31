@@ -130,5 +130,17 @@ class EnsembleQualityMetrics(IMetrics):
     @staticmethod
     def tica_js_div(target: Ensemble, reference: Ensemble) -> dict:
         raise NotImplementedError("TICA JS divergence is not implemented yet")
+
+    @staticmethod
+    def rg_kl_div(target: Ensemble, reference: Ensemble) -> dict:
+        rg_reference = Featurizer.get_feature(reference, "rg")
+        rg_target = Featurizer.get_feature(target, "rg")
+
+        # Histogram of the distances. Will use 100 bins and bin edges extracted from the reference ensemble
+        hist_ref, hist_target = histogram_features(
+            rg_reference, rg_target, bins=100
+        )
+        kl = kl_divergence(hist_ref, hist_target)
+        return {"Rg, KL divergence": kl}
         return {"d end2end, KL divergence": kl}
         
