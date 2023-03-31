@@ -241,5 +241,21 @@ class Featurizer:
         )
         self.ensemble.set_quantity("ca_ca_end2end_distance", quantity)
         return
-    
-    
+
+    @staticmethod
+    def get_feature(ensemble: Ensemble, feature: str, **kwargs):
+        """Get feature from an Ensemble object. If it is not there,
+        compute it and store it in the Ensemble object
+
+        Parameters
+        ----------
+        ensemble : Ensemble
+            Targete : str
+            feature name
+        """
+        if hasattr(ensemble, feature):
+            return getattr(ensemble, feature)
+        else:
+            featurizer = Featurizer(ensemble)
+            featurizer.add(feature, **kwargs)
+            return getattr(ensemble, feature)
