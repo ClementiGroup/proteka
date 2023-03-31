@@ -1,5 +1,6 @@
 """Featurizer takes a proteka.dataset.Ensemble and and extract features from it
     """
+from collections.abc import Iterable
 import numpy as np
 import mdtraj as md
 from ..dataset import Ensemble, Quantity
