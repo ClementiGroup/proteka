@@ -23,20 +23,22 @@ def test_kl_divergence():
     """
     Test basic functionality
     """
-    assert kl_divergence(target_histogram, reference_histogram) == reference_kld
+    assert np.isclose(
+        kl_divergence(target_histogram, reference_histogram), reference_kld
+    )
 
 
 def test_kl_divergence_normalized():
     """
     Test normalization feature
     """
-    assert (
+    assert np.isclose(
         kl_divergence(
             target_histogram * scaling,
             reference_histogram * scaling,
-            normalized=False,
-        )
-        == reference_kld
+            threshold=1e-12,
+        ),
+        reference_kld,
     )
 
 
