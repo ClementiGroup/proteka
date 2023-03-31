@@ -52,44 +52,34 @@ def kl_divergence(
     return terms.sum()
 
 
-def js_divergence(target: np.ndarray, reference: np.ndarray, normalized: bool = True) -> float:
+def js_divergence(
+    target: np.ndarray, reference: np.ndarray, threshold: float = 1e-8
+) -> float:
     """
-     Compute Jensen_Shannon divergence between specified data sets.
-     
-     Parameters
-     -----------
+    Compute Jensen_Shannon divergence between specified data sets.
 
-     target, reference : np.typing.ArrayLike
-                             Target and reference probability distributions (histograms).
-                             Should have the same shape
+    Parameters
+    -----------
 
-     normalized : bool, True
-         If true, the input distributions are assumed to be normalized. Otherwise, the histogram
-         will be normalized such that all elements sum up to 1. Note that this histogram normalization
-         is different from the default numpy histogram normalization.
+    target, reference : np.typing.ArrayLike
+                            Target and reference probability distributions (histograms).
+                            Should have the same shape
 
-     Returns : float
-     ------
-     JS divergence of the target from the reference
+    normalized : bool, True
+        If true, the input distributions are assumed to be normalized. Otherwise, the histogram
+        will be normalized such that all elements sum up to 1. Note that this histogram normalization
+        is different from the default numpy histogram normalization.
+
+    Returns : float
+    ------
+    JS divergence of the target from the reference
     """
-    target_norm = np.sum(target)
-    reference_norm = np.sum(reference)
-    if normalized:
-        assert (
-            np.isclose(target_norm, 1.0e0)
-        ), f"Norm of the target dataset {target_norm}, expected 1.0e0"
-        assert (
-            np.isclose(reference_norm, 1.0e0)
-        ), f"Norm of the reference dataset {reference_norm}, expected 1.0e0"
-        target_normalized = target
-        reference_normalized = reference
-    if not normalized:
-        target_normalized = target / target_norm
-        reference_normalized = reference / reference_norm
+    target_normalized = target / np.sum(target)
+    reference_normalized = reference / np.sum(reference)
 
-
-    M = 0.5*(target + reference)
-    jsd = 0.5*(kl_divergence(target, M) + kl_divergence(reference, M))
+    M = 0.5 * (target_normalized + reference_normalized)
+    jsd = 0.5 * (
+        kl_divergence(target_normalized, M, threshold=threshold)
+        + kl_divergence(reference_normalized, M, threshold=threshold)
+    )
     return jsd
-
-  
