@@ -62,29 +62,26 @@ class StructuralIntegrityMetrics(IMetrics):
         clashes = np.where(distances < 0.4)[0]
         return {"N clashes": clashes.size}
     
-    @staticmethod    
-    def compute_CA_pseudobonds(ensemble: Ensemble) -> dict:
+    @staticmethod
+    def ca_pseudobonds(ensemble: Ensemble) -> dict:
         """Computes maximum and rms z-score for d_ca_ca bonds over ensemble.
-            Z-score is defined as (d_ca_ca - mean(d_ca_ca)) / std(d_ca_ca)
-            d_ca_ca and std(d_ca_ca) are parametrized based on analysis of the proteka
-            and pdb databases. Beware, that this metric will give high deviations for
-            cis-proline peptide bonds
+        Z-score is defined as (d_ca_ca - mean(d_ca_ca)) / std(d_ca_ca)
+        d_ca_ca and std(d_ca_ca) are parametrized based on analysis of the proteka
+        and pdb databases. Beware, that this metric will give high deviations for
+        cis-proline peptide bonds
         """
-        
+
         # Get the mean and std of d_ca_ca
-        mean = 0.38
-        std = 0.05
-        try: 
-            d_ca_ca = ensemble.ca_ca_pseudobonds
-        except AttributeError:
-            featurizer=  Featurizer(ensemble)
-            featurizer.add_ca_bonds()
-            d_ca_ca = ensemble.ca_ca_pseudobonds
-        
-        
+        mean = 0.38  # nm
+        std = 0.05  # nm
+        d_ca_ca = Featurizer.get_feature(ensemble, "ca_bonds")
         z = (d_ca_ca - mean) / std
-        return {"max z-score": np.max(z), "rms z-score": np.sqrt(np.mean(z ** 2))}
-    
+        return {
+            "max z-score": np.max(z),
+            "rms z-score": np.sqrt(np.mean(z**2)),
+        }
+
+
 class EnsembleQualityMetrics(IMetrics):
     """Metrics to compare a target ensemble to the reference ensemble"""
 
