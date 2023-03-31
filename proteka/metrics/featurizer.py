@@ -227,6 +227,7 @@ class Featurizer:
         """Get distance between CA atoms of the first and last residue in the protein
         for each structure in the ensemble
         """
+        self.validate_c_alpha()
         trajectory = self.ensemble.get_all_in_one_mdtraj()
         ca_atoms = trajectory.top.select("name CA")
         self.validate_c_alpha()
