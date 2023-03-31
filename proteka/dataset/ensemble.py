@@ -13,7 +13,6 @@ import h5py
 from proteka.quantity import (
     BaseQuantity,
     Quantity,
-    PRESET_BUILTIN_QUANTITIES,
     UnitSystem,
 )
 from .top_utils import json2top, top2json
@@ -658,8 +657,8 @@ class Ensemble(HDF5Group):
         """
         if key in self._data:
             return self.get_quantity(key).unit
-        elif key in PRESET_BUILTIN_QUANTITIES:
-            preset_unit = self._unit_system.get_preset_unit(key)
+        elif key in self.unit_system.builtin_quantities:
+            preset_unit = self.unit_system.get_preset_unit(key)
             return preset_unit
         else:
             return None
@@ -679,9 +678,11 @@ class Ensemble(HDF5Group):
     def set_quantity(self, key, quant):
         """Store `quant` (Quantity | numpy.ndarray) under name `key` (str).
         When `quant` is a plain `numpy.ndarray`, the unit is assumed according to
-        `.unit_system` if the `key` is one of the `PRESET_BUILTIN_QUANTITIES`, or
-        `dimensionless` otherwise.
-        * When `key` is one of the `PRESET_BUILTIN_QUANTITIES`, the unit and shape of `quant`
+        `.unit_system` if the `key` is one of the `PRESET_BUILTIN_QUANTITIES` (or
+        `self.unit_system.builtin_quantities` in case of customized `unit_system` at
+        initialization), or `dimensionless` otherwise.
+        * When `key` is one of the `PRESET_BUILTIN_QUANTITIES` (or
+        `self.unit_system.builtin_quantities`), the unit and shape of `quant`
         need to be compatible.
 
         Parameters
@@ -693,9 +694,9 @@ class Ensemble(HDF5Group):
             assumed to be either the builtin unit (when exists) or "dimensionless".
         """
         # built-in quantities?
-        if key in PRESET_BUILTIN_QUANTITIES:
-            shape_hint = PRESET_BUILTIN_QUANTITIES[key][0]
-            preset_unit = self._unit_system.get_preset_unit(key)
+        if key in self.unit_system.builtin_quantities:
+            shape_hint = self.unit_system.builtin_quantities[key][0]
+            preset_unit = self.unit_system.get_preset_unit(key)
         else:
             shape_hint = None
             preset_unit = None
