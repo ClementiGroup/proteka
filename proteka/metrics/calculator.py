@@ -142,5 +142,16 @@ class EnsembleQualityMetrics(IMetrics):
         )
         kl = kl_divergence(hist_ref, hist_target)
         return {"Rg, KL divergence": kl}
+
+    @staticmethod
+    def end2end_distance_kl_div(target: Ensemble, reference: Ensemble) -> dict:
+        """Computes kl divergence for end2end distance. Currently work with a single chain."""
+        d_e2e_reference = Featurizer.get_feature(reference, "end2end_distance")
+        d_e2e_target = Featurizer.get_feature(target, "end2end_distance")
+        # Histogram of the distances. Will use 100 bins and bin edges extracted from
+        # the reference ensemble
+        hist_reference, hist_target = histogram_features(
+            d_e2e_reference, d_e2e_target, bins=100
+        )
+        kl = kl_divergence(hist_reference, hist_target)
         return {"d end2end, KL divergence": kl}
-        
