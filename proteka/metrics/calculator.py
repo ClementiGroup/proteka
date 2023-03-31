@@ -94,11 +94,17 @@ class EnsembleQualityMetrics(IMetrics):
         self.compute(target, reference)
         return self.report()
 
-    def compute(self, target: Ensemble, reference: Ensemble):
+    def compute(
+        self,
+        target: Ensemble,
+        reference: Ensemble,
+        metrics: Iterable = ["end2end_distance_kl_div"],
+    ):
         """
-        Compute the metrics that compare the target ensemble to the reference 
+        Compute the metrics that compare the target ensemble to the reference
         """
-        self.results.update(self.end2end_distance_kl_div(target,reference))
+        for metric in metrics:
+            self.results.update(self.metrics_dict[metric](target, reference))
         return
 
     @staticmethod
