@@ -97,12 +97,13 @@ class Featurizer:
         # Get the pairs of consecutive CA atoms
         ca_pairs = list(self._get_consecutive_ca(self.ensemble.top, order=2))
         ca_bonds = md.compute_distances(trajectory, ca_pairs, periodic=False)
-        quantity = Quantity(ca_bonds, "nanometers", metadata={"feature": "ca_ca_pseudobonds"})
-        self.ensemble.set_quantity("ca_ca_pseudobonds", quantity)
-        return 
-        
+        quantity = Quantity(
+            ca_bonds, "nanometers", metadata={"feature": "ca_bonds"}
+        )
+        self.ensemble.set_quantity("ca_bonds", quantity)
+        return
 
-    def add_ca_distances(self, offset=1) -> Quantity:
+    def add_ca_distances(self, offset: int = 1) -> Quantity:
         """Get distances between CA atoms.
 
         Parameters:
