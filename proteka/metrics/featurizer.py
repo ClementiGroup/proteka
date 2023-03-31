@@ -92,7 +92,6 @@ class Featurizer:
         between consecutive CA atoms.
         """
         trajectory = self.ensemble.get_all_in_one_mdtraj()
-        ca_atoms = trajectory.top.select("name CA")
         self.validate_c_alpha()
 
         # Get the pairs of consecutive CA atoms
@@ -152,10 +151,6 @@ class Featurizer:
         )
         self.ensemble.set_quantity("ca_angles", quantity)
         return
-
-    def add_ca_bond_vectors(self) -> Quantity:
-        """Get vectors between consecutive CA atoms"""
-        raise NotImplementedError
 
     def add_ca_dihedrals(self) -> Quantity:
         """Get dihedral angles between consecutive CA atoms"""
@@ -227,7 +222,6 @@ class Featurizer:
         self.validate_c_alpha()
         trajectory = self.ensemble.get_all_in_one_mdtraj()
         ca_atoms = trajectory.top.select("name CA")
-        self.validate_c_alpha()
 
         # Get the pair of the first and last CA atoms
         ca_pair = [[ca_atoms[0], ca_atoms[-1]]]
