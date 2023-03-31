@@ -29,3 +29,35 @@ def generate_grid_polymer(n_frames, n_atoms, grid_size=0.4):
         res = top.add_residue('ALA', chain)
         top.add_atom("CA", md.element.carbon, res)
     return md.Trajectory(xyz, top)
+
+
+def histogram_features(
+    target: Ensemble, reference: Ensemble, bins: int = 100
+):
+    """Take a two Ensemble objects, and compute histograms of target
+    and reference. Histogram of the target is computed over the range,
+    defined by reference. The function returns the histograms of the target and
+    reference
+
+    Parameters
+    ----------
+    target, reference : Ensemble
+        Target and reference Ensemble objects
+    n_bins : int, optional
+        Number of histograms to use, by default 100
+    """
+
+    try:
+        weights = reference.weights
+    except AttributeError:
+        weights = None
+    hist_reference, bin_edges = np.histogram(
+        reference, bins=bins, weights=weights
+    )
+    try:
+        weights = target.weights
+    except AttributeError:
+        weights = None
+    hist_target, _ = np.histogram(target, bins=bin_edges, weights=weights)
+
+    return hist_reference, hist_target
