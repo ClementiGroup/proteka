@@ -111,5 +111,16 @@ class EnsembleQualityMetrics(IMetrics):
         )
         kl = kl_divergence(hist_ref, hist_target)
         return {"CA distance, KL divergence": kl}
+
+    @staticmethod
+    def ca_distance_js_div(target: Ensemble, reference: Ensemble) -> dict:
+        ca_distance_reference = Featurizer.get_feature(reference, "ca_distance")
+        ca_distance_target = Featurizer.get_feature(target, "ca_distance")
+        # Histogram of the distances. Will use 100 bins and bin edges extracted from the reference ensemble
+        hist_ref, hist_target = histogram_features(
+            ca_distance_reference, ca_distance_target, bins=100
+        )
+        js = js_divergence(hist_ref, hist_target)
+        return {"CA distance, JS divergence": js}
         return {"d end2end, KL divergence": kl}
         
