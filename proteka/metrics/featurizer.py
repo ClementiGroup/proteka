@@ -198,9 +198,22 @@ class Featurizer:
         quantity = Quantity(psi, "radians", metadata={"feature": "psi"})
         self.ensemble.set_quantity("psi", quantity)
         return
+
+    def add_rmsd(
+        self,
+        reference: md.Trajectory = None,
+        frame: int = 0,
+        atom_indices: Iterable[int] = None,
+    ) -> Quantity:
+        """Get RMSD of a subset of atoms
+        reference: Reference mdtraj.Trajectory object
         Wrapper of mdtraj.rmsd
         """
-        raise NotImplementedError
+        trajectory = self.ensemble.get_all_in_one_mdtraj()
+        rmsd = md.rmsd(trajectory, reference, frame, atom_indices=atom_indices)
+        quantity = Quantity(rmsd, "nanometers", metadata={"feature": "rmsd"})
+        self.ensemble.set_quantity("rmsd", quantity)
+        return
 
     def add_rg(self) -> Quantity:
         """Get radius of gyration for each structure in an ensemble"""
