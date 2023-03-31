@@ -122,5 +122,13 @@ class EnsembleQualityMetrics(IMetrics):
         )
         js = js_divergence(hist_ref, hist_target)
         return {"CA distance, JS divergence": js}
+
+    @staticmethod
+    def tica_kl_div(target: Ensemble, reference: Ensemble) -> dict:
+        raise NotImplementedError("TICA KL divergence is not implemented yet")
+
+    @staticmethod
+    def tica_js_div(target: Ensemble, reference: Ensemble) -> dict:
+        raise NotImplementedError("TICA JS divergence is not implemented yet")
         return {"d end2end, KL divergence": kl}
         
