@@ -100,42 +100,16 @@ class EnsembleQualityMetrics(IMetrics):
         """
         self.results.update(self.end2end_distance_kl_div(target,reference))
         return
-  
-    @staticmethod    
-    def end2end_distance_kl_div(target: Ensemble, reference: Ensemble) -> dict:
-        """Computes maximum and rms z-score for d_ca_ca bonds over ensemble.
-            Z-score is defined as (d_ca_ca - mean(d_ca_ca)) / std(d_ca_ca)
-            d_ca_ca and std(d_ca_ca) are parametrized based on analysis of the proteka
-            and pdb databases. Beware, that this metric will give high deviations for
-            cis-proline peptide bonds
-        """
-        
-        try: 
-            d_e2e_reference = reference.ca_ca_end2end_distance
-        except AttributeError:
-            featurizer=  Featurizer(reference)
-            featurizer.add_end2end_distance()
-            d_e2e_reference = reference.ca_ca_end2end_distance
-        
-        try: 
-            d_e2e_target = target.ca_ca_end2end_distance
-        except AttributeError:
-            featurizer=  Featurizer(target)
-            featurizer.add_end2end_distance()
-            d_e2e_target = target.ca_ca_end2end_distance
-        
-        # Histogram of the distances. Will use 100 bins and bin edges extracted from 
-        # the reference ensemble        
-        try:
-            weights = reference.weights
-        except AttributeError:
-            weights = None
-        hist_reference, bin_edges = np.histogram(d_e2e_reference, bins=100, weights=weights)
-        try:
-            weights = target.weights
-        except AttributeError:
-            weights = None
-        hist_target, _ = np.histogram(d_e2e_target, bins=bin_edges, weights=weights)
-        kl = kl_divergence(hist_reference, hist_target, normalized=False)
+
+    @staticmethod
+    def ca_distance_kl_div(target: Ensemble, reference: Ensemble) -> dict:
+        ca_distance_reference = Featurizer.get_feature(reference, "ca_distance")
+        ca_distance_target = Featurizer.get_feature(target, "ca_distance")
+        # Histogram of the distances. Will use 100 bins and bin edges extracted from the reference ensemble
+        hist_ref, hist_target = histogram_features(
+            ca_distance_reference, ca_distance_target, bins=100
+        )
+        kl = kl_divergence(hist_ref, hist_target)
+        return {"CA distance, KL divergence": kl}
         return {"d end2end, KL divergence": kl}
         
