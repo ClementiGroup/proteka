@@ -183,12 +183,21 @@ class Featurizer:
         self.ensemble.set_quantity("consecutive_ca_ca_ca_ca_dihedrals", quantity)
         return
 
-    def add_backbone_torsions(self) -> Quantity:
-        """Get protein backbone torsions"""
-        raise NotImplementedError
+    def add_phi(self) -> Quantity:
+        """Get protein backbone phi torsions"""
+        trajectory = self.ensemble.get_all_in_one_mdtraj()
+        _, phi = md.compute_phi(trajectory)
+        quantity = Quantity(phi, "radians", metadata={"feature": "phi"})
+        self.ensemble.set_quantity("phi", quantity)
+        return
 
-    def add_rmsd(self, reference=None, frame=0, atom_indices=None) -> Quantity:
-        """Get RMSD of a subset of atoms.
+    def add_psi(self) -> Quantity:
+        """Get protein backbone psi torsions"""
+        trajectory = self.ensemble.get_all_in_one_mdtraj()
+        _, psi = md.compute_psi(trajectory)
+        quantity = Quantity(psi, "radians", metadata={"feature": "psi"})
+        self.ensemble.set_quantity("psi", quantity)
+        return
         Wrapper of mdtraj.rmsd
         """
         raise NotImplementedError
