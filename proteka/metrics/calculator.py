@@ -1,11 +1,15 @@
 """Main entry point for calculating the metrics
 """
 from abc import ABCMeta, abstractmethod
+from collections.abc import Iterable
 import numpy as np
+from typing import Union
 
 from .featurizer import Featurizer
-from ..dataset import Ensemble, Quantity
-from .divergence import kl_divergence
+from ..dataset import Ensemble
+from .divergence import kl_divergence, js_divergence
+from .utils import histogram_features
+
 
 class IMetrics(metaclass=ABCMeta):
     """Abstract class defining interface for metrics calculators"""
