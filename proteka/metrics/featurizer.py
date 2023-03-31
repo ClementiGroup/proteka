@@ -64,6 +64,27 @@ class Featurizer:
                     atom = res.atom("CA")
                     atom_list.append(atom.index)
                 yield atom_list
+
+    def add(self, feature: str, **kwargs):
+        """Add a new feature to the ensemble"""
+        feature_dict = {
+            "end2end_distance": self.add_end2end_distance,
+            "ca_bonds": self.add_ca_bonds,
+            "ca_distances": self.add_ca_distances,
+            "rmsd": self.add_rmsd,
+            "rg": self.add_rg,
+            "ca_angles": self.add_ca_angles,
+            "ca_dihedrals": self.add_ca_dihedrals,
+            "phi": self.add_phi,
+            "psi": self.add_psi,
+        }
+
+        if feature in feature_dict.keys():
+            feature_dict[feature](**kwargs)
+        else:
+            raise ValueError(f"Feature {feature} is not supported. Supported features are: {feature_dict.keys()}")
+        return
+
     def add_ca_bonds(self) -> Quantity:
         """
         Returns a Quantity object that contains length of pseudobonds
