@@ -131,11 +131,11 @@ class EnsembleQualityMetrics(IMetrics):
 
     @staticmethod
     def tica_kl_div(target: Ensemble, reference: Ensemble) -> dict:
-        raise NotImplementedError("TICA KL divergence is not implemented yet")
+        return {"TICA, KL divergence": None}
 
     @staticmethod
     def tica_js_div(target: Ensemble, reference: Ensemble) -> dict:
-        raise NotImplementedError("TICA JS divergence is not implemented yet")
+        return {"TICA, JS divergence": None}
 
     @staticmethod
     def rg_kl_div(target: Ensemble, reference: Ensemble) -> dict:
