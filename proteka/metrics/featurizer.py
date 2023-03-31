@@ -217,7 +217,11 @@ class Featurizer:
 
     def add_rg(self) -> Quantity:
         """Get radius of gyration for each structure in an ensemble"""
-        raise NotImplementedError
+        trajectory = self.ensemble.get_all_in_one_mdtraj()
+        rg = md.compute_rg(trajectory)
+        quantity = Quantity(rg, "nanometers", metadata={"feature": "rg"})
+        self.ensemble.set_quantity("rg", quantity)
+        return
 
     def add_end2end_distance(self) -> Quantity:
         """Get distance between CA atoms of the first and last residue in the protein
