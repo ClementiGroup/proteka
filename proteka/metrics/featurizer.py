@@ -237,9 +237,9 @@ class Featurizer:
         quantity = Quantity(
             distance,
             "nanometers",
-            metadata={"feature": "ca_ca_end2end_distance"},
+            metadata={"feature": "end2end_distance"},
         )
-        self.ensemble.set_quantity("ca_ca_end2end_distance", quantity)
+        self.ensemble.set_quantity("end2end_distance", quantity)
         return
 
     @staticmethod
