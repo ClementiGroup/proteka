@@ -23,6 +23,21 @@ class Featurizer:
             len(ca_atoms) == self.ensemble.top.n_residues
         ), "Number of CA atoms does not match the number of residues"
 
+        # Should have only one chain
+        if self.ensemble.top.n_chains > 1:
+            raise NotImplementedError(
+                "More than one chain is not supported yet"
+            )
+
+        # Should have no breaks in chain (i.e. no missing residues):
+        for chain in self.ensemble.top.chains:
+            assert (
+                chain.n_residues
+                == chain.residue(chain.n_residues - 1).resSeq
+                - chain.residue(0).resSeq
+                + 1
+            ), "Chain has missing residues"
+
     def add_ca_bonds(self) -> Quantity:
         """
         Returns a Quantity object that contains length of pseudobonds
