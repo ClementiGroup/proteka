@@ -31,20 +31,33 @@ class IMetrics(metaclass=ABCMeta):
 
 
 class StructuralIntegrityMetrics(IMetrics):
-    """Class takes a dataset and checks if for chemical integrity
-    """
-    def __call__(self, ensemble: Ensemble, resolution="CA"):
-        self.compute(ensemble, resolution)
+    """Class takes a dataset and checks if for chemical integrity"""
+
+    def __init__(self):
+        super().__init__()
+        self.metrics_dict = {
+            "ca_clashes": self.ca_clashes,
+            "ca_pseudobonds": self.ca_pseudobonds,
+        }
+
+    def __call__(
+        self,
+        ensemble: Ensemble,
+        metrics: Iterable = ["ca_clashes", "ca_pseudobonds"],
+    ):
+        self.compute(ensemble, metrics)
         return self.report()
 
-    def compute(self, ensemble: Ensemble, resolution: str ="CA"):
-        """Method to compute the metrics
-        """
+    def compute(
+        self,
+        ensemble: Ensemble,
+        metrics: Iterable = ["ca_clashes", "ca_pseudobonds"],
+    ):
+        """Method to compute the metrics"""
+        for metric in metrics:
+            self.results.update(self.metrics_dict[metric](ensemble))
+        return
 
-        self.results.update(self.compute_CA_clashes(ensemble))
-        self.results.update(self.compute_CA_pseudobonds(ensemble))
-        
-    
     @staticmethod
     def ca_clashes(ensemble: Ensemble) -> dict:
         """Compute total number of instances when there is a clash between CA atoms
