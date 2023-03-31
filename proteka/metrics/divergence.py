@@ -7,14 +7,14 @@ Module contains basic feature-agnostic metrics estimators
 
 
 def kl_divergence(
-    target: np.ndarray, reference: np.ndarray, normalized: bool = True
+    target: np.ndarray, reference: np.ndarray, threshold: float = 1e-8
 ) -> float:
     r"""
      Compute Kullback-Leibler divergence between specified data sets.
 
      .. math :: D_{KL} = \sum_i p_i log (\frac{p_i}{q_i}), p_i, q_i \ne 0
 
-     If  p_i or q_i == 0, bin i is excluded from the summation.
+     If  p_i or q_i <= `threshold`, bin i is excluded from the summation.
      The algorithm is the same as one used in CPPTRAJ (https://amber-md.github.io/cpptraj/CPPTRAJ.xhtml)
 
 
@@ -39,25 +39,18 @@ def kl_divergence(
         target.shape == reference.shape
     ), f"Dimension mismatch: target: {target.shape} reference: {reference.shape}"
 
-    target_norm = np.sum(target)
-    reference_norm = np.sum(reference)
-    if normalized:
-        assert (
-            np.isclose(target_norm, 1.0e0)
-        ), f"Norm of the target dataset {target_norm}, expected 1.0e0"
-        assert (
-            np.isclose(reference_norm, 1.0e0)
-        ), f"Norm of the reference dataset {reference_norm}, expected 1.0e0"
-        target_normalized = target
-        reference_normalized = reference
-    if not normalized:
-        target_normalized = target / target_norm
-        reference_normalized = reference / reference_norm
+    target_normalized = target / np.sum(target)
+    reference_normalized = reference / np.sum(reference)
 
-    terms = rel_entr(target_normalized, reference_normalized)
-    # In scipy implementation, 0 reference and nonzero target lead to infinite values
-    # During summation, they are masked with
-    return np.ma.masked_invalid(terms).sum()
+    # Find the valid bins
+    valid_bins = np.logical_and(
+        target_normalized > threshold, reference_normalized > threshold
+    )
+    terms = rel_entr(
+        target_normalized[valid_bins], reference_normalized[valid_bins]
+    )
+    return terms.sum()
+
 
 def js_divergence(target: np.ndarray, reference: np.ndarray, normalized: bool = True) -> float:
     """
