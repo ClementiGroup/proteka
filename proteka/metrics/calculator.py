@@ -8,26 +8,21 @@ from ..dataset import Ensemble, Quantity
 from .divergence import kl_divergence
 
 class IMetrics(metaclass=ABCMeta):
-    """Abstract class defining interface for metrics calculators
-    """
-        
+    """Abstract class defining interface for metrics calculators"""
+
     def __init__(self):
         self.results = {}
-        
+
     @abstractmethod
     def __call__(self, ensemble: Ensemble):
         pass
-    
 
     def report(self):
         return self.results
-    
 
     @abstractmethod
-    def compute(self, Ensemble, resolution="CA" 
-                ):
-        """Method to compute the metrics
-        """
+    def compute(self, Ensemble, metrics: Iterable):
+        """Method to compute the metrics"""
         pass
 
 
