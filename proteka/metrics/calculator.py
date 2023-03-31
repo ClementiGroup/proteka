@@ -46,22 +46,14 @@ class StructuralIntegrityMetrics(IMetrics):
         
     
     @staticmethod
-    def compute_CA_clashes(ensemble: Ensemble) -> dict:
+    def ca_clashes(ensemble: Ensemble) -> dict:
         """Compute total number of instances when there is a clash between CA atoms
         Clashes are defined as any 2 nonconsecutive CA atoms been closer than  0.4 nm
-        
         """
-        try: 
-            d_ca_ca = ensemble.ca_ca_distances
-        except AttributeError:
-            featurizer=  Featurizer(ensemble)
-            featurizer.add_ca_distances()
-            d_ca_ca = ensemble.ca_ca_distances
-        
-        distances = d_ca_ca
+        distances = Featurizer.get_feature(ensemble, "ca_distances")
         clashes = np.where(distances < 0.4)[0]
         return {"N clashes": clashes.size}
-    
+
     @staticmethod
     def ca_pseudobonds(ensemble: Ensemble) -> dict:
         """Computes maximum and rms z-score for d_ca_ca bonds over ensemble.
