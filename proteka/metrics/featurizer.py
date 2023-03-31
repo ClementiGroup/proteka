@@ -95,12 +95,7 @@ class Featurizer:
         self.validate_c_alpha()
 
         # Get the pairs of consecutive CA atoms
-        # TODO support for wrong order/multiple chains(NetworkX)
-        # TODO register Quantity with an ensemble instead of returning
-        # it 
-        ca_pairs = [
-            [ca_atoms[i], ca_atoms[i + 1]] for i in range(len(ca_atoms) - 1)
-        ]
+        ca_pairs = list(self._get_consecutive_ca(self.ensemble.top, order=2))
         ca_bonds = md.compute_distances(trajectory, ca_pairs, periodic=False)
         quantity = Quantity(ca_bonds, "nanometers", metadata={"feature": "ca_ca_pseudobonds"})
         self.ensemble.set_quantity("ca_ca_pseudobonds", quantity)
