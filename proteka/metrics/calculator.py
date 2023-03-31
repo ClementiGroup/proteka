@@ -109,8 +109,8 @@ class EnsembleQualityMetrics(IMetrics):
 
     @staticmethod
     def ca_distance_kl_div(target: Ensemble, reference: Ensemble) -> dict:
-        ca_distance_reference = Featurizer.get_feature(reference, "ca_distance")
-        ca_distance_target = Featurizer.get_feature(target, "ca_distance")
+        ca_distance_reference = Featurizer.get_feature(reference, "ca_distances")
+        ca_distance_target = Featurizer.get_feature(target, "ca_distances")
         # Histogram of the distances. Will use 100 bins and bin edges extracted from the reference ensemble
         hist_ref, hist_target = histogram_features(
             ca_distance_reference, ca_distance_target, bins=100
@@ -120,8 +120,8 @@ class EnsembleQualityMetrics(IMetrics):
 
     @staticmethod
     def ca_distance_js_div(target: Ensemble, reference: Ensemble) -> dict:
-        ca_distance_reference = Featurizer.get_feature(reference, "ca_distance")
-        ca_distance_target = Featurizer.get_feature(target, "ca_distance")
+        ca_distance_reference = Featurizer.get_feature(reference, "ca_distances")
+        ca_distance_target = Featurizer.get_feature(target, "ca_distances")
         # Histogram of the distances. Will use 100 bins and bin edges extracted from the reference ensemble
         hist_ref, hist_target = histogram_features(
             ca_distance_reference, ca_distance_target, bins=100
