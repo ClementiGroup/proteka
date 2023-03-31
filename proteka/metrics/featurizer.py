@@ -38,6 +38,32 @@ class Featurizer:
                 + 1
             ), "Chain has missing residues"
 
+    @staticmethod
+    def _get_consecutive_ca(topology: md.Topology, order: int = 2):
+        """Get pairs of consecutive CA atoms such
+        as atoms in a pair come from the same chain and consecutive residues
+
+        Parameters
+        ----------
+        topology : _type_
+            Topology object
+        order : int, optional
+            Number of consecutive atoms, by default 2
+        """
+        for chain in topology.chains:
+            for i in range(chain.n_residues - order + 1):
+                atom_list = []
+                start_group = True
+                for j in range(order):
+                    res = chain.residue(i + j)
+                    if not start_group and (
+                        res.resSeq - chain.residue(i).resSeq != 1
+                    ):
+                        break
+                    start_group = False
+                    atom = res.atom("CA")
+                    atom_list.append(atom.index)
+                yield atom_list
     def add_ca_bonds(self) -> Quantity:
         """
         Returns a Quantity object that contains length of pseudobonds
