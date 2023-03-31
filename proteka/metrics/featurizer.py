@@ -126,9 +126,9 @@ class Featurizer:
         quantity = Quantity(
             ca_distances,
             "nanometers",
-            metadata={"feature": "ca_ca_distances", "offset": offset},
+            metadata={"feature": "ca_distances", "offset": offset},
         )
-        self.ensemble.set_quantity("ca_ca_distances", quantity)
+        self.ensemble.set_quantity("ca_distances", quantity)
 
     def add_ca_angles(self) -> Quantity:
         """Get angles between consecutive CA atoms"""
@@ -147,9 +147,9 @@ class Featurizer:
         quantity = Quantity(
             ca_angles,
             "radians",
-            metadata={"feature": "consecutive_ca_ca_ca_angles"},
+            metadata={"feature": "ca_angles"},
         )
-        self.ensemble.set_quantity("consecutive_ca_ca_ca_angles", quantity)
+        self.ensemble.set_quantity("ca_angles", quantity)
         return
 
     def add_ca_bond_vectors(self) -> Quantity:
