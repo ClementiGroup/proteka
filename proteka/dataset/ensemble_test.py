@@ -131,11 +131,25 @@ def test_ensemble_to_h5(example_ensemble, tmpdir):
 
 
 def test_ensemble_with_extra_builtin_quantity(example_ensemble):
-    unit_system = UnitSystem("Angstrom", "amu", "ps", "kilojoules/mole",
-                             extra_preset_quantities={"temperature": (PerFrameQuantity.SCALAR, "kelvin")})
+    unit_system = UnitSystem(
+        "Angstrom",
+        "amu",
+        "ps",
+        "kilojoules/mole",
+        extra_preset_quantities={
+            "temperature": (PerFrameQuantity.SCALAR, "kelvin")
+        },
+    )
     ensemble = Ensemble(
-        "custom", example_ensemble.top, example_ensemble["coords"],
-        quantities={"temperature": np.ones(example_ensemble.n_frames,)}, unit_system=unit_system
+        "custom",
+        example_ensemble.top,
+        example_ensemble["coords"],
+        quantities={
+            "temperature": np.ones(
+                example_ensemble.n_frames,
+            )
+        },
+        unit_system=unit_system,
     )
     assert "temperature" in ensemble
     assert ensemble["temperature"].unit == "kelvin"

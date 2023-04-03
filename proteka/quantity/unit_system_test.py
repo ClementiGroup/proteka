@@ -57,7 +57,9 @@ def test_new_builtin():
 
 def test_custom_builtin_quantity():
     """Test that custom builtin quantities are correctly parsed."""
-    us = UnitSystem(extra_preset_quantities={"pressure": (PFQ.SCALAR, "[E]/[L]**3")})
+    us = UnitSystem(
+        extra_preset_quantities={"pressure": (PFQ.SCALAR, "[E]/[L]**3")}
+    )
     assert "pressure" in us.builtin_quantities
     assert us.get_preset_unit("pressure") == "kilojoules/mole/nanometers**3"
     # make sure that preset quantities are not overwritten
