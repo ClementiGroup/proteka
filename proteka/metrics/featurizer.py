@@ -3,7 +3,8 @@
 from collections.abc import Iterable
 import numpy as np
 import mdtraj as md
-from ..dataset import Ensemble, Quantity
+from ..dataset import Ensemble
+from ..quantity import Quantity
 
 
 class Featurizer:

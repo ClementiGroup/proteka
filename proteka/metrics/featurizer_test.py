@@ -1,6 +1,7 @@
 import numpy as np
 
-from proteka.dataset import Ensemble, Quantity
+from proteka.dataset import Ensemble
+from proteka.quantity import Quantity
 from proteka.metrics import Featurizer
 from proteka.metrics.utils import generate_grid_polymer
 
