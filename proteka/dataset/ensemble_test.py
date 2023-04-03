@@ -2,6 +2,7 @@ import h5py
 
 from pathlib import Path
 from proteka import Ensemble, UnitSystem, Quantity
+from proteka.quantity.quantity_shapes import PerFrameQuantity
 import pytest
 import numpy as np
 
@@ -127,3 +128,14 @@ def test_ensemble_to_h5(example_ensemble, tmpdir):
     assert ensemble2.top == ensemble.top
     assert ensemble2.name == ensemble.name
     assert ensemble2["custom_field"].unit == "dimensionless"
+
+
+def test_ensemble_with_extra_builtin_quantity(example_ensemble):
+    unit_system = UnitSystem("Angstrom", "amu", "ps", "kilojoules/mole",
+                             extra_preset_quantities={"temperature": (PerFrameQuantity.SCALAR, "kelvin")})
+    ensemble = Ensemble(
+        "custom", example_ensemble.top, example_ensemble["coords"],
+        quantities={"temperature": np.ones(example_ensemble.n_frames,)}, unit_system=unit_system
+    )
+    assert "temperature" in ensemble
+    assert ensemble["temperature"].unit == "kelvin"
