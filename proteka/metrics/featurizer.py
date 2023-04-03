@@ -92,7 +92,7 @@ class Featurizer:
         Returns a Quantity object that contains length of pseudobonds
         between consecutive CA atoms.
         """
-        trajectory = self.ensemble.get_all_in_one_mdtraj()
+        trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
         self.validate_c_alpha()
 
         # Get the pairs of consecutive CA atoms
@@ -114,7 +114,7 @@ class Featurizer:
             all Calpha-Calpha distances are included.
 
         """
-        trajectory = self.ensemble.get_all_in_one_mdtraj()
+        trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
         ca_atoms = trajectory.top.select("name CA")
         self.validate_c_alpha()
 
@@ -133,7 +133,7 @@ class Featurizer:
 
     def add_ca_angles(self) -> Quantity:
         """Get angles between consecutive CA atoms"""
-        trajectory = self.ensemble.get_all_in_one_mdtraj()
+        trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
         ca_atoms = trajectory.top.select("name CA")
         self.validate_c_alpha()
 
@@ -155,7 +155,7 @@ class Featurizer:
 
     def add_ca_dihedrals(self) -> Quantity:
         """Get dihedral angles between consecutive CA atoms"""
-        trajectory = self.ensemble.get_all_in_one_mdtraj()
+        trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
         ca_atoms = trajectory.top.select("name CA")
         print(ca_atoms)
         self.validate_c_alpha()
@@ -178,7 +178,7 @@ class Featurizer:
 
     def add_phi(self) -> Quantity:
         """Get protein backbone phi torsions"""
-        trajectory = self.ensemble.get_all_in_one_mdtraj()
+        trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
         _, phi = md.compute_phi(trajectory)
         quantity = Quantity(phi, "radians", metadata={"feature": "phi"})
         self.ensemble.set_quantity("phi", quantity)
@@ -186,7 +186,7 @@ class Featurizer:
 
     def add_psi(self) -> Quantity:
         """Get protein backbone psi torsions"""
-        trajectory = self.ensemble.get_all_in_one_mdtraj()
+        trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
         _, psi = md.compute_psi(trajectory)
         quantity = Quantity(psi, "radians", metadata={"feature": "psi"})
         self.ensemble.set_quantity("psi", quantity)
@@ -202,7 +202,7 @@ class Featurizer:
         reference: Reference mdtraj.Trajectory object
         Wrapper of mdtraj.rmsd
         """
-        trajectory = self.ensemble.get_all_in_one_mdtraj()
+        trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
         rmsd = md.rmsd(trajectory, reference, frame, atom_indices=atom_indices)
         quantity = Quantity(rmsd, "nanometers", metadata={"feature": "rmsd"})
         self.ensemble.set_quantity("rmsd", quantity)
@@ -210,7 +210,7 @@ class Featurizer:
 
     def add_rg(self) -> Quantity:
         """Get radius of gyration for each structure in an ensemble"""
-        trajectory = self.ensemble.get_all_in_one_mdtraj()
+        trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
         rg = md.compute_rg(trajectory)
         quantity = Quantity(rg, "nanometers", metadata={"feature": "rg"})
         self.ensemble.set_quantity("rg", quantity)
@@ -221,7 +221,7 @@ class Featurizer:
         for each structure in the ensemble
         """
         self.validate_c_alpha()
-        trajectory = self.ensemble.get_all_in_one_mdtraj()
+        trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
         ca_atoms = trajectory.top.select("name CA")
 
         # Get the pair of the first and last CA atoms
