@@ -4,11 +4,16 @@ from abc import ABCMeta, abstractmethod
 from collections.abc import Iterable
 import numpy as np
 from typing import Union
+import warnings
 
 from .featurizer import Featurizer
 from ..dataset import Ensemble
 from .divergence import kl_divergence, js_divergence
 from .utils import histogram_features
+try:
+    from deeptime.decomposition import TICA
+except ImportError:
+    warnings.warn("Deeptime is not installed. TICA metrics will not be available")
 
 
 class IMetrics(metaclass=ABCMeta):
@@ -90,16 +95,16 @@ class StructuralIntegrityMetrics(IMetrics):
 class EnsembleQualityMetrics(IMetrics):
     """Metrics to compare a target ensemble to the reference ensemble"""
 
-    def __init__(self):
+    def __init__(self, metrics_params={"tica_div": {"lagtime": 10}}):
         super().__init__()
         self.metrics_dict = {
             "end2end_distance_kl_div": self.end2end_distance_kl_div,
             "rg_kl_div": self.rg_kl_div,
             "ca_distance_kl_div": self.ca_distance_kl_div,
             "ca_distance_js_div": self.ca_distance_js_div,
-            "tica_kl_div": self.tica_kl_div,
-            "tica_js_div": self.tica_js_div,
+            "tica_div": self.tica_div,
         }
+        self.metrics_params = metrics_params
 
     def __call__(
         self,
@@ -152,12 +157,37 @@ class EnsembleQualityMetrics(IMetrics):
         return {"CA distance, JS divergence": js}
 
     @staticmethod
-    def tica_kl_div(target: Ensemble, reference: Ensemble) -> dict:
-        return {"TICA, KL divergence": None}
+    def tica_div(target: Ensemble, reference: Ensemble, **kwargs) -> dict:
+        """Perform TICA on the reference enseble and use it to transform target ensemble.
+        Then compute KL divergence between the two TICA projections, using the first 2 TICA components
 
-    @staticmethod
-    def tica_js_div(target: Ensemble, reference: Ensemble) -> dict:
-        return {"TICA, JS divergence": None}
+        Parameters
+        ----------
+        target : Ensemble
+            target ensemble
+        reference : Ensemble
+            reference ensemble, will be used for TICA model fitting
+
+        Returns
+        -------
+        dict
+            Resulting scores
+        """
+        # Fit TICA model on the reference ensemble
+        estimator = TICA(dim=2, **kwargs)
+        # will fit on the CA distances of the reference ensemble.
+        ca_reference = Featurizer.get_feature(reference, "ca_distances")
+        estimator.fit(ca_reference)
+        model = estimator.fetch_model()
+        # Transform the reference ensemble
+        tica_reference = model.transform(ca_reference)
+        # Transform the target ensemble
+        ca_target = Featurizer.get_feature(target, "ca_distances")
+        tica_target = model.transform(ca_target)
+        # Compute KL divergence
+        kl = kl_divergence(tica_reference, tica_target)
+        js = js_divergence(tica_reference, tica_target)
+        return {"TICA, KL divergence": kl, "TICA, JS divergence": js}
 
     @staticmethod
     def rg_kl_div(target: Ensemble, reference: Ensemble) -> dict:
