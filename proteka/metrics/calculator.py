@@ -122,7 +122,11 @@ class EnsembleQualityMetrics(IMetrics):
         if metrics == 'all':
             metrics = self.metrics_dict.keys()
         for metric in metrics:
-            self.results.update(self.metrics_dict[metric](target, reference))
+            params = self.metrics_params.get(metric)
+            if params is None:
+                self.results.update(self.metrics_dict[metric](target, reference))
+            else:
+                self.results.update(self.metrics_dict[metric](target, reference, **params))
         return
 
     @staticmethod
