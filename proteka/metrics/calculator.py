@@ -9,7 +9,7 @@ import warnings
 from .featurizer import Featurizer
 from ..dataset import Ensemble
 from .divergence import kl_divergence, js_divergence
-from .utils import histogram_features
+from .utils import histogram_features, histogram_features2d
 
 try:
     from deeptime.decomposition import TICA
@@ -196,9 +196,11 @@ class EnsembleQualityMetrics(IMetrics):
         # Transform the target ensemble
         ca_target = Featurizer.get_feature(target, "ca_distances")
         tica_target = model.transform(ca_target)
+        # histogram data
+        hist_ref, hist_target = histogram_features2d(tica_reference, tica_target, bins=100)
         # Compute KL divergence
-        kl = kl_divergence(tica_reference, tica_target)
-        js = js_divergence(tica_reference, tica_target)
+        kl = kl_divergence(hist_ref, hist_target)
+        js = js_divergence(hist_ref, hist_target)
         return {"TICA, KL divergence": kl, "TICA, JS divergence": js}
 
     @staticmethod
