@@ -14,11 +14,13 @@ def single_frame():
     ensemble = Ensemble("6bead", traj.top, Quantity(traj.xyz, "nm"))
     return ensemble
 
+
 @pytest.fixture
 def grid_polymer():
     traj = generate_grid_polymer(n_frames=10, n_atoms=5)
     ensemble = Ensemble("CAgrid", traj.top, Quantity(traj.xyz, "nm"))
     return ensemble
+
 
 @pytest.mark.parametrize(
     "order,result",

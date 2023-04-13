@@ -26,13 +26,17 @@ def test_kl_divergence():
     assert np.isclose(
         kl_divergence(target_histogram, reference_histogram), reference_kld
     )
-    
+
+
 def test_kl_divergence2d():
     """
     Test basic functionality
     """
     assert np.isclose(
-        kl_divergence(target_histogram.reshape(2,2), reference_histogram.reshape(2,2)), reference_kld
+        kl_divergence(
+            target_histogram.reshape(2, 2), reference_histogram.reshape(2, 2)
+        ),
+        reference_kld,
     )
 
 

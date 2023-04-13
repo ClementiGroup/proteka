@@ -10,10 +10,13 @@ from .featurizer import Featurizer
 from ..dataset import Ensemble
 from .divergence import kl_divergence, js_divergence
 from .utils import histogram_features
+
 try:
     from deeptime.decomposition import TICA
 except ImportError:
-    warnings.warn("Deeptime is not installed. TICA metrics will not be available")
+    warnings.warn(
+        "Deeptime is not installed. TICA metrics will not be available"
+    )
 
 
 class IMetrics(metaclass=ABCMeta):
@@ -110,7 +113,7 @@ class EnsembleQualityMetrics(IMetrics):
         self,
         target: Ensemble,
         reference: Ensemble,
-        metrics: Union[Iterable[str], str] = 'all',
+        metrics: Union[Iterable[str], str] = "all",
     ):
         self.compute(target, reference, metrics)
         return self.report()
@@ -124,19 +127,25 @@ class EnsembleQualityMetrics(IMetrics):
         """
         Compute the metrics that compare the target ensemble to the reference
         """
-        if metrics == 'all':
+        if metrics == "all":
             metrics = self.metrics_dict.keys()
         for metric in metrics:
             params = self.metrics_params.get(metric)
             if params is None:
-                self.results.update(self.metrics_dict[metric](target, reference))
+                self.results.update(
+                    self.metrics_dict[metric](target, reference)
+                )
             else:
-                self.results.update(self.metrics_dict[metric](target, reference, **params))
+                self.results.update(
+                    self.metrics_dict[metric](target, reference, **params)
+                )
         return
 
     @staticmethod
     def ca_distance_kl_div(target: Ensemble, reference: Ensemble) -> dict:
-        ca_distance_reference = Featurizer.get_feature(reference, "ca_distances")
+        ca_distance_reference = Featurizer.get_feature(
+            reference, "ca_distances"
+        )
         ca_distance_target = Featurizer.get_feature(target, "ca_distances")
         # Histogram of the distances. Will use 100 bins and bin edges extracted from the reference ensemble
         hist_ref, hist_target = histogram_features(
@@ -147,7 +156,9 @@ class EnsembleQualityMetrics(IMetrics):
 
     @staticmethod
     def ca_distance_js_div(target: Ensemble, reference: Ensemble) -> dict:
-        ca_distance_reference = Featurizer.get_feature(reference, "ca_distances")
+        ca_distance_reference = Featurizer.get_feature(
+            reference, "ca_distances"
+        )
         ca_distance_target = Featurizer.get_feature(target, "ca_distances")
         # Histogram of the distances. Will use 100 bins and bin edges extracted from the reference ensemble
         hist_ref, hist_target = histogram_features(

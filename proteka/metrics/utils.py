@@ -32,6 +32,7 @@ def generate_grid_polymer(n_frames, n_atoms, grid_size=0.4):
         top.add_atom("CA", md.element.carbon, res)
     return md.Trajectory(xyz, top)
 
+
 def get_6_bead_frame():
     """Generate a frame that contains
       6 beads with a predefined geometry.
@@ -51,32 +52,32 @@ def get_6_bead_frame():
     n_atoms = 6
     d = 0.3800e0
     d_clash = 0.2000e0
-    xyz = np.zeros((n_atoms,3))
-    
+    xyz = np.zeros((n_atoms, 3))
+
     # position atoms 2 and 3
     # x axis is defined by 2-3 vector
     # y axis crosses 2-3 vector in the middle
-    xyz[2,:] = [-d/2,0,0]
-    xyz[3,:] = [d/2,0,0]
-    
-    #Find positions of the clashing atoms
-    y_position = np.sqrt(d**2 - ((d-d_clash)/2)**2)
-    xyz[1,:] = [-d_clash/2, y_position, 0]
-    xyz[4,:] = [d_clash/2, y_position, 0]
-    
+    xyz[2, :] = [-d / 2, 0, 0]
+    xyz[3, :] = [d / 2, 0, 0]
+
+    # Find positions of the clashing atoms
+    y_position = np.sqrt(d**2 - ((d - d_clash) / 2) ** 2)
+    xyz[1, :] = [-d_clash / 2, y_position, 0]
+    xyz[4, :] = [d_clash / 2, y_position, 0]
+
     # Add atoms 0 and 5: same x,y position as atoms 1 and 4,
     # but are above or below the plane by d
-    xyz[0,:] = [-d_clash/2, y_position, d]
-    xyz[5,:] = [d_clash/2, y_position, -d]
+    xyz[0, :] = [-d_clash / 2, y_position, d]
+    xyz[5, :] = [d_clash / 2, y_position, -d]
 
     topology = md.Topology()
     chain = topology.add_chain()
     for i in range(n_atoms):
-        residue = topology.add_residue('ALA', chain)
-        topology.add_atom('CA', md.element.carbon, residue)
+        residue = topology.add_residue("ALA", chain)
+        topology.add_atom("CA", md.element.carbon, residue)
     return md.Trajectory(xyz, topology)
 
-    
+
 def histogram_features(target: Ensemble, reference: Ensemble, bins: int = 100):
     """Take a two Ensemble objects, and compute histograms of target
     and reference. Histogram of the target is computed over the range,
