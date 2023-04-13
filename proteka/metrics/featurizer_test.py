@@ -1,6 +1,7 @@
 import numpy as np
 import mdtraj as md
 import pytest
+from itertools import combinations
 
 from proteka.dataset import Ensemble
 from proteka.quantity import Quantity
@@ -65,3 +66,8 @@ def test_ca_dihedrals(single_frame):
     reference_dihedrals = np.array([-np.pi / 2, 0, -np.pi / 2])
     print(reference_dihedrals)
     assert np.all(np.isclose(dihedrals, reference_dihedrals))
+
+def test_ca_distances(single_frame):
+    distances = Featurizer.get_feature(single_frame, "ca_distances")
+    reference_distances = md.compute_distances(get_6_bead_frame(), combinations(range(6), 2))
+    assert np.all(np.isclose(distances, reference_distances))
