@@ -82,7 +82,8 @@ class Featurizer:
         if feature in feature_dict.keys():
             feature_dict[feature](**kwargs)
         else:
-            raise ValueError(f"Feature {feature} is not supported. Supported features are: {feature_dict.keys()}")
+            raise ValueError(
+                f"Feature {feature} is not supported. Supported features are: {feature_dict.keys()}")
         return
 
     def add_ca_bonds(self) -> Quantity:
