@@ -52,20 +52,18 @@ class Featurizer:
         order : int, optional
             Number of consecutive atoms, by default 2
         """
+        consecutives = []
         for chain in topology.chains:
             for i in range(chain.n_residues - order + 1):
                 atom_list = []
-                start_group = True
                 for j in range(order):
                     res = chain.residue(i + j)
-                    if not start_group and (
-                        res.resSeq - chain.residue(i).resSeq != 1
-                    ):
+                    if  (j !=0)  and (res.resSeq - chain.residue(i+j-1).resSeq != 1 ):
                         break
-                    start_group = False
                     atom = res.atom("CA")
                     atom_list.append(atom.index)
-                yield atom_list
+                consecutives.append(atom_list)
+        return consecutives
 
     def add(self, feature: str, **kwargs):
         """Add a new feature to the ensemble"""
