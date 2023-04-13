@@ -19,6 +19,5 @@ def single_frame():
 
 def test_ca_clashes(single_frame):
     clashes = StructuralIntegrityMetrics.ca_clashes(single_frame)
-    print(clashes)
-    assert clashes['ca_clashes'] == 1
+    assert clashes['N clashes'] == 1
     
