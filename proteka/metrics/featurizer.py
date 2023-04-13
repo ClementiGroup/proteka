@@ -95,7 +95,7 @@ class Featurizer:
         self.validate_c_alpha()
 
         # Get the pairs of consecutive CA atoms
-        ca_pairs = list(self._get_consecutive_ca(self.ensemble.top, order=2))
+        ca_pairs = self._get_consecutive_ca(self.ensemble.top, order=2)
         ca_bonds = md.compute_distances(trajectory, ca_pairs, periodic=False)
         quantity = Quantity(
             ca_bonds, "nanometers", metadata={"feature": "ca_bonds"}
@@ -137,11 +137,10 @@ class Featurizer:
         self.validate_c_alpha()
 
         # Get the triplets of consecutive CA atoms
-        ca_triplets = [
-            [ca_atoms[i], ca_atoms[i + 1], ca_atoms[i + 2]]
-            for i in range(len(ca_atoms) - 2)
-        ]
-        ca_angles = md.compute_distances(
+        ca_triplets = self._get_consecutive_ca(
+            self.ensemble.top, order=3)
+        print(ca_triplets)
+        ca_angles = md.compute_angles(
             trajectory, ca_triplets, periodic=False
         )
         quantity = Quantity(
@@ -155,24 +154,18 @@ class Featurizer:
     def add_ca_dihedrals(self) -> Quantity:
         """Get dihedral angles between consecutive CA atoms"""
         trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
-        ca_atoms = trajectory.top.select("name CA")
-        print(ca_atoms)
-        self.validate_c_alpha()
-
         # Get the quadruplets of consecutive CA atoms
-        ca_quadruplets = [
-            [ca_atoms[i], ca_atoms[i + 1], ca_atoms[i + 2], ca_atoms[i + 2]]
-            for i in range(len(ca_atoms) - 2)
-        ]
+        ca_quadruplets =
+        self._get_consecutive_ca(self.ensemble.top, order=4)
         ca_dihedrals = md.compute_dihedrals(
             trajectory, ca_quadruplets, periodic=False
         )
         quantity = Quantity(
             ca_dihedrals,
             "radians",
-            metadata={"feature": "consecutive_ca_ca_ca_ca_dihedrals"},
+            metadata={"feature": "ca_dihedrals"}
         )
-        self.ensemble.set_quantity("consecutive_ca_ca_ca_ca_dihedrals", quantity)
+        self.ensemble.set_quantity("ca_dihedrals", quantity)
         return
 
     def add_phi(self) -> Quantity:
