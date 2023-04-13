@@ -71,8 +71,8 @@ class StructuralIntegrityMetrics(IMetrics):
         """Compute total number of instances when there is a clash between CA atoms
         Clashes are defined as any 2 nonconsecutive CA atoms been closer than  0.4 nm
         """
-        # Only consider distances between nonconsecutive CA atoms, hence the order=2
-        distances = Featurizer.get_feature(ensemble, "ca_distances",  offset=2)
+        # Only consider distances between nonconsecutive CA atoms, hence the offset=1
+        distances = Featurizer.get_feature(ensemble, "ca_distances",  offset=1)
         clashes = np.where(distances < 0.4)[0]
         return {"N clashes": clashes.size}
 

@@ -112,8 +112,9 @@ class Featurizer:
         Parameters:
         offset: int, optional
             Distances between CA atoms in residues i and j are included if
-            | i -j | >=  offset. The default value is 1, which means that
-            all Calpha-Calpha distances are included.
+            | i -j | >  offset. The default value is 1, which means that
+            all nonbonded Calpha-Calpha distances are included. If offset is 0,
+            then all the distances are included.
 
         """
         trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
@@ -121,7 +122,7 @@ class Featurizer:
         self.validate_c_alpha()
 
         # Get indices of pairs of atoms
-        ind1, ind2 = np.triu_indices(len(ca_atoms), offset)
+        ind1, ind2 = np.triu_indices(len(ca_atoms), offset+1)
         ca_pairs = np.array([ca_atoms[ind1], ca_atoms[ind2]]).T
         ca_distances = md.compute_distances(
             trajectory, ca_pairs, periodic=False
