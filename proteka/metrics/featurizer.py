@@ -153,6 +153,7 @@ class Featurizer:
 
     def add_ca_dihedrals(self) -> Quantity:
         """Get dihedral angles between consecutive CA atoms"""
+        self.validate_c_alpha()
         trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
         # Get the quadruplets of consecutive CA atoms
         ca_quadruplets =
