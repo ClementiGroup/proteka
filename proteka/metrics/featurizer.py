@@ -58,7 +58,9 @@ class Featurizer:
                 atom_list = []
                 for j in range(order):
                     res = chain.residue(i + j)
-                    if  (j !=0)  and (res.resSeq - chain.residue(i+j-1).resSeq != 1 ):
+                    if (j != 0) and (
+                        res.resSeq - chain.residue(i + j - 1).resSeq != 1
+                    ):
                         break
                     atom = res.atom("CA")
                     atom_list.append(atom.index)
@@ -83,7 +85,8 @@ class Featurizer:
             feature_dict[feature](**kwargs)
         else:
             raise ValueError(
-                f"Feature {feature} is not supported. Supported features are: {feature_dict.keys()}")
+                f"Feature {feature} is not supported. Supported features are: {feature_dict.keys()}"
+            )
         return
 
     def add_ca_bonds(self) -> Quantity:
@@ -137,12 +140,9 @@ class Featurizer:
         self.validate_c_alpha()
 
         # Get the triplets of consecutive CA atoms
-        ca_triplets = self._get_consecutive_ca(
-            self.ensemble.top, order=3)
+        ca_triplets = self._get_consecutive_ca(self.ensemble.top, order=3)
         print(ca_triplets)
-        ca_angles = md.compute_angles(
-            trajectory, ca_triplets, periodic=False
-        )
+        ca_angles = md.compute_angles(trajectory, ca_triplets, periodic=False)
         quantity = Quantity(
             ca_angles,
             "radians",
@@ -156,15 +156,12 @@ class Featurizer:
         self.validate_c_alpha()
         trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
         # Get the quadruplets of consecutive CA atoms
-        ca_quadruplets =
-        self._get_consecutive_ca(self.ensemble.top, order=4)
+        ca_quadruplets = self._get_consecutive_ca(self.ensemble.top, order=4)
         ca_dihedrals = md.compute_dihedrals(
             trajectory, ca_quadruplets, periodic=False
         )
         quantity = Quantity(
-            ca_dihedrals,
-            "radians",
-            metadata={"feature": "ca_dihedrals"}
+            ca_dihedrals, "radians", metadata={"feature": "ca_dihedrals"}
         )
         self.ensemble.set_quantity("ca_dihedrals", quantity)
         return
