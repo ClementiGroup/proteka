@@ -67,7 +67,10 @@ def test_ca_dihedrals(single_frame):
     print(reference_dihedrals)
     assert np.all(np.isclose(dihedrals, reference_dihedrals))
 
+
 def test_ca_distances(single_frame):
     distances = Featurizer.get_feature(single_frame, "ca_distances", offset=0)
-    reference_distances = md.compute_distances(get_6_bead_frame(), combinations(range(6), 2))
+    reference_distances = md.compute_distances(
+        get_6_bead_frame(), combinations(range(6), 2)
+    )
     assert np.all(np.isclose(distances, reference_distances))

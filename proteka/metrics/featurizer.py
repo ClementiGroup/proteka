@@ -122,7 +122,7 @@ class Featurizer:
         self.validate_c_alpha()
 
         # Get indices of pairs of atoms
-        ind1, ind2 = np.triu_indices(len(ca_atoms), offset+1)
+        ind1, ind2 = np.triu_indices(len(ca_atoms), offset + 1)
         ca_pairs = np.array([ca_atoms[ind1], ca_atoms[ind2]]).T
         ca_distances = md.compute_distances(
             trajectory, ca_pairs, periodic=False
@@ -225,9 +225,11 @@ class Featurizer:
         )
         self.ensemble.set_quantity("end2end_distance", quantity)
         return
- 
+
     @staticmethod
-    def get_feature(ensemble: Ensemble, feature: str, recompute=False, **kwargs):
+    def get_feature(
+        ensemble: Ensemble, feature: str, recompute=False, **kwargs
+    ):
         """Get feature from an Ensemble object. If it is not there,
         compute it and store it in the Ensemble object
 

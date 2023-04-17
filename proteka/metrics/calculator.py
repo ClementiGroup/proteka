@@ -72,7 +72,7 @@ class StructuralIntegrityMetrics(IMetrics):
         Clashes are defined as any 2 nonconsecutive CA atoms been closer than  0.4 nm
         """
         # Only consider distances between nonconsecutive CA atoms, hence the offset=1
-        distances = Featurizer.get_feature(ensemble, "ca_distances",  offset=1)
+        distances = Featurizer.get_feature(ensemble, "ca_distances", offset=1)
         clashes = np.where(distances < 0.4)[0]
         return {"N clashes": clashes.size}
 
@@ -197,7 +197,9 @@ class EnsembleQualityMetrics(IMetrics):
         ca_target = Featurizer.get_feature(target, "ca_distances")
         tica_target = model.transform(ca_target)
         # histogram data
-        hist_ref, hist_target = histogram_features2d(tica_reference, tica_target, bins=100)
+        hist_ref, hist_target = histogram_features2d(
+            tica_reference, tica_target, bins=100
+        )
         # Compute KL divergence
         kl = kl_divergence(hist_ref, hist_target)
         js = js_divergence(hist_ref, hist_target)

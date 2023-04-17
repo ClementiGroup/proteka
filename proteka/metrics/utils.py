@@ -78,11 +78,13 @@ def get_6_bead_frame():
     return md.Trajectory(xyz, topology)
 
 
-def histogram_features(target: np.array,
-                         reference: np.array,
-                         target_weights: np.array=None,
-                         reference_weights: np.array=None,
-                         bins: int = 100):
+def histogram_features(
+    target: np.array,
+    reference: np.array,
+    target_weights: np.array = None,
+    reference_weights: np.array = None,
+    bins: int = 100,
+):
     """Take a two Ensemble objects, and compute histograms of target
     and reference. Histogram of the target is computed over the range,
     defined by reference. The function returns the histograms of the target and
@@ -98,16 +100,20 @@ def histogram_features(target: np.array,
     hist_reference, bin_edges = np.histogram(
         reference, bins=bins, weights=reference_weights
     )
-    hist_target, _ = np.histogram(target, bins=bin_edges, weights=target_weights)
+    hist_target, _ = np.histogram(
+        target, bins=bin_edges, weights=target_weights
+    )
 
     return hist_reference, hist_target
 
 
-def histogram_features2d(target: np.array,
-                         reference: np.array,
-                         target_weights: np.array=None,
-                         reference_weights: np.array=None,
-                         bins: int = 100):
+def histogram_features2d(
+    target: np.array,
+    reference: np.array,
+    target_weights: np.array = None,
+    reference_weights: np.array = None,
+    bins: int = 100,
+):
     """Take a two Ensemble objects, and compute 2d histograms of target
     and reference. Histogram of the target is computed over the range,
     defined by reference. The function returns the 2d histograms of the target and
@@ -121,9 +127,13 @@ def histogram_features2d(target: np.array,
         Number of histograms to use, by default 100
     """
 
-
     hist_reference, xedges, yedges = np.histogram2d(
-        reference[:,0], reference[:,1], bins=bins, weights=reference_weights
+        reference[:, 0], reference[:, 1], bins=bins, weights=reference_weights
     )
-    hist_target, _, _= np.histogram2d(target[:,0], target[:,1], bins=[xedges, yedges], weights=target_weights)
+    hist_target, _, _ = np.histogram2d(
+        target[:, 0],
+        target[:, 1],
+        bins=[xedges, yedges],
+        weights=target_weights,
+    )
     return hist_reference, hist_target

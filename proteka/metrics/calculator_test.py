@@ -17,7 +17,7 @@ def single_frame():
     ensemble = Ensemble("6bead", traj.top, Quantity(traj.xyz, "nm"))
     return ensemble
 
+
 def test_ca_clashes(single_frame):
     clashes = StructuralIntegrityMetrics.ca_clashes(single_frame)
-    assert clashes['N clashes'] == 1
-    
+    assert clashes["N clashes"] == 1
