@@ -39,7 +39,7 @@ def get_6_bead_frame():
       Distance between consecutive beads is 0.38 nm
       
       0            5   
-       \          /   
+       \\          /   
         1-0.2nm- 4   
        /          \\
       2___0.38 nm__3
