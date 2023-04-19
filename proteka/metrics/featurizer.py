@@ -68,24 +68,15 @@ class Featurizer:
         return consecutives
 
     def add(self, feature: str, **kwargs):
-        """Add a new feature to the ensemble"""
-        feature_dict = {
-            "end2end_distance": self.add_end2end_distance,
-            "ca_bonds": self.add_ca_bonds,
-            "ca_distances": self.add_ca_distances,
-            "rmsd": self.add_rmsd,
-            "rg": self.add_rg,
-            "ca_angles": self.add_ca_angles,
-            "ca_dihedrals": self.add_ca_dihedrals,
-            "phi": self.add_phi,
-            "psi": self.add_psi,
-        }
-
-        if feature in feature_dict.keys():
-            feature_dict[feature](**kwargs)
+        """Add a new feature to the Ensemble object"""
+        if hasattr(self, "add_" + feature):
+            getattr(self, "add_" + feature)(**kwargs)
         else:
+            allowed_features = [
+                attr for attr in dir(self) if attr.startswith("add_")
+            ]
             raise ValueError(
-                f"Feature {feature} is not supported. Supported features are: {feature_dict.keys()}"
+                f"Feature {feature} is not supported. Supported features are: {allowed_features}"
             )
         return
 
