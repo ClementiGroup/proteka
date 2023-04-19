@@ -234,7 +234,7 @@ class Featurizer:
         Parameters
         ----------
         ensemble : Ensemble
-            Targete : str
+        feature : str
             feature name
         """
         if hasattr(ensemble, feature) and (not recompute):
