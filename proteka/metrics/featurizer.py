@@ -137,12 +137,10 @@ class Featurizer:
     def add_ca_angles(self) -> Quantity:
         """Get angles between consecutive CA atoms"""
         trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
-        ca_atoms = trajectory.top.select("name CA")
         self.validate_c_alpha()
 
         # Get the triplets of consecutive CA atoms
         ca_triplets = self._get_consecutive_ca(self.ensemble.top, order=3)
-        print(ca_triplets)
         ca_angles = md.compute_angles(trajectory, ca_triplets, periodic=False)
         quantity = Quantity(
             ca_angles,
