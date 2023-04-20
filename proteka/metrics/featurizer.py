@@ -44,10 +44,10 @@ class Featurizer:
     def _get_consecutive_ca(topology: md.Topology, order: int = 2):
         """Get all subsequences of consecutive CA atoms of length `order`
         (pairs, triplets, etc.)
-        
+
         Each subsequence comes from a single chain. There are no breaks within subsequences.
         It is assumed that residues in the topology are sorted in ascending order.
-        
+
         Parameters
         ----------
         topology : md.Topology
@@ -57,8 +57,19 @@ class Featurizer:
         """
         consecutives = []
         for chain in topology.chains:
+            # In a chain, a maximum of chain.n_residues - order + 1 subsequences
+            # of length order can be possible
+            # For example, if order = 2, then the maximum number of pairs is
+            # chain.n_residues - 2 + 1 = chain.n_residues - 1
             for i in range(chain.n_residues - order + 1):
                 atom_list = []
+                # The inner loop here is needed for testing for breaks.
+                # If there is a break, then the `resSeq` of the current residue and the
+                # previous residue differ by more than 1. In this case, we break out of
+                # the inner loop and move on to the next residue.
+                # Of course, it only makes sense to do comparison with the previous residue
+                # if the current residue is not the first residue in the subsequence,
+                # i.e. if `j != 0`.
                 for j in range(order):
                     res = chain.residue(i + j)
                     if (j != 0) and (
