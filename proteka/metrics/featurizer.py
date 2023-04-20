@@ -42,12 +42,15 @@ class Featurizer:
 
     @staticmethod
     def _get_consecutive_ca(topology: md.Topology, order: int = 2):
-        """Get pairs of consecutive CA atoms such
-        as atoms in a pair come from the same chain and consecutive residues
-
+        """Get all subsequences of consecutive CA atoms of length `order`
+        (pairs, triplets, etc.)
+        
+        Each subsequence comes from a single chain. There are no breaks within subsequences.
+        It is assumed that residues in the topology are sorted in ascending order.
+        
         Parameters
         ----------
-        topology : _type_
+        topology : md.Topology
             Topology object
         order : int, optional
             Number of consecutive atoms, by default 2
