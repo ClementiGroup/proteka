@@ -33,7 +33,6 @@ def grid_polymer():
 )
 def test_get_consecutive_ca(single_frame, order, result):
     ca = Featurizer._get_consecutive_ca(single_frame.top, order=order)
-    print(ca)
     assert ca == result
 
 
@@ -43,7 +42,6 @@ def test_get_ca_bonds(grid_polymer):
     ens = Ensemble("CAgrid", traj.top, Quantity(traj.xyz, "nm"))
     featurizer = Featurizer(ens)
     featurizer.add_ca_bonds()
-    print(ens.ca_bonds)
     assert np.all(np.isclose(ens.ca_bonds, grid_size))
 
 
@@ -62,9 +60,7 @@ def test_ca_angles(single_frame):
 
 def test_ca_dihedrals(single_frame):
     dihedrals = Featurizer.get_feature(single_frame, "ca_dihedrals")
-    print(dihedrals)
     reference_dihedrals = np.array([-np.pi / 2, 0, -np.pi / 2])
-    print(reference_dihedrals)
     assert np.all(np.isclose(dihedrals, reference_dihedrals))
 
 
