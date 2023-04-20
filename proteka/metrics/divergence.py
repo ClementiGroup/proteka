@@ -13,7 +13,8 @@ def kl_divergence(
      Compute Kullback-Leibler divergence between specified data sets.
 
      .. math :: D_{KL} = \sum_i p_i log (\frac{p_i}{q_i}), p_i, q_i \ne 0
-
+     
+     Here p corresponds to the target distribution, q corresponds to the reference distribution.
      If  p_i or q_i <= `threshold`, bin i is excluded from the summation.
      The algorithm is the same as one used in CPPTRAJ (https://amber-md.github.io/cpptraj/CPPTRAJ.xhtml)
 
@@ -25,10 +26,8 @@ def kl_divergence(
                              Target and reference probability distributions (histograms).
                              Should have the same shape
 
-     normalized : bool, True
-         If true, the input distributions are assumed to be normalized. Otherwise, the histogram
-         will be normalized such that all elements sum up to 1. Note that this histogram normalization
-         is different from the default numpy histogram normalization.
+     threshold : float, 1e-8
+         Bin is not included in the summation if its value is less than threshold
 
      Returns : float
      ------
@@ -65,10 +64,8 @@ def js_divergence(
                             Target and reference probability distributions (histograms).
                             Should have the same shape
 
-    normalized : bool, True
-        If true, the input distributions are assumed to be normalized. Otherwise, the histogram
-        will be normalized such that all elements sum up to 1. Note that this histogram normalization
-        is different from the default numpy histogram normalization.
+    threshold : float, 1e-8
+         Bin is not included in the summation if its value is less than threshold
 
     Returns : float
     ------
