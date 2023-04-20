@@ -14,8 +14,8 @@ scaling = 5
 
 reference_kld = 0e0
 for i in [1, 2]:
-    reference_kld += target_histogram[i] * np.log(
-        target_histogram[i] / reference_histogram[i]
+    reference_kld += reference_histogram[i] * np.log(
+        reference_histogram[i] / target_histogram[i]
     )
 
 

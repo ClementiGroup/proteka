@@ -14,7 +14,7 @@ def kl_divergence(
 
      .. math :: D_{KL} = \sum_i p_i log (\frac{p_i}{q_i}), p_i, q_i \ne 0
 
-     Here p corresponds to the target distribution, q corresponds to the reference distribution.
+     Here p corresponds to the reference (True) distribution, q corresponds to the target distribution.
      If  p_i or q_i <= `threshold`, bin i is excluded from the summation.
      The algorithm is the same as one used in CPPTRAJ (https://amber-md.github.io/cpptraj/CPPTRAJ.xhtml)
 
@@ -46,7 +46,8 @@ def kl_divergence(
         target_normalized > threshold, reference_normalized > threshold
     )
     terms = rel_entr(
-        target_normalized[valid_bins], reference_normalized[valid_bins]
+        reference_normalized[valid_bins],
+        target_normalized[valid_bins],
     )
     return terms.sum()
 
@@ -76,7 +77,7 @@ def js_divergence(
 
     M = 0.5 * (target_normalized + reference_normalized)
     jsd = 0.5 * (
-        kl_divergence(target_normalized, M, threshold=threshold)
-        + kl_divergence(reference_normalized, M, threshold=threshold)
+        kl_divergence(M, target_normalized, threshold=threshold)
+        + kl_divergence(M, reference_normalized, threshold=threshold)
     )
     return jsd
