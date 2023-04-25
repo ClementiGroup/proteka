@@ -4,19 +4,11 @@ from abc import ABCMeta, abstractmethod
 from collections.abc import Iterable
 import numpy as np
 from typing import Union
-import warnings
 
 from .featurizer import Featurizer
 from ..dataset import Ensemble
 from .divergence import kl_divergence, js_divergence
 from .utils import histogram_features, histogram_features2d
-
-try:
-    from deeptime.decomposition import TICA
-except ImportError:
-    warnings.warn(
-        "Deeptime is not installed. TICA metrics will not be available"
-    )
 
 __all__ = ["StructuralIntegrityMetrics", "EnsembleQualityMetrics"]
 
@@ -187,6 +179,8 @@ class EnsembleQualityMetrics(IMetrics):
         dict
             Resulting scores
         """
+        from deeptime.decomposition import TICA
+
         # Fit TICA model on the reference ensemble
         estimator = TICA(dim=2, **kwargs)
         # will fit on the CA distances of the reference ensemble.
