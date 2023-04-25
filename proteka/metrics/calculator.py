@@ -234,6 +234,7 @@ class EnsembleQualityMetrics(IMetrics):
 
     @staticmethod
     def rg_kl_div(target: Ensemble, reference: Ensemble) -> dict:
+        """Computes kl divergence for radius of gyration"""
         rg_reference = Featurizer.get_feature(reference, "rg")
         rg_target = Featurizer.get_feature(target, "rg")
 
