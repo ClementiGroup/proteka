@@ -137,6 +137,9 @@ class EnsembleQualityMetrics(IMetrics):
         """
         if metrics == "all":
             metrics = self.metrics_dict.keys()
+        elif isinstance(metrics, str):
+            metrics = [metrics]
+
         for metric in metrics:
             params = self.metrics_params.get(metric)
             if params is None:
