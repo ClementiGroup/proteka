@@ -5,6 +5,8 @@ from scipy.special import rel_entr
 Module contains basic feature-agnostic metrics estimators
 """
 
+__all__ = ["kl_divergence", "js_divergence"]
+
 
 def kl_divergence(
     target: np.ndarray, reference: np.ndarray, threshold: float = 1e-8

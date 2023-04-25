@@ -6,6 +6,8 @@ import mdtraj as md
 from ..dataset import Ensemble
 from ..quantity import Quantity
 
+__all__ = ["Featurizer"]
+
 
 class Featurizer:
     """Extract features from an Ensemble entity and

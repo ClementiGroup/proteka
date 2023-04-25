@@ -18,6 +18,8 @@ except ImportError:
         "Deeptime is not installed. TICA metrics will not be available"
     )
 
+__all__ = ["StructuralIntegrityMetrics", "EnsembleQualityMetrics"]
+
 
 class IMetrics(metaclass=ABCMeta):
     """Abstract class defining interface for metrics calculators"""

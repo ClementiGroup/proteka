@@ -2,6 +2,13 @@ import numpy as np
 import mdtraj as md
 from ..dataset import Ensemble
 
+__all__ = [
+    "generate_grid_polymer",
+    "get_6_bead_frame",
+    "histogram_features",
+    "histogram_features2d",
+]
+
 
 def _get_grid_configuration(n_atoms, grid_size=0.4, ndim=3):
     """distributions
