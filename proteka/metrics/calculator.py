@@ -154,6 +154,21 @@ class EnsembleQualityMetrics(IMetrics):
 
     @staticmethod
     def ca_distance_kl_div(target: Ensemble, reference: Ensemble) -> dict:
+        """Compute the KL divergence for a mixed histogram of CA distances 
+        
+        All the pairwise distances are computed for each ensemble and then 
+        a histogram for all the distances simultaneously [1]_ is computed for both 
+        ensembles. The KL divergence is then computed between the two histograms.
+        
+        Reference:
+        ----------
+        .. [1] M.G. Reese, O. Lund, J. Bohr, H. Bohr, J.E. Hansen, S. Brunak, 
+        Distance distributions in proteins: a six-parameter representation, 
+        Protein Engineering, Design and Selection, Volume 9, Issue 9, 
+        September 1996, Pages 733–740, https://doi.org/10.1093/protein/9.9.733
+        
+        """
+        
         ca_distance_reference = Featurizer.get_feature(
             reference, "ca_distances"
         )
