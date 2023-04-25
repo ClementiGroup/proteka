@@ -110,6 +110,10 @@ class EnsembleQualityMetrics(IMetrics):
         reference: Ensemble,
         metrics: Union[Iterable[str], str] = "all",
     ):
+        """Calls the `compute` method and reports the results
+        as a dictionary of metric_name: metric_value pairs
+        See compute() for more details.
+        """
         self.compute(target, reference, metrics)
         return self.report()
 
@@ -121,6 +125,15 @@ class EnsembleQualityMetrics(IMetrics):
     ):
         """
         Compute the metrics that compare the target ensemble to the reference
+
+        Parameters:
+        -----------
+        target: Ensemble
+            The target ensemble
+        reference: Ensemble
+            The reference ensemble, against which the target ensemble is compared
+        metrics: Iterable of strings or str
+            The metrics to compute. If "all" is passed, all available metrics will be computed
         """
         if metrics == "all":
             metrics = self.metrics_dict.keys()
