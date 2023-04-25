@@ -121,7 +121,7 @@ class EnsembleQualityMetrics(IMetrics):
         self,
         target: Ensemble,
         reference: Ensemble,
-        metrics: Iterable = ["end2end_distance_kl_div"],
+        metrics: Union[Iterable[str], str] = "all",
     ):
         """
         Compute the metrics that compare the target ensemble to the reference
