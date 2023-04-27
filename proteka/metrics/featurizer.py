@@ -210,12 +210,15 @@ class Featurizer:
 
         # RMSD kwarg sanity checks
         valid_rmsd_opts = set(
-            "frame", "atom_indices", "parallel", "precentered"
+            ["frame", "atom_indices", "parallel", "precentered"]
         )
-        assert all([opt in valid_rmsd_opts for opt in rmsd_kwargs.keys()])
+        if rmsd_kwargs != None:
+            assert all([opt in valid_rmsd_opts for opt in rmsd_kwargs.keys()])
+        if rmsd_kwargs == None:
+            rmsd_kwargs = {}
 
         trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
-        rmsd = md.rmsd(trajectory, reference, **rmsd_kwargs)
+        rmsd = md.rmsd(trajectory, reference_structure, **rmsd_kwargs)
         quantity = Quantity(rmsd, "nanometers", metadata={"feature": "rmsd"})
         self.ensemble.set_quantity("rmsd", quantity)
         return
@@ -299,6 +302,28 @@ class Featurizer:
             metadata={"feature": "local_contact_number"},
         )
         self.ensemble.set_quantity("local_contact_number", quantity)
+        return
+
+    def add_general_feature(
+        self,
+        name: str,
+        feat_func: Callable,
+        feat_args: List,
+        feat_kwargs: Optional[Dict] = None,
+        unit: Optional[str] = None,
+    ):
+        """Generates feautures according to a user defined transform, `feat_func`, with args
+        `feat_args`, and kwargs `feat_kwargs` saved as a Quantity with name `name`
+        """
+
+        feature = feat_func(*feat_args, **feat_kwargs)
+
+        quantity = Quantity(
+            feature,
+            unit,
+            metadata={"feature": name},
+        )
+        self.ensemble.set_quantity(name, quantity)
         return
 
     @staticmethod

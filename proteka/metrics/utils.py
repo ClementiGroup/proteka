@@ -106,7 +106,6 @@ def histogram_features(
         Number of bins to use, by default 100
     """
 
-    assert len(target.shape) == len(reference.shape) == 1
     hist_reference, bin_edges = np.histogram(
         reference, bins=bins, weights=reference_weights
     )
@@ -137,8 +136,7 @@ def histogram_vector_features(
         Number of bins to use, by default 100
     """
 
-    assert len(target.shape) == len(reference.shape)
-    assert target.shape[1:] == reference.shape[1:]
+    assert target.shape[-1] == reference.shape[-1]
 
     # slow implementation, I know.
     num_feats = target.shape[-1]

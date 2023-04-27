@@ -213,7 +213,7 @@ class EnsembleQualityMetrics(IMetrics):
     ) -> Dict[str, np.ndarray]:
         """Calculates local contact number JS divergence PER atom/residue"""
 
-        local_contact_num_ref = Featurizer.get_feature(
+        local_contact_num_reference = Featurizer.get_feature(
             reference, "local_contact_number"
         )
         local_contact_num_target = Featurizer.get_feature(
