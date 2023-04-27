@@ -1,6 +1,7 @@
 import numpy as np
 import mdtraj as md
 from ..dataset import Ensemble
+from typing import Union, Tuple
 
 __all__ = [
     "generate_grid_polymer",
@@ -90,26 +91,69 @@ def histogram_features(
     reference: np.array,
     target_weights: np.array = None,
     reference_weights: np.array = None,
-    bins: int = 100,
+    bins: Union[int, np.array] = 100,
 ):
     """Take a two Ensemble objects, and compute histograms of target
     and reference. Histogram of the target is computed over the range,
     defined by reference. The function returns the histograms of the target and
-    reference
+    reference.
 
     Parameters
     ----------
     target, reference : Ensemble
         Target and reference Ensemble objects
-    n_bins : int, optional
-        Number of histograms to use, by default 100
+    n_bins : int or np.array, optional
+        Number of bins to use, by default 100
     """
+
+    assert len(target.shape) == len(reference.shape) == 1
     hist_reference, bin_edges = np.histogram(
         reference, bins=bins, weights=reference_weights
     )
     hist_target, _ = np.histogram(
         target, bins=bin_edges, weights=target_weights
     )
+    return hist_reference, hist_target
+
+
+def histogram_vector_features(
+    target: np.array,
+    reference: np.array,
+    target_weights: np.array = None,
+    reference_weights: np.array = None,
+    bins: Union[int, np.array] = 100,
+) -> Tuple[np.array, np.array]:
+    """Take a two Ensemble objects, and compute vector histograms of target
+    and reference. Histogram of the target is computed over the range,
+    defined by reference. The function returns the histograms of the target and
+    reference. Marginal histograms
+    will be returned by accumulating indepentdly over the last array axis.
+
+    Parameters
+    ----------
+    target, reference : Ensemble
+        Target and reference Ensemble objects
+    n_bins : int or np.array, optional
+        Number of bins to use, by default 100
+    """
+
+    assert len(target.shape) == len(reference.shape)
+    assert target.shape[1:] == reference.shape[1:]
+
+    # slow implementation, I know.
+    num_feats = target.shape[-1]
+    num_bins = len(bins) if isinstance(bins, np.ndarray) else bins
+    hist_reference = np.zeros((num_bins, num_feats))
+    hist_target = np.zeros((num_bins, num_feats))
+
+    for i in range(num_feats):
+        hist_reference[:, i], hist_target[:, i] = histogram_features(
+            target[:, i],
+            reference[:, i],
+            target_weights=target_weights,
+            reference_weights=reference_weights,
+            bins=bins,
+        )
 
     return hist_reference, hist_target
 
@@ -130,7 +174,7 @@ def histogram_features2d(
     ----------
     target, reference : Ensemble
         Target and reference Ensemble objects
-    n_bins : int, optional
+    n_bins : int or np.array
         Number of histograms to use, by default 100
     """
 

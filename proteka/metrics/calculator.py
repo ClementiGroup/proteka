@@ -3,12 +3,16 @@
 from abc import ABCMeta, abstractmethod
 from collections.abc import Iterable
 import numpy as np
-from typing import Union
+from typing import Union, Dict
 
 from .featurizer import Featurizer
 from ..dataset import Ensemble
-from .divergence import kl_divergence, js_divergence
-from .utils import histogram_features, histogram_features2d
+from .divergence import kl_divergence, js_divergence, vector_js_divergence
+from .utils import (
+    histogram_features,
+    histogram_vector_features,
+    histogram_features2d,
+)
 
 __all__ = ["StructuralIntegrityMetrics", "EnsembleQualityMetrics"]
 
@@ -100,6 +104,7 @@ class EnsembleQualityMetrics(IMetrics):
             "rg_kl_div": self.rg_kl_div,
             "ca_distance_kl_div": self.ca_distance_kl_div,
             "ca_distance_js_div": self.ca_distance_js_div,
+            "local_contact_number_js_div": self.local_contact_number_js_div,
             "tica_div": self.tica_div,
         }
         self.metrics_params = metrics_params
@@ -179,6 +184,39 @@ class EnsembleQualityMetrics(IMetrics):
         )
         kl = kl_divergence(hist_ref, hist_target)
         return {"CA distance, KL divergence": kl}
+
+    @staticmethod
+    def ca_distance_js_div(target: Ensemble, reference: Ensemble) -> dict:
+        ca_distance_reference = Featurizer.get_feature(
+            reference, "ca_distances"
+        )
+        ca_distance_target = Featurizer.get_feature(target, "ca_distances")
+        # Histogram of the distances. Will use 100 bins and bin edges extracted from the reference ensemble
+        hist_ref, hist_target = histogram_features(
+            ca_distance_reference, ca_distance_target, bins=100
+        )
+        js = js_divergence(hist_ref, hist_target)
+        return {"CA distance, JS divergence": js}
+
+    @staticmethod
+    def local_contact_number_js_div(
+        target: Ensemble, reference: Ensemble
+    ) -> Dict[str, np.ndarray]:
+        """Calculates local contact number JS divergence PER atom/residue"""
+
+        local_contact_num_ref = Featurizer.get_feature(
+            reference, "local_contact_number"
+        )
+        local_contact_num_target = Featurizer.get_feature(
+            reference, "local_contact_number"
+        )
+
+        # Histogram of the local_contacts. Will use 100 bins from 0 to num_res
+        hist_ref, hist_target = histogram_vector_features(
+            local_contact_num_reference, local_contact_num_target, bins=100
+        )
+        js = vector_js_divergence(hist_ref, hist_target)
+        return {"CA distance, JS divergence": js}
 
     @staticmethod
     def ca_distance_js_div(target: Ensemble, reference: Ensemble) -> dict:

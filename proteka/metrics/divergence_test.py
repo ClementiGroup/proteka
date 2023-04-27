@@ -12,7 +12,17 @@ target_histogram = np.array([0.1, 0.2, 0.7, 0.0])
 reference_histogram = np.array([0.0, 0.3, 0.6, 0.1])
 scaling = 5
 
+target_histogram2 = np.array([0.2, 0.2, 0.2, 0.4])
+reference_histogram2 = np.array([0.0, 0.5, 0.3, 0.2])
+scaling = 5
+
 reference_kld = 0e0
+for i in [1, 2]:
+    reference_kld += reference_histogram[i] * np.log(
+        reference_histogram[i] / target_histogram[i]
+    )
+
+referenc_jsd = 0e0
 for i in [1, 2]:
     reference_kld += reference_histogram[i] * np.log(
         reference_histogram[i] / target_histogram[i]

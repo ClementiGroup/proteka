@@ -5,6 +5,7 @@ import numpy as np
 import mdtraj as md
 from ..dataset import Ensemble
 from ..quantity import Quantity
+from typing import Callable, Dict, List, Optional
 
 __all__ = ["Featurizer"]
 
@@ -229,6 +230,67 @@ class Featurizer:
             metadata={"feature": "end2end_distance"},
         )
         self.ensemble.set_quantity("end2end_distance", quantity)
+        return
+
+    def add_local_contact_number(
+        self,
+        atom_type: str = "CA",
+        min_res_dist: int = 3,
+        cut: float = 1,
+        beta: float = 0.02,
+    ):
+        """Adds prothon local contact number trajectory features for either CA or CB atoms according to contact cutoff
+        `cut`, minumum residue separation `min_res_dist`, and smoothing parameter `beta`. Default units for
+         `cut` and `beta` are in nm and inverse nm respectively."""
+
+        if atom_type not in ["CA", "CB"]:
+            raise ValueError(
+                "`atom_type` must be 'CA' or 'CB', but '{}' was supplied".format(
+                    atom_type
+                )
+            )
+
+        # compute distances
+        trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
+        atom_inds = trajectory.topology.select("name {}".format(atom_type))
+        ind1, ind2 = np.triu_indices(len(atom_inds), min_res_dist + 1)
+        pairs = np.array([atom_inds[ind1], atom_inds[ind2]]).T
+        distances = md.compute_distances(trajectory, pairs, periodic=False)
+
+        # compute local contacts
+        contacts = 1.0 / (1.0 + np.exp(beta * (distances - cut)))
+        contacts = md.geometry.squareform(contacts, pairs)
+        contact_per_atom = np.sum(contacts, axis=-1)
+        assert contact_per_atom.shape[-1] == len(atom_inds)
+
+        quantity = Quantity(
+            contact_per_atom,
+            None,
+            metadata={"feature": "local_contact_number"},
+        )
+        self.ensemble.set_quantity("local_contact_number", quantity)
+        return
+
+    def add_general_feature(
+        self,
+        name: str,
+        feat_func: Callable,
+        feat_args: List,
+        feat_kwargs: Optional[Dict] = None,
+        unit: Optional[str] = None,
+    ):
+        """Generates feautures according to a user defined transform, `feat_func`, with args
+        `feat_args`, and kwargs `feat_kwargs` saved as a Quantity with name `name`
+        """
+
+        feature = feat_func(*feat_args, **feat_kwargs)
+
+        quantity = Quantity(
+            feature,
+            unit,
+            metadata={"feature": name},
+        )
+        self.ensemble.set_quantity(name, quantity)
         return
 
     @staticmethod
