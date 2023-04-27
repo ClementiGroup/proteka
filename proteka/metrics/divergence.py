@@ -85,6 +85,38 @@ def js_divergence(
     return jsd
 
 
+def vector_kl_divergence(
+    target: np.ndarray, reference: np.ndarray, threshold: float = 1e-8
+) -> np.ndarray:
+    """
+    Compute independent KL divergences between specified vector data sets.
+
+    Parameters
+    -----------
+
+    target, reference : np.typing.ArrayLike
+                            Target and reference probability distributions (histograms).
+                            Should have the same shape
+
+    threshold : float, 1e-8
+         Bin is not included in the summation if its value is less than the threshold
+
+    Returns : np.ndarray
+    ------
+    Vector KL divergence of the target from the reference
+    """
+    assert target.shape == reference.shape
+    assert len(target.shape) > 1
+    num_feat = target.shape[-1]
+    kld = np.zeros(num_feat)
+    # slow implementation I know
+    for i in range(num_feat):
+        kld[i] = kl_divergence(
+            target[:, i], reference[:, i], threshold=threshold
+        )
+    return kld
+
+
 def vector_js_divergence(
     target: np.ndarray, reference: np.ndarray, threshold: float = 1e-8
 ) -> np.ndarray:
@@ -105,12 +137,12 @@ def vector_js_divergence(
     ------
     Vector JS divergence of the target from the reference
     """
-    assert target.shape == ref.shape
+    assert target.shape == reference.shape
     assert len(target.shape) > 1
-    num_feat = target_shape[-1]
-    jsd = np.zeros(len(target))
+    num_feat = target.shape[-1]
+    jsd = np.zeros(num_feat)
     # slow implementation I know
-    for i in range(num_reats):
+    for i in range(num_feat):
         jsd[i] = js_divergence(
             target[:, i], reference[:, i], threshold=threshold
         )
