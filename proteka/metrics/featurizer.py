@@ -97,7 +97,7 @@ class Featurizer:
             )
         return
 
-    def add_ca_bonds(self) -> Quantity:
+    def add_ca_bonds(self):
         """
         Returns a Quantity object that contains length of pseudobonds
         between consecutive CA atoms.
@@ -114,7 +114,7 @@ class Featurizer:
         self.ensemble.set_quantity("ca_bonds", quantity)
         return
 
-    def add_ca_distances(self, offset: int = 1) -> Quantity:
+    def add_ca_distances(self, offset: int = 1):
         """Get distances between CA atoms.
 
         Parameters:
@@ -142,7 +142,7 @@ class Featurizer:
         )
         self.ensemble.set_quantity("ca_distances", quantity)
 
-    def add_ca_angles(self) -> Quantity:
+    def add_ca_angles(self):
         """Get angles between consecutive CA atoms"""
         trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
         self.validate_c_alpha()
@@ -158,7 +158,7 @@ class Featurizer:
         self.ensemble.set_quantity("ca_angles", quantity)
         return
 
-    def add_ca_dihedrals(self) -> Quantity:
+    def add_ca_dihedrals(self):
         """Get dihedral angles between consecutive CA atoms"""
         self.validate_c_alpha()
         trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
@@ -173,7 +173,7 @@ class Featurizer:
         self.ensemble.set_quantity("ca_dihedrals", quantity)
         return
 
-    def add_phi(self) -> Quantity:
+    def add_phi(self):
         """Get protein backbone phi torsions"""
         trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
         _, phi = md.compute_phi(trajectory)
@@ -181,7 +181,7 @@ class Featurizer:
         self.ensemble.set_quantity("phi", quantity)
         return
 
-    def add_psi(self) -> Quantity:
+    def add_psi(self):
         """Get protein backbone psi torsions"""
         trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
         _, psi = md.compute_psi(trajectory)
@@ -191,21 +191,36 @@ class Featurizer:
 
     def add_rmsd(
         self,
-        reference: Optional[md.Trajectory] = None,
-        frame: int = 0,
-        atom_indices: Optional[Iterable[int]] = None,
-    ) -> Quantity:
+        reference_structure: md.Trajectory,
+        rmsd_kwargs: Optional[Dict] = None,
+    ):
         """Get RMSD of a subset of atoms
         reference: Reference mdtraj.Trajectory object
         Wrapper of mdtraj.rmsd
+
+        Parameters
+        ----------
+        reference_structure:
+            MDTraj single-frame Trajectory which serves as the
+            reference structure for RMSD calculations.
+        rmsd_kwargs:
+            Dictionary of kwarg options for `mdtraj.rmsd()`. See
+            help(mdtraj.rmsd) for more information.
         """
+
+        # RMSD kwarg sanity checks
+        valid_rmsd_opts = set(
+            "frame", "atom_indices", "parallel", "precentered"
+        )
+        assert all([opt in valid_rmsd_opts for opt in rmsd_kwargs.keys()])
+
         trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
-        rmsd = md.rmsd(trajectory, reference, frame, atom_indices=atom_indices)
+        rmsd = md.rmsd(trajectory, reference, **rmsd_kwargs)
         quantity = Quantity(rmsd, "nanometers", metadata={"feature": "rmsd"})
         self.ensemble.set_quantity("rmsd", quantity)
         return
 
-    def add_rg(self) -> Quantity:
+    def add_rg(self):
         """Get radius of gyration for each structure in an ensemble"""
         trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
         rg = md.compute_rg(trajectory)
@@ -213,7 +228,7 @@ class Featurizer:
         self.ensemble.set_quantity("rg", quantity)
         return
 
-    def add_end2end_distance(self) -> Quantity:
+    def add_end2end_distance(self):
         """Get distance between CA atoms of the first and last residue in the protein
         for each structure in the ensemble
         """
@@ -239,8 +254,9 @@ class Featurizer:
         cut: float = 1,
         beta: float = 0.02,
     ):
-        """Adds prothon local contact number trajectory features for either CA
-        or CB atoms.
+        """Adds PROTHON local contact number trajectory features for either CA
+        or CB atoms. Based on the implementation in
+        https://www.biorxiv.org/content/10.1101/2023.04.11.536474v1.full
 
         Parameter
         ---------
