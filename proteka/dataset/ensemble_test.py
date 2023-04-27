@@ -2,6 +2,7 @@ import h5py
 
 from pathlib import Path
 from proteka import Ensemble, UnitSystem, Quantity
+from proteka.quantity.quantity_shapes import PerFrameQuantity
 import pytest
 import numpy as np
 
@@ -127,3 +128,56 @@ def test_ensemble_to_h5(example_ensemble, tmpdir):
     assert ensemble2.top == ensemble.top
     assert ensemble2.name == ensemble.name
     assert ensemble2["custom_field"].unit == "dimensionless"
+
+
+def test_ensemble_with_extra_builtin_quantity(example_ensemble):
+    unit_system = UnitSystem(
+        "Angstrom",
+        "amu",
+        "ps",
+        "kilojoules/mole",
+        extra_preset_quantities={
+            "temperature": (PerFrameQuantity.SCALAR, "kelvin")
+        },
+    )
+    ensemble = Ensemble(
+        "custom",
+        example_ensemble.top,
+        example_ensemble["coords"],
+        quantities={
+            "temperature": np.ones(
+                example_ensemble.n_frames,
+            )
+        },
+        unit_system=unit_system,
+    )
+    assert "temperature" in ensemble
+    assert ensemble["temperature"].unit == "kelvin"
+
+
+def test_ensemble_init_coords_unit(example_ensemble):
+    ensemble = Ensemble(
+        "test",
+        example_ensemble.top,
+        example_ensemble["coords"].to_quantity_with_unit("A"),
+        unit_system="nm-g/mol-ps-kJ/mol",
+    )
+    assert ensemble["coords"].unit == "nanometers"
+    assert np.allclose(
+        ensemble.coords, example_ensemble["coords"].in_unit_of("nm")
+    )
+
+
+def test_ensemble_serialize_trjs(example_ensemble, tmpdir):
+    trjs_dict = {"part1": slice(0, 5, 1), "part2": slice(5, 10, 1)}
+    example_ensemble.register_trjs(trjs_dict)
+    with h5py.File(tmpdir / "test.h5", "w") as f:
+        example_ensemble.write_to_hdf5(f, name="example_ensemble")
+
+    with h5py.File(tmpdir / "test.h5", "r") as f:
+        group = f["example_ensemble"]
+        ensemble2 = Ensemble.from_hdf5(group)
+
+    assert list(trjs_dict) == list(ensemble2.trjs)
+    for trj_name, trj_slice in trjs_dict.items():
+        assert ensemble2.trjs[trj_name] == trj_slice

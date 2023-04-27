@@ -53,3 +53,18 @@ def test_new_builtin():
     assert is_unit_convertible(
         us1_from_json_2.get_preset_unit("pressure"), "pascal/mole"
     )
+
+
+def test_custom_builtin_quantity():
+    """Test that custom builtin quantities are correctly parsed."""
+    us = UnitSystem(
+        extra_preset_quantities={"pressure": (PFQ.SCALAR, "[E]/[L]**3")}
+    )
+    assert "pressure" in us.builtin_quantities
+    assert us.get_preset_unit("pressure") == "kilojoules/mole/nanometers**3"
+    # make sure that preset quantities are not overwritten
+    assert "coords" in us.builtin_quantities
+    assert us.get_preset_unit("coords") == "nanometers"
+    # make sure that serializing and deserializing builtin quantities works
+    deserialized = UnitSystem.parse_from_json(us.to_json())
+    assert "pressure" in deserialized.builtin_quantities

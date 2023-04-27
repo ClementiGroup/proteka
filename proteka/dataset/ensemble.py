@@ -13,7 +13,6 @@ import h5py
 from proteka.quantity import (
     BaseQuantity,
     Quantity,
-    PRESET_BUILTIN_QUANTITIES,
     UnitSystem,
 )
 from .top_utils import json2top, top2json
@@ -310,10 +309,15 @@ class Ensemble(HDF5Group):
         else:
             self._unit_system = UnitSystem.parse_from_str(unit_system)
         super().__init__({}, metadata=metadata)
+        # setting the coords properly
+        preset_coords_unit = self.unit_system.get_preset_unit("coords")
         if not isinstance(coords, BaseQuantity):
-            coords = Quantity(
-                coords, self._unit_system.get_preset_unit("coords")
+            print(
+                f"Assuming the input `coords` to be in unit "
+                f'"{preset_coords_unit}"'
             )
+            coords = Quantity(coords, preset_coords_unit)
+        coords = coords.to_quantity_with_unit(preset_coords_unit)
         self._save_quantity(
             "coords",
             coords,
@@ -334,6 +338,15 @@ class Ensemble(HDF5Group):
                 self.__setattr__(k, v)
         if trajectory_slices is not None:
             self.register_trjs(trajectory_slices)
+        elif "trjs" in self._data:
+            # quantity `trjs` (json) has been set via quantities
+            # in this case, we simply need to parse it from json
+            try:
+                self._set_trjs_dict_from_json(self._data["trjs"][()])
+            except ValueError:
+                raise ValueError(
+                    "Invalid `trjs` (trajectories) information in the input quantities."
+                )
         else:
             # register a default sequence for the whole length for compatibility
             self.register_trjs({"default": slice(None)})  # same as [:]
@@ -381,7 +394,8 @@ class Ensemble(HDF5Group):
         Returns
         -------
         Ensemble
-            An instance containing all information from the .
+            An instance containing all information from the mdtraj object together with
+            the provided `quantities`, `metadata`, `trajectory_slices` and `unit_system`.
 
         Raises
         ------
@@ -658,8 +672,8 @@ class Ensemble(HDF5Group):
         """
         if key in self._data:
             return self.get_quantity(key).unit
-        elif key in PRESET_BUILTIN_QUANTITIES:
-            preset_unit = self._unit_system.get_preset_unit(key)
+        elif key in self.unit_system.builtin_quantities:
+            preset_unit = self.unit_system.get_preset_unit(key)
             return preset_unit
         else:
             return None
@@ -679,9 +693,11 @@ class Ensemble(HDF5Group):
     def set_quantity(self, key, quant):
         """Store `quant` (Quantity | numpy.ndarray) under name `key` (str).
         When `quant` is a plain `numpy.ndarray`, the unit is assumed according to
-        `.unit_system` if the `key` is one of the `PRESET_BUILTIN_QUANTITIES`, or
-        `dimensionless` otherwise.
-        * When `key` is one of the `PRESET_BUILTIN_QUANTITIES`, the unit and shape of `quant`
+        `.unit_system` if the `key` is one of the `PRESET_BUILTIN_QUANTITIES` (or
+        `self.unit_system.builtin_quantities` in case of customized `unit_system` at
+        initialization), or `dimensionless` otherwise.
+        * When `key` is one of the `PRESET_BUILTIN_QUANTITIES` (or
+        `self.unit_system.builtin_quantities`), the unit and shape of `quant`
         need to be compatible.
 
         Parameters
@@ -693,9 +709,9 @@ class Ensemble(HDF5Group):
             assumed to be either the builtin unit (when exists) or "dimensionless".
         """
         # built-in quantities?
-        if key in PRESET_BUILTIN_QUANTITIES:
-            shape_hint = PRESET_BUILTIN_QUANTITIES[key][0]
-            preset_unit = self._unit_system.get_preset_unit(key)
+        if key in self.unit_system.builtin_quantities:
+            shape_hint = self.unit_system.builtin_quantities[key][0]
+            preset_unit = self.unit_system.get_preset_unit(key)
         else:
             shape_hint = None
             preset_unit = None
@@ -877,26 +893,51 @@ class Ensemble(HDF5Group):
         name = hdf5grp.metadata.get("name", "")
         other_quantities = {}
         for k, v in hdf5grp._data.items():
-            if k != "coords" and k != "top" and k != "subsets":
+            if k != "coords" and k != "top":
                 other_quantities[k] = v
-        new_ensemble = cls(
-            name,
-            top,
-            coords,
-            quantities=other_quantities,
-            metadata=hdf5grp.metadata,
-            unit_system=formatted_unit_system_str,
-        )
-        if "trjs" in hdf5grp:
-            try:
-                trjs_dict = json.loads(hdf5grp["trjs"][()])
-                new_ensemble._trjs = trjs_dict
-            except:
-                raise ValueError(
-                    f"Invalid `trjs` (trajectories) information in the input HDF5 Group"
-                    f" `{h5grp.name}`."
-                )
+        try:
+            new_ensemble = cls(
+                name,
+                top,
+                coords,
+                quantities=other_quantities,
+                metadata=hdf5grp.metadata,
+                unit_system=formatted_unit_system_str,
+            )
+        except ValueError:
+            raise ValueError(
+                f"Invalid information in the input HDF5 Group `{h5grp.name}`."
+            )
         return new_ensemble
+
+    def _set_trjs_dict_from_json(self, trjs_dict_in_json):
+        """Set the `trjs` quantity (as json str) and `_trjs` entry (as Dict[List[int]])
+        coherently from input json string.
+
+        Parameters
+        ----------
+        trjs_dict_in_json : str
+            A json string that contains valid trajectory record as a serialized
+            Dict[List[int]].
+
+        Raises
+        ------
+        ValueError
+            When input `trjs_dict_in_json` is not a valid json str.
+        """
+        try:
+            trjs_dict = json.loads(trjs_dict_in_json)
+        except json.JSONDecodeError:
+            raise ValueError(
+                "Invalid `trjs` (trajectories) information in the input json."
+            )
+        self._save_quantity(
+            "trjs",
+            _to_quantity(trjs_dict_in_json),
+            shape=None,
+            verbose=False,  # always False, since not called except for init
+        )
+        self._trjs = trjs_dict
 
     def __repr__(self):
         return (
