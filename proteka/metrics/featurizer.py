@@ -191,9 +191,9 @@ class Featurizer:
 
     def add_rmsd(
         self,
-        reference: md.Trajectory = None,
+        reference: Optional[md.Trajectory] = None,
         frame: int = 0,
-        atom_indices: Iterable[int] = None,
+        atom_indices: Optional[Iterable[int]] = None,
     ) -> Quantity:
         """Get RMSD of a subset of atoms
         reference: Reference mdtraj.Trajectory object
@@ -239,9 +239,23 @@ class Featurizer:
         cut: float = 1,
         beta: float = 0.02,
     ):
-        """Adds prothon local contact number trajectory features for either CA or CB atoms according to contact cutoff
-        `cut`, minumum residue separation `min_res_dist`, and smoothing parameter `beta`. Default units for
-         `cut` and `beta` are in nm and inverse nm respectively."""
+        """Adds prothon local contact number trajectory features for either CA
+        or CB atoms.
+
+        Parameter
+        ---------
+        atom_type:
+            Either "CA" or "CB". Determines the heavy atoms used to determine
+            contacts
+        min_res_dist:
+            Specifies the minumum residue separation to be considered as part
+            set of non-bonded distances for contact calculations.
+        cut:
+            Contact distance cutoff
+        beta:
+            Smoothing parameter for contact discriminator with a default of
+            50 nm^-1
+        """
 
         if atom_type not in ["CA", "CB"]:
             raise ValueError(

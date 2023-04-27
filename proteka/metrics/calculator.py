@@ -7,7 +7,12 @@ from typing import Union, Dict
 
 from .featurizer import Featurizer
 from ..dataset import Ensemble
-from .divergence import kl_divergence, js_divergence, vector_js_divergence
+from .divergence import (
+    kl_divergence,
+    js_divergence,
+    vector_kl_divergence,
+    vector_js_divergence,
+)
 from .utils import (
     histogram_features,
     histogram_vector_features,
@@ -65,7 +70,7 @@ class StructuralIntegrityMetrics(IMetrics):
         return
 
     @staticmethod
-    def ca_clashes(ensemble: Ensemble) -> dict:
+    def ca_clashes(ensemble: Ensemble) -> Dict[str, int]:
         """Compute total number of instances when there is a clash between CA atoms
         Clashes are defined as any 2 nonconsecutive CA atoms been closer than  0.4 nm
         """
@@ -75,7 +80,7 @@ class StructuralIntegrityMetrics(IMetrics):
         return {"N clashes": clashes.size}
 
     @staticmethod
-    def ca_pseudobonds(ensemble: Ensemble) -> dict:
+    def ca_pseudobonds(ensemble: Ensemble) -> Dict[str, float]:
         """Computes maximum and rms z-score for d_ca_ca bonds over ensemble.
         Z-score is defined as (d_ca_ca - mean(d_ca_ca)) / std(d_ca_ca)
         d_ca_ca and std(d_ca_ca) are parametrized based on analysis of the proteka
@@ -158,7 +163,9 @@ class EnsembleQualityMetrics(IMetrics):
         return
 
     @staticmethod
-    def ca_distance_kl_div(target: Ensemble, reference: Ensemble) -> dict:
+    def ca_distance_kl_div(
+        target: Ensemble, reference: Ensemble
+    ) -> Dict[str, float]:
         """Compute the KL divergence for a mixed histogram of CA distances
 
         All the pairwise distances are computed for each ensemble and then
@@ -186,7 +193,9 @@ class EnsembleQualityMetrics(IMetrics):
         return {"CA distance, KL divergence": kl}
 
     @staticmethod
-    def ca_distance_js_div(target: Ensemble, reference: Ensemble) -> dict:
+    def ca_distance_js_div(
+        target: Ensemble, reference: Ensemble
+    ) -> Dict[str, float]:
         ca_distance_reference = Featurizer.get_feature(
             reference, "ca_distances"
         )
@@ -216,23 +225,12 @@ class EnsembleQualityMetrics(IMetrics):
             local_contact_num_reference, local_contact_num_target, bins=100
         )
         js = vector_js_divergence(hist_ref, hist_target)
-        return {"CA distance, JS divergence": js}
+        return {"local contact number, JS divergence": js}
 
     @staticmethod
-    def ca_distance_js_div(target: Ensemble, reference: Ensemble) -> dict:
-        ca_distance_reference = Featurizer.get_feature(
-            reference, "ca_distances"
-        )
-        ca_distance_target = Featurizer.get_feature(target, "ca_distances")
-        # Histogram of the distances. Will use 100 bins and bin edges extracted from the reference ensemble
-        hist_ref, hist_target = histogram_features(
-            ca_distance_reference, ca_distance_target, bins=100
-        )
-        js = js_divergence(hist_ref, hist_target)
-        return {"CA distance, JS divergence": js}
-
-    @staticmethod
-    def tica_div(target: Ensemble, reference: Ensemble, **kwargs) -> dict:
+    def tica_div(
+        target: Ensemble, reference: Ensemble, **kwargs
+    ) -> Dict[str, float]:
         """Perform TICA on the reference enseble and use it to transform target ensemble.
         Then compute KL divergence between the two TICA projections, using the first 2 TICA components
 
@@ -271,7 +269,7 @@ class EnsembleQualityMetrics(IMetrics):
         return {"TICA, KL divergence": kl, "TICA, JS divergence": js}
 
     @staticmethod
-    def rg_kl_div(target: Ensemble, reference: Ensemble) -> dict:
+    def rg_kl_div(target: Ensemble, reference: Ensemble) -> Dict[str, float]:
         """Computes kl divergence for radius of gyration"""
         rg_reference = Featurizer.get_feature(reference, "rg")
         rg_target = Featurizer.get_feature(target, "rg")
@@ -284,7 +282,9 @@ class EnsembleQualityMetrics(IMetrics):
         return {"Rg, KL divergence": kl}
 
     @staticmethod
-    def end2end_distance_kl_div(target: Ensemble, reference: Ensemble) -> dict:
+    def end2end_distance_kl_div(
+        target: Ensemble, reference: Ensemble
+    ) -> Dict[str, float]:
         """Computes kl divergence for end2end distance. Currently work with a single chain."""
         d_e2e_reference = Featurizer.get_feature(reference, "end2end_distance")
         d_e2e_target = Featurizer.get_feature(target, "end2end_distance")
