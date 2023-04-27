@@ -304,28 +304,6 @@ class Featurizer:
         self.ensemble.set_quantity("local_contact_number", quantity)
         return
 
-    def add_general_feature(
-        self,
-        name: str,
-        feat_func: Callable,
-        feat_args: List,
-        feat_kwargs: Optional[Dict] = None,
-        unit: Optional[str] = None,
-    ):
-        """Generates feautures according to a user defined transform, `feat_func`, with args
-        `feat_args`, and kwargs `feat_kwargs` saved as a Quantity with name `name`
-        """
-
-        feature = feat_func(*feat_args, **feat_kwargs)
-
-        quantity = Quantity(
-            feature,
-            unit,
-            metadata={"feature": name},
-        )
-        self.ensemble.set_quantity(name, quantity)
-        return
-
     @staticmethod
     def get_feature(
         ensemble: Ensemble, feature: str, recompute=False, **kwargs
