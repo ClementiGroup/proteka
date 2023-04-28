@@ -70,6 +70,7 @@ class StructuralIntegrityMetrics(IMetrics):
         return
 
     @staticmethod
+
     def ca_clashes(ensemble: Ensemble) -> Dict[str, int]:
         """Compute total number of instances when there is a clash between CA atoms
         Clashes are defined as any 2 nonconsecutive CA atoms been closer than  0.4 nm

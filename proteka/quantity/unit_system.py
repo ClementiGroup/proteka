@@ -111,7 +111,7 @@ class UnitSystem:
         self._builtin_quantities = copy(PRESET_BUILTIN_QUANTITIES)
         if extra_preset_quantities is not None:
             for k, v in extra_preset_quantities.items():
-                self._builtin_quantities[k] = v
+                self._builtin_quantities[k] = (v[0], format_unit(v[1]))
 
     @property
     def unit_dict(self):
