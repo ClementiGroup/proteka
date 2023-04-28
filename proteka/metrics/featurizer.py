@@ -311,7 +311,7 @@ class Featurizer:
                 else Featurizer.full_dssp_lookup
             )
             unique_codes, inverse_idx = np.unique(
-                dssp_coodes, return_inverse=True
+                dssp_codes, return_inverse=True
             )
             found_digits = np.array([lookup[code] for code in unique_codes])
             dssp_codes = found_digits[inverse_idx].reshape(dssp_codes.shape)
