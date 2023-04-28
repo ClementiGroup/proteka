@@ -7,8 +7,8 @@ from typing import Union
 
 from .featurizer import Featurizer
 from ..dataset import Ensemble
-from .divergence import kl_divergence, js_divergence
-from .utils import histogram_features, histogram_features2d
+from .divergence import kl_divergence, js_divergence, mse
+from .utils import histogram_features, histogram_features2d, get_tica_features
 
 __all__ = ["StructuralIntegrityMetrics", "EnsembleQualityMetrics"]
 
@@ -93,14 +93,25 @@ class StructuralIntegrityMetrics(IMetrics):
 class EnsembleQualityMetrics(IMetrics):
     """Metrics to compare a target ensemble to the reference ensemble"""
 
-    def __init__(self, metrics_params={"tica_div": {"lagtime": 10}}):
+    def __init__(self, metrics_params={"tica_kl_div": {"lagtime": 10}, "tica_js_div": {"lagtime": 10}}):
         super().__init__()
         self.metrics_dict = {
-            "end2end_distance_kl_div": self.end2end_distance_kl_div,
-            "rg_kl_div": self.rg_kl_div,
-            "ca_distance_kl_div": self.ca_distance_kl_div,
-            "ca_distance_js_div": self.ca_distance_js_div,
-            "tica_div": self.tica_div,
+            "end2end_distance_kl_div": self.kl_div,
+            "rg_kl_div": self.kl_div,
+            "ca_distance_kl_div": self.kl_div,
+            "ca_distance_js_div": self.js_div,
+            "ca_distance_mse": self.ms_error,
+            "tica_kl_div": self.kl_div,
+            "tica_js_div": self.kl_div,
+        }
+        self.metrics_feature_names = {
+            "end2end_distance_kl_div": "end2end_distance",
+            "rg_kl_div": "rg",
+            "ca_distance_kl_div": "ca_distances",
+            "ca_distance_js_div": "ca_distances",
+            "ca_distance_mse": "ca_distances",
+            "tica_kl_div": "tica",
+            "tica_js_div": "tica",
         }
         self.metrics_params = metrics_params
 
@@ -144,116 +155,161 @@ class EnsembleQualityMetrics(IMetrics):
             params = self.metrics_params.get(metric)
             if params is None:
                 self.results.update(
-                    self.metrics_dict[metric](target, reference)
+                    self.metrics_dict[metric](target, reference, self.metrics_feature_names[metric])
                 )
             else:
                 self.results.update(
-                    self.metrics_dict[metric](target, reference, **params)
+                    self.metrics_dict[metric](target, reference, self.metrics_feature_names[metric], **params)
                 )
         return
 
-    @staticmethod
-    def ca_distance_kl_div(target: Ensemble, reference: Ensemble) -> dict:
-        """Compute the KL divergence for a mixed histogram of CA distances
-
-        All the pairwise distances are computed for each ensemble and then
-        a histogram for all the distances simultaneously [1]_ is computed for both
-        ensembles. The KL divergence is then computed between the two histograms.
-
-        Reference:
-        ----------
-        .. [1] M.G. Reese, O. Lund, J. Bohr, H. Bohr, J.E. Hansen, S. Brunak,
-        Distance distributions in proteins: a six-parameter representation,
-        Protein Engineering, Design and Selection, Volume 9, Issue 9,
-        September 1996, Pages 733–740, https://doi.org/10.1093/protein/9.9.733
-
-        """
-
-        ca_distance_reference = Featurizer.get_feature(
-            reference, "ca_distances"
-        )
-        ca_distance_target = Featurizer.get_feature(target, "ca_distances")
-        # Histogram of the distances. Will use 100 bins and bin edges extracted from the reference ensemble
-        hist_ref, hist_target = histogram_features(
-            ca_distance_reference, ca_distance_target, bins=100
-        )
-        kl = kl_divergence(hist_ref, hist_target)
-        return {"CA distance, KL divergence": kl}
 
     @staticmethod
-    def ca_distance_js_div(target: Ensemble, reference: Ensemble) -> dict:
-        ca_distance_reference = Featurizer.get_feature(
-            reference, "ca_distances"
-        )
-        ca_distance_target = Featurizer.get_feature(target, "ca_distances")
-        # Histogram of the distances. Will use 100 bins and bin edges extracted from the reference ensemble
-        hist_ref, hist_target = histogram_features(
-            ca_distance_reference, ca_distance_target, bins=100
-        )
-        js = js_divergence(hist_ref, hist_target)
-        return {"CA distance, JS divergence": js}
+    def kl_div(target: Ensemble, reference: Ensemble, feature: str, **kwargs) -> dict:
+        """Computes the KL divergence between the target and reference ensembles for the feature given as input.
+        If the input feature is 'tica' the computation is done consistently with what was done before
 
-    @staticmethod
-    def tica_div(target: Ensemble, reference: Ensemble, **kwargs) -> dict:
-        """Perform TICA on the reference enseble and use it to transform target ensemble.
-        Then compute KL divergence between the two TICA projections, using the first 2 TICA components
-
-        Parameters
-        ----------
-        target : Ensemble
+        Parameters:
+        -----------
+        target: Ensemble
             target ensemble
-        reference : Ensemble
-            reference ensemble, will be used for TICA model fitting
-
-        Returns
-        -------
-        dict
-            Resulting scores
+        reference: Ensemble
+            reference ensemble to compare to
+        feature: str
+            name of the feature to compute the KL divergence on.
+            can be any of the 1D-features from the Featurizer, names have to be consistent, or it can be 'tica'
+        
+        Returns:
+        --------
+        dict: 
+            with the key corresponding to 'feature, KL divergence' 
+            and the value being the KL divergence between the reference and target ensembles on the selected feature. 
         """
-        from deeptime.decomposition import TICA
+        if feature == 'tica':
+            target_feat, reference_feat = get_tica_features(target, reference, **kwargs)
+            
+        else:
+            target_feat = Featurizer.get_feature(target, feature)
+            reference_feat = Featurizer.get_feature(reference, feature)
 
-        # Fit TICA model on the reference ensemble
-        estimator = TICA(dim=2, **kwargs)
-        # will fit on the CA distances of the reference ensemble.
-        ca_reference = Featurizer.get_feature(reference, "ca_distances")
-        estimator.fit(ca_reference)
-        model = estimator.fetch_model()
-        # Transform the reference ensemble
-        tica_reference = model.transform(ca_reference)
-        # Transform the target ensemble
-        ca_target = Featurizer.get_feature(target, "ca_distances")
-        tica_target = model.transform(ca_target)
-        # histogram data
-        hist_ref, hist_target = histogram_features2d(
-            tica_reference, tica_target, bins=100
-        )
-        # Compute KL divergence
-        kl = kl_divergence(hist_ref, hist_target)
-        js = js_divergence(hist_ref, hist_target)
-        return {"TICA, KL divergence": kl, "TICA, JS divergence": js}
+        assert (
+            len(target_feat.shape) == len(reference_feat.shape)
+        ), f"mismatch in features dimensions : target has dimension {len(target_feat.shape)} and reference has dimension {len(reference_feat.shape)}"
 
+        if np.squeeze(target_feat).ndim == np.squeeze(reference_feat).ndim == 1:
+            # Histogram of the features. Will use 100 bins and bin edges extracted from
+            # the reference ensemble
+            hist_target, hist_ref = histogram_features(
+                target_feat, reference_feat, bins=100
+            )
+        elif np.squeeze(target_feat).ndim == np.squeeze(reference_feat).ndim == 2:
+            # Histogram of the features. Will use 100 bins and bin edges extracted from
+            # the reference ensemble
+            hist_target, hist_ref = histogram_features2d(
+                target_feat, reference_feat, bins=100
+            )
+        else:
+            raise NotImplementedError(f'No histogram computation implemented for feature dimension {np.squeeze(target_feat).ndim}')
+
+        kl = kl_divergence(hist_target, hist_ref)
+        return {f"{feature}, KL divergence": kl}
+    
     @staticmethod
-    def rg_kl_div(target: Ensemble, reference: Ensemble) -> dict:
-        """Computes kl divergence for radius of gyration"""
-        rg_reference = Featurizer.get_feature(reference, "rg")
-        rg_target = Featurizer.get_feature(target, "rg")
+    def js_div(target: Ensemble, reference: Ensemble, feature: str, **kwargs) -> dict:
+        """Computes the JS divergence between the target and reference ensembles for the feature given as input.
+        If the input feature is 'tica' the computation is done consistently with what was done before
 
-        # Histogram of the distances. Will use 100 bins and bin edges extracted from the reference ensemble
-        hist_ref, hist_target = histogram_features(
-            rg_reference, rg_target, bins=100
-        )
-        kl = kl_divergence(hist_ref, hist_target)
-        return {"Rg, KL divergence": kl}
+        Parameters:
+        -----------
+        target: Ensemble
+            target ensemble
+        reference: Ensemble
+            reference ensemble to compare to
+        feature: str
+            name of the feature to compute the JS divergence on.
+            can be any of the 1D-features from the Featurizer, names have to be consistent, or it can be 'tica'
+        
+        Returns:
+        --------
+        dict: 
+            with the key corresponding to 'feature, JS divergence' 
+            and the value being the JS divergence between the reference and target ensembles on the selected feature. 
+        """
+        if feature == 'tica':
+            target_feat, reference_feat = get_tica_features(target, reference, **kwargs)
+            
+        else:
+            target_feat = Featurizer.get_feature(target, feature)
+            reference_feat = Featurizer.get_feature(reference, feature)
 
+        assert (
+            len(target_feat.shape) == len(reference_feat.shape)
+        ), f"mismatch in features dimensions : target has dimension {len(target_feat.shape)} and reference has dimension {len(reference_feat.shape)}"
+
+        if np.squeeze(target_feat).ndim == np.squeeze(reference_feat).ndim == 1:
+            # Histogram of the features. Will use 100 bins and bin edges extracted from
+            # the reference ensemble
+            hist_target, hist_ref = histogram_features(
+                target_feat, reference_feat, bins=100
+            )
+        elif np.squeeze(target_feat).ndim == np.squeeze(reference_feat).ndim == 2:
+            # Histogram of the features. Will use 100 bins and bin edges extracted from
+            # the reference ensemble
+            hist_target, hist_ref = histogram_features2d(
+                target_feat, reference_feat, bins=100
+            )
+        else:
+            raise NotImplementedError(f'No histogram computation implemented for feature dimension {np.squeeze(target_feat).ndim}')
+
+        js = js_divergence(hist_target, hist_ref)
+        return {f"{feature}, JS divergence": js}
+    
     @staticmethod
-    def end2end_distance_kl_div(target: Ensemble, reference: Ensemble) -> dict:
-        """Computes kl divergence for end2end distance. Currently work with a single chain."""
-        d_e2e_reference = Featurizer.get_feature(reference, "end2end_distance")
-        d_e2e_target = Featurizer.get_feature(target, "end2end_distance")
-        # Histogram of the distances. Will use 100 bins and bin edges extracted from
-        # the reference ensemble
-        hist_reference, hist_target = histogram_features(
-            d_e2e_reference, d_e2e_target, bins=100
-        )
-        kl = kl_divergence(hist_reference, hist_target)
-        return {"d end2end, KL divergence": kl}
+    def ms_error(target: Ensemble, reference: Ensemble, feature: str, **kwargs) -> dict:
+        """Computes the Mean Squared Error between the target and reference ensembles for the feature given as input.
+        If the input feature is 'tica' the computation is done consistently with what was done before
+
+        Parameters:
+        -----------
+        target: Ensemble
+            target ensemble
+        reference: Ensemble
+            reference ensemble to compare to
+        feature: str
+            name of the feature to compute the MSE on.
+            can be any of the 1D-features from the Featurizer, names have to be consistent, or it can be 'tica'
+        
+        Returns:
+        --------
+        dict: 
+            with the key corresponding to 'feature, MSE' 
+            and the value being the MSE between the reference and target ensembles on the selected feature. 
+        """
+        if feature == 'tica':
+            target_feat, reference_feat = get_tica_features(target, reference, **kwargs)
+            
+        else:
+            target_feat = Featurizer.get_feature(target, feature)
+            reference_feat = Featurizer.get_feature(reference, feature)
+
+        assert (
+            len(target_feat.shape) == len(reference_feat.shape)
+        ), f"mismatch in features dimensions : target has dimension {len(target_feat.shape)} and reference has dimension {len(reference_feat.shape)}"
+
+        if np.squeeze(target_feat).ndim == np.squeeze(reference_feat).ndim == 1:
+            # Histogram of the features. Will use 100 bins and bin edges extracted from
+            # the reference ensemble
+            hist_target, hist_ref = histogram_features(
+                target_feat, reference_feat, bins=100
+            )
+        elif np.squeeze(target_feat).ndim == np.squeeze(reference_feat).ndim == 2:
+            # Histogram of the features. Will use 100 bins and bin edges extracted from
+            # the reference ensemble
+            hist_target, hist_ref = histogram_features2d(
+                target_feat, reference_feat, bins=100
+            )
+        else:
+            raise NotImplementedError(f'No histogram computation implemented for feature dimension {np.squeeze(target_feat).ndim}')
+
+        ms_error = mse(hist_target, hist_ref)
+        return {f"{feature}, MSE": ms_error}

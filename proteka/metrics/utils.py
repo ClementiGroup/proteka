@@ -1,6 +1,9 @@
 import numpy as np
 import mdtraj as md
+from .featurizer import Featurizer
 from ..dataset import Ensemble
+from typing import Tuple
+from deeptime.decomposition import TICA
 
 __all__ = [
     "generate_grid_polymer",
@@ -111,7 +114,7 @@ def histogram_features(
         target, bins=bin_edges, weights=target_weights
     )
 
-    return hist_reference, hist_target
+    return hist_target, hist_reference
 
 
 def histogram_features2d(
@@ -143,4 +146,37 @@ def histogram_features2d(
         bins=[xedges, yedges],
         weights=target_weights,
     )
-    return hist_reference, hist_target
+    return hist_target, hist_reference
+
+def get_tica_features(target: Ensemble, reference: Ensemble, **kwargs) -> Tuple[np.array, np.array]:
+    """Perform TICA on the reference ensemble and use it to transform target ensemble.
+    returns the first 2 TICA components both for the target and the reference ensemble
+    
+    Parameters
+    ----------
+    target : Ensemble
+        target ensemble
+    reference : Ensemble
+        reference ensemble, will be used for TICA model fitting
+
+    Returns
+    -------
+    tica_target: np.array
+        2-dimensional array containing the first 2 tica features for the target ensemble
+    tica_reference: np.array
+        2-dimensional array containing the first 2 tica features for the reference ensemble
+    """
+    
+    # Fit TICA model on the reference ensemble
+    estimator = TICA(dim=2, **kwargs)
+    # will fit on the CA distances of the reference ensemble.
+    ca_reference = Featurizer.get_feature(reference, "ca_distances")
+    estimator.fit(ca_reference)
+    model = estimator.fetch_model()
+    # Transform the reference ensemble
+    tica_reference = model.transform(ca_reference)
+    # Transform the target ensemble
+    ca_target = Featurizer.get_feature(target, "ca_distances")
+    tica_target = model.transform(ca_target)
+
+    return tica_target, tica_reference
