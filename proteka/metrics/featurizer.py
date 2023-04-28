@@ -283,16 +283,31 @@ class Featurizer:
                 )
             )
 
-        # compute distances
+        # prepare atom/residue index arrays
         trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
+        atoms = np.array(list(trajectory.topology.atoms))
+        residues = np.array(list(trajectory.topology.residues))
         atom_inds = trajectory.topology.select("name {}".format(atom_type))
-        ind1, ind2 = np.triu_indices(len(atom_inds), min_res_dist + 1)
+        residue_inds = np.array([res.index for res in residues])
+
+        # grab fully connected pairs
+        ind1, ind2 = np.triu_indices(len(atom_inds), 1)
+
+        # apply residue neighbor restriction
         pairs = np.array([atom_inds[ind1], atom_inds[ind2]]).T
+        res_pairs = np.array([residue_inds[ind1], residue_inds[ind2]]).T
+        idx_to_del = []
+        for i, pair in enumerate(pairs):
+            a1, a2 = atoms[pair]
+            if np.abs(a1.residue.index - a2.residue.index) < min_res_dist:
+                idx_to_del.append(i)
+        pairs = np.delete(pairs, idx_to_del, axis=0)
+        res_pairs = np.delete(res_pairs, idx_to_del, axis=0)
         distances = md.compute_distances(trajectory, pairs, periodic=False)
 
         # compute local contacts
         contacts = 1.0 / (1.0 + np.exp(beta * (distances - cut)))
-        contacts = md.geometry.squareform(contacts, pairs)
+        contacts = md.geometry.squareform(contacts, res_pairs)
         contact_per_atom = np.sum(contacts, axis=-1)
         assert contact_per_atom.shape[-1] == len(atom_inds)
 
