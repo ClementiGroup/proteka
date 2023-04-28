@@ -251,6 +251,54 @@ class Featurizer:
         self.ensemble.set_quantity("end2end_distance", quantity)
         return
 
+    def add_dssp(self, simplified: bool = True, digitize: bool = False):
+        """Adds DSSP secondary codes to each amino acid. Requires high backbone resolution
+        (eg, N, C, O) in topoology. DSSP codes are categorically digitized according to the
+        following schemes if specified:
+
+            Simplified:
+                'H' -> 0
+                'E' -> 1
+                'C' -> 2
+
+            Full:
+                'H' -> 0
+                'B' -> 1
+                'E' -> 2
+                'G' -> 3
+                'I' -> 4
+                'T' -> 5
+                'S' -> 6
+                ' ' -> 7
+
+        Parameters
+        ----------
+        simplified:
+            If True, only simplified DSSP codes are reported. See help(mdtraj.compute_dssp)
+        digitize:
+            If True, the DSSP codes with be digitized according to the mappings above
+        """
+
+        trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
+        dssp_codes = md.compute_dssp(trajectory, simplified=simplified)
+
+        if digitize:
+            # use np.unique array reconstruction, with an intermediate lookup transform
+            lookup = simple_lookup if simplified else full_lookup
+            unique_codes, inverse_idx = np.unique(
+                dssp_coodes, return_inverse=True
+            )
+            found_digits = np.array([lookup[code] for code in unique_codes])
+            dssp_codes = found_digits[inverse_idx].reshape(dssp_codes.shape)
+
+        quantity = Quantity(
+            dssp_codes,
+            None,
+            metadata={"feature": "dssp"},
+        )
+        self.ensemble.set_quantity("dssp", quantity)
+        return
+
     def add_local_contact_number(
         self,
         atom_type: str = "CA",
