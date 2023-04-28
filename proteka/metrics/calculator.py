@@ -218,9 +218,8 @@ class EnsembleQualityMetrics(IMetrics):
             reference, "local_contact_number"
         )
         local_contact_num_target = Featurizer.get_feature(
-            reference, "local_contact_number"
+            target, "local_contact_number"
         )
-
         # Histogram of the local_contacts. Will use 100 bins from 0 to num_res
         hist_ref, hist_target = histogram_vector_features(
             local_contact_num_reference, local_contact_num_target, bins=100
