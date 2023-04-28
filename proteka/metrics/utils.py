@@ -87,23 +87,27 @@ def get_6_bead_frame():
 
 
 def histogram_features(
-    target: np.array,
-    reference: np.array,
-    target_weights: np.array = None,
-    reference_weights: np.array = None,
-    bins: Union[int, np.array] = 100,
+    target: np.ndarray,
+    reference: np.ndarray,
+    reference_weights: np.ndarray = None,
+    target_weights: np.ndarray = None,
+    bins: Union[int, np.ndarray] = 100,
 ):
-    """Take a two Ensemble objects, and compute histograms of target
+    """Take a two arrays, and compute vector histograms of target
     and reference. Histogram of the target is computed over the range,
     defined by reference. The function returns the histograms of the target and
-    reference.
+    reference. Marginal histograms
+    will be returned by accumulating indepentdly over the last array axis.
 
     Parameters
     ----------
-    target, reference : Ensemble
-        Target and reference Ensemble objects
-    n_bins : int or np.array, optional
-        Number of bins to use, by default 100
+    target, reference : np.ndarray
+        Target and reference np.ndarrays
+    target_weights, reference_weights: np.ndarray
+        Frame weights for the target and reference probabilities
+    bins : int or np.ndarray, optional
+        Number of bins to use, by default 100 over the support specified
+        by the reference. If np.ndarray, those bins will be used instead
     """
 
     hist_reference, bin_edges = np.histogram(
@@ -112,28 +116,31 @@ def histogram_features(
     hist_target, _ = np.histogram(
         target, bins=bin_edges, weights=target_weights
     )
-    return hist_reference, hist_target
+    return hist_target, hist_reference
 
 
 def histogram_vector_features(
-    target: np.array,
-    reference: np.array,
-    target_weights: np.array = None,
-    reference_weights: np.array = None,
-    bins: Union[int, np.array] = 100,
-) -> Tuple[np.array, np.array]:
-    """Take a two Ensemble objects, and compute vector histograms of target
+    target: np.ndarray,
+    reference: np.ndarray,
+    target_weights: np.ndarray = None,
+    reference_weights: np.ndarray = None,
+    bins: Union[int, np.ndarray] = 100,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Take a two multi-feature arrays, and compute vector histograms of target
     and reference. Histogram of the target is computed over the range,
     defined by reference. The function returns the histograms of the target and
-    reference. Marginal histograms
-    will be returned by accumulating indepentdly over the last array axis.
+    reference. Marginal histograms will be returned by accumulating indepentdly
+    over the last array axis.
 
     Parameters
     ----------
-    target, reference : Ensemble
-        Target and reference Ensemble objects
-    n_bins : int or np.array, optional
-        Number of bins to use, by default 100
+    target, reference : np.ndarray
+        Target and reference np.ndarrays
+    target_weights, reference_weights: np.ndarray
+        Frame weights for the target and reference probabilities
+    bins : int or np.ndarray, optional
+        Number of bins to use, by default 100 over the support specified
+        by the reference. If np.ndarray, those bins will be used instead
     """
 
     assert target.shape[-1] == reference.shape[-1]
@@ -153,27 +160,31 @@ def histogram_vector_features(
             bins=bins,
         )
 
-    return hist_reference, hist_target
+    return hist_target, hist_reference
 
 
 def histogram_features2d(
-    target: np.array,
-    reference: np.array,
-    target_weights: np.array = None,
-    reference_weights: np.array = None,
+    target: np.ndarray,
+    reference: np.ndarray,
+    target_weights: np.ndarray = None,
+    reference_weights: np.ndarray = None,
     bins: int = 100,
-):
-    """Take a two Ensemble objects, and compute 2d histograms of target
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Take a two 2 feature arrays, and compute 2D histograms of target
     and reference. Histogram of the target is computed over the range,
-    defined by reference. The function returns the 2d histograms of the target and
-    reference
+    defined by reference. The function returns the histograms of the target and
+    reference. Marginal histograms will be returned by accumulating indepentdly
+    over the last array axis.
 
     Parameters
     ----------
-    target, reference : Ensemble
-        Target and reference Ensemble objects
-    n_bins : int or np.array
-        Number of histograms to use, by default 100
+    target, reference : np.ndarray
+        Target and reference np.ndarrays
+    target_weights, reference_weights: np.ndarray
+        Frame weights for the target and reference probabilities
+    bins : int or np.ndarray, optional
+        Number of bins to use, by default 100 over the support specified
+        by the reference. If np.ndarray, those bins will be used instead
     """
 
     hist_reference, xedges, yedges = np.histogram2d(

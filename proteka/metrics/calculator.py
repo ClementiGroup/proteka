@@ -70,7 +70,6 @@ class StructuralIntegrityMetrics(IMetrics):
         return
 
     @staticmethod
-
     def ca_clashes(ensemble: Ensemble) -> Dict[str, int]:
         """Compute total number of instances when there is a clash between CA atoms
         Clashes are defined as any 2 nonconsecutive CA atoms been closer than  0.4 nm
@@ -187,10 +186,10 @@ class EnsembleQualityMetrics(IMetrics):
         )
         ca_distance_target = Featurizer.get_feature(target, "ca_distances")
         # Histogram of the distances. Will use 100 bins and bin edges extracted from the reference ensemble
-        hist_ref, hist_target = histogram_features(
-            ca_distance_reference, ca_distance_target, bins=100
+        hist_target, hist_ref = histogram_features(
+            ca_distance_target, ca_distance_reference, bins=100
         )
-        kl = kl_divergence(hist_ref, hist_target)
+        kl = kl_divergence(hist_target, hist_ref)
         return {"CA distance, KL divergence": kl}
 
     @staticmethod
@@ -202,10 +201,10 @@ class EnsembleQualityMetrics(IMetrics):
         )
         ca_distance_target = Featurizer.get_feature(target, "ca_distances")
         # Histogram of the distances. Will use 100 bins and bin edges extracted from the reference ensemble
-        hist_ref, hist_target = histogram_features(
-            ca_distance_reference, ca_distance_target, bins=100
+        hist_target, hist_ref = histogram_features(
+            ca_distance_target, ca_distance_reference, bins=100
         )
-        js = js_divergence(hist_ref, hist_target)
+        js = js_divergence(hist_target, hist_ref)
         return {"CA distance, JS divergence": js}
 
     @staticmethod
@@ -221,10 +220,10 @@ class EnsembleQualityMetrics(IMetrics):
             target, "local_contact_number"
         )
         # Histogram of the local_contacts. Will use 100 bins from 0 to num_res
-        hist_ref, hist_target = histogram_vector_features(
-            local_contact_num_reference, local_contact_num_target, bins=100
+        hist_target, hist_ref = histogram_vector_features(
+            local_contact_num_target, local_contact_num_reference, bins=100
         )
-        js = vector_js_divergence(hist_ref, hist_target)
+        js = vector_js_divergence(hist_target, hist_ref)
         return {"local contact number, JS divergence": js}
 
     @staticmethod
@@ -260,12 +259,12 @@ class EnsembleQualityMetrics(IMetrics):
         ca_target = Featurizer.get_feature(target, "ca_distances")
         tica_target = model.transform(ca_target)
         # histogram data
-        hist_ref, hist_target = histogram_features2d(
-            tica_reference, tica_target, bins=100
+        hist_target, hist_ref = histogram_features2d(
+            tica_target, tica_reference, bins=100
         )
         # Compute KL divergence
-        kl = kl_divergence(hist_ref, hist_target)
-        js = js_divergence(hist_ref, hist_target)
+        kl = kl_divergence(hist_target, hist_ref)
+        js = js_divergence(hist_target, hist_ref)
         return {"TICA, KL divergence": kl, "TICA, JS divergence": js}
 
     @staticmethod
@@ -275,10 +274,10 @@ class EnsembleQualityMetrics(IMetrics):
         rg_target = Featurizer.get_feature(target, "rg")
 
         # Histogram of the distances. Will use 100 bins and bin edges extracted from the reference ensemble
-        hist_ref, hist_target = histogram_features(
-            rg_reference, rg_target, bins=100
+        hist_target, hist_ref = histogram_features(
+            rg_target, rg_reference, bins=100
         )
-        kl = kl_divergence(hist_ref, hist_target)
+        kl = kl_divergence(hist_target, hist_ref)
         return {"Rg, KL divergence": kl}
 
     @staticmethod
@@ -290,8 +289,8 @@ class EnsembleQualityMetrics(IMetrics):
         d_e2e_target = Featurizer.get_feature(target, "end2end_distance")
         # Histogram of the distances. Will use 100 bins and bin edges extracted from
         # the reference ensemble
-        hist_reference, hist_target = histogram_features(
-            d_e2e_reference, d_e2e_target, bins=100
+        hist_target, hist_ref = histogram_features(
+            d_e2e_target, d_e2e_reference, bins=100
         )
-        kl = kl_divergence(hist_reference, hist_target)
+        kl = kl_divergence(hist_target, hist_reference)
         return {"d end2end, KL divergence": kl}
