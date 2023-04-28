@@ -292,5 +292,5 @@ class EnsembleQualityMetrics(IMetrics):
         hist_target, hist_ref = histogram_features(
             d_e2e_target, d_e2e_reference, bins=100
         )
-        kl = kl_divergence(hist_target, hist_reference)
+        kl = kl_divergence(hist_target, hist_ref)
         return {"d end2end, KL divergence": kl}
