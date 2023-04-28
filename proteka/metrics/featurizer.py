@@ -15,6 +15,25 @@ class Featurizer:
     """Extract features from an Ensemble entity and
     return them as Quantity objects"""
 
+    simple_dssp_lookup = {
+        "NA": 0,
+        "H": 1,
+        "E": 2,
+        "C": 3,
+    }
+
+    full_dssp_lookup = {
+        "NA": 0,
+        "H": 1,
+        "B": 2,
+        "E": 3,
+        "G": 4,
+        "I": 5,
+        "T": 6,
+        "S": 7,
+        " ": 8,
+    }
+
     def __init__(self, ensemble: Ensemble):
         self.ensemble = ensemble
 
@@ -257,19 +276,21 @@ class Featurizer:
         following schemes if specified:
 
             Simplified:
-                'H' -> 0
-                'E' -> 1
-                'C' -> 2
+                'NA' -> 0
+                'H' -> 1
+                'E' -> 2
+                'C' -> 3
 
             Full:
-                'H' -> 0
-                'B' -> 1
-                'E' -> 2
-                'G' -> 3
-                'I' -> 4
-                'T' -> 5
-                'S' -> 6
-                ' ' -> 7
+                'NA' -> 0
+                'H' -> 1
+                'B' -> 2
+                'E' -> 3
+                'G' -> 4
+                'I' -> 5
+                'T' -> 6
+                'S' -> 7
+                ' ' -> 8
 
         Parameters
         ----------
@@ -284,7 +305,11 @@ class Featurizer:
 
         if digitize:
             # use np.unique array reconstruction, with an intermediate lookup transform
-            lookup = simple_lookup if simplified else full_lookup
+            lookup = (
+                Featurizer.simple_dssp_lookup
+                if simplified
+                else Featurizer.full_dssp_lookup
+            )
             unique_codes, inverse_idx = np.unique(
                 dssp_coodes, return_inverse=True
             )
