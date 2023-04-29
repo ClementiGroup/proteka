@@ -73,13 +73,12 @@ def test_js_divergence():
     reference = js(target_histogram, reference_histogram) ** 2
     assert np.isclose(fn_output, reference)
 
+
 def test_mse():
     """
     Test basic functionality
     """
-    assert np.isclose(
-        mse(target_histogram, reference_histogram), reference_mse
-    )
+    assert np.isclose(mse(target_histogram, reference_histogram), reference_mse)
 
 
 def test_mse2d():
@@ -87,11 +86,10 @@ def test_mse2d():
     Test basic functionality
     """
     assert np.isclose(
-        mse(
-            target_histogram.reshape(2, 2), reference_histogram.reshape(2, 2)
-        ),
+        mse(target_histogram.reshape(2, 2), reference_histogram.reshape(2, 2)),
         reference_mse,
     )
+
 
 def test_mse_normalized():
     """
@@ -104,6 +102,7 @@ def test_mse_normalized():
         ),
         scaling**2 * reference_mse,
     )
+
 
 def test_mse_shapes_match():
     """

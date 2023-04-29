@@ -84,9 +84,8 @@ def js_divergence(
     )
     return jsd
 
-def mse(
-    target: np.ndarray, reference: np.ndarray
-) -> float:
+
+def mse(target: np.ndarray, reference: np.ndarray) -> float:
     r"""
      Compute Mean Squared Error between specified data sets.
 
@@ -110,5 +109,5 @@ def mse(
     assert (
         target.shape == reference.shape
     ), f"Dimension mismatch: target: {target.shape} reference: {reference.shape}"
-    
+
     return np.average((target - reference) ** 2)
