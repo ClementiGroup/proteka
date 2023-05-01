@@ -43,8 +43,26 @@ def test_basic_metric_run(get_two_ensembles):
     # ref_feat.add_ca_distances()
     ref_feat.add_rg()
 
-    print(target_ensemble.list_quantities())
-    print(ref_ensemble.list_quantities())
-
     eqm = EnsembleQualityMetrics()
     results = eqm(target_ensemble, ref_ensemble, "rg", "all")
+
+
+def test_valid_metrics_raises():
+    with pytest.raises(ValueError):
+        EnsembleQualityMetrics._check_metrics(["some_silly_metric"])
+
+
+def test_feature_intersection(get_two_ensembles):
+    target_ensemble, ref_ensemble = get_two_ensembles
+
+    target_feat = Featurizer(target_ensemble)
+    ref_feat = Featurizer(ref_ensemble)
+
+    target_feat.add_rg()
+    ref_feat.add_rg()
+    ref_feat.add_end2end_distance()
+
+    with pytest.warns(UserWarning):
+        feats = EnsembleQualityMetrics._check_features(
+            target_ensemble, ref_ensemble, ["rg", "end2end_distance"]
+        )

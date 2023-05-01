@@ -4,7 +4,7 @@ import warnings
 from abc import ABCMeta, abstractmethod
 from collections.abc import Iterable
 import numpy as np
-from typing import Union, Dict
+from typing import Union, Dict, List
 
 from .featurizer import Featurizer
 from ..dataset import Ensemble
@@ -127,6 +127,95 @@ class EnsembleQualityMetrics(IMetrics):
         self.compute(target, reference, features, metrics)
         return self.report()
 
+    @staticmethod
+    def _feature_contraction(
+        all_target_feats: List[str],
+        all_ref_feats: List[str],
+        features: List[str],
+    ) -> Iterable[str]:
+        """Contracts two feature sets to their intesection"""
+        all_target_feats, all_ref_feats, features = (
+            set(all_target_feats),
+            set(all_ref_feats),
+            set(features),
+        )
+        warnings.warn(
+            f"target Ensemble has {all_target_feats} as registered quantities, but"
+            f" reference ensemble has {all_ref_feats} as registered quantities,"
+            f" and {features} are the requested features. The smallest"
+            f" mutual subset of features will have their metrics computed"
+        )
+        features = list(
+            features.intersection(all_target_feats).intersection(all_ref_feats)
+        )
+        return features
+
+    @staticmethod
+    def _check_features(
+        target: Ensemble,
+        reference: Ensemble,
+        features: Union[Iterable[str], str] = "all",
+    ) -> List[str]:
+        """Checks feature inputs for `compute()`"""
+        # Feature checks
+        all_target_feats = target.list_quantities()
+        all_ref_feats = reference.list_quantities()
+
+        if features == "all" or isinstance(features, Iterable):
+            # Cases where "all" is chosen and target and ref have different feature sets
+            if features == "all":
+                # if "all" take all reference features
+                features = list(all_target_feats)
+            if not all(
+                [
+                    (f in all_target_feats and f in all_ref_feats)
+                    for f in features
+                ]
+            ):
+                features = EnsembleQualityMetrics._feature_contraction(
+                    all_target_feats, all_ref_feats, features
+                )
+        elif isinstance(features, str):
+            # Case where single feature is specified
+            if feature not in all_target_feats and feature not in all_ref_feats:
+                raise ValueError(
+                    f"feature {feature} is not registered in target nor reference ensemble."
+                )
+            else:
+                features = [features]
+
+        # Unavailable feature filter
+        skip_idx = []
+        for idx, feature in enumerate(features):
+            if feature in EnsembleQualityMetrics.excluded_quantities:
+                warnings.warn(
+                    f"feature {feature} is not available for metric comparison, and it will be skipped."
+                )
+                skip_idx.append(idx)
+        features = [f for idx, f in enumerate(features) if idx not in skip_idx]
+        return features
+
+    @staticmethod
+    def _check_metrics(
+        metrics: Union[Iterable[str], str] = "all",
+    ) -> Iterable[str]:
+        """Checks to make sure requested metrics are valid"""
+        valid_metrics = list(EnsembleQualityMetrics.metric_compute_map.keys())
+        if metrics == "all":
+            metrics = valid_metrics
+        elif isinstance(metrics, str):
+            metrics = [metrics]
+        else:
+            raise ValueError(
+                f"metrics {metrics} not in '['all', str, Iterable[str]']'"
+            )
+
+        if not all([m in valid_metrics for m in metrics]):
+            raise ValueError(
+                f"Requested metrics '{metrics}' not compatible with valid metrics '{valid_metrics}'"
+            )
+        return metrics
+
     def compute(
         self,
         target: Ensemble,
@@ -149,80 +238,10 @@ class EnsembleQualityMetrics(IMetrics):
         metrics: Iterable of strings or str
             The metrics to compute. If "all" is passed, all available metrics will be computed
         """
-        # Feature checks
-        all_target_feats = set(target.list_quantities())
-        all_ref_feats = set(reference.list_quantities())
-
-        if features == "all":
-            features = list(all_target_feats)
-            if not all(
-                [
-                    (f in all_target_feats and f in all_ref_feats)
-                    for f in features
-                ]
-            ):
-                warnings.warn(
-                    "target Ensemble has {} as registered quantities, but reference ensemble has {} as registered quantities, and {} are the requested features. The smallest mutual subset of features will have their metrics computed".format(
-                        all_target_feats, all_ref_feats, features
-                    )
-                )
-                features = list(
-                    features.intersection(all_target_feats).intersection(
-                        all_ref_feats
-                    )
-                )
-        elif isinstance(features, Iterable):
-            if not all(
-                [
-                    (f in all_target_feats and f in all_ref_feats)
-                    for f in features
-                ]
-            ):
-                warnings.warn(
-                    "target Ensemble has {} as registered quantities, but reference ensemble has {} as registered quantities, and {} are the requested features. The smallest mutual subset of features will have their metrics computed".format(
-                        all_target_feats, all_ref_feats, set(features)
-                    )
-                )
-                features = list(
-                    set(features)
-                    .intersection(all_target_feats)
-                    .intersection(all_ref_feats)
-                )
-            else:
-                features = reference.list_quantities
-        elif isinstance(features, str):
-            if feature not in all_target_feats and feature not in all_ref_feats:
-                raise ValueError(
-                    "feature {} is not registered in target nor reference ensemble.".format(
-                        feature
-                    )
-                )
-            else:
-                features = [features]
-
-        for feat in features:
-            if feat in EnsembleQualityMetrics.excluded_quantities:
-                warnings.warn(
-                    "feature {} is not available for metric comparison, and it will be skipped.".format(
-                        feat
-                    )
-                )
-                features.pop(feat)
-
-        # Metric checks
-        if metrics == "all":
-            metrics = self.metric_compute_map.keys()
-        elif isinstance(metrics, Iterable):
-            assert all(
-                [
-                    m in EnsembleQualityMetrics.metric_compute_map.keys()
-                    for m in metrics
-                ]
-            )
-        elif isinstance(metrics, str):
-            assert metrics in EnsembleQualityMetrics.metric_compute_map.keys()
-            metrics = [metrics]
-
+        features = EnsembleQualityMetrics._check_features(
+            target, reference, features
+        )
+        metrics = EnsembleQualityMetrics._check_metrics(metrics)
         for feature in features:
             for metric in metrics:
                 param_key = f"{feature}_{metric}"
