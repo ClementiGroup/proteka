@@ -5,35 +5,41 @@ from scipy.special import rel_entr
 Module contains basic feature-agnostic metrics estimators
 """
 
-__all__ = ["kl_divergence", "js_divergence", "mse"]
+__all__ = [
+    "mse",
+    "kl_divergence",
+    "js_divergence",
+    "vector_kl_divergence",
+    "vector_js_divergence",
+]
 
 
 def kl_divergence(
     target: np.ndarray, reference: np.ndarray, threshold: float = 1e-8
 ) -> float:
     r"""
-     Compute Kullback-Leibler divergence between specified data sets.
+    Compute Kullback-Leibler divergence between specified data sets.
 
-     .. math :: D_{KL} = \sum_i p_i log (\frac{p_i}{q_i}), p_i, q_i \ne 0
+    .. math :: D_{KL} = \sum_i p_i log (\frac{p_i}{q_i}), p_i, q_i \ne 0
 
-     Here p corresponds to the reference (True) distribution, q corresponds to the target distribution.
-     If  p_i or q_i <= `threshold`, bin i is excluded from the summation.
-     The algorithm is the same as one used in CPPTRAJ (https://amber-md.github.io/cpptraj/CPPTRAJ.xhtml)
+    Here p corresponds to the reference (True) distribution, q corresponds
+    to the target distribution. If  p_i or q_i <= `threshold`, bin i is excluded
+    from the summation. The algorithm is the same as one used in CPPTRAJ
+    (https://amber-md.github.io/cpptraj/CPPTRAJ.xhtml)
 
+    Parameters
+    -----------
 
-     Parameters
-     -----------
+    target, reference : np.ndarray
+                Target and reference probability distributions (histograms).
+                Should have the same shape
 
-     target, reference : np.ndarray
-                             Target and reference probability distributions (histograms).
-                             Should have the same shape
+    threshold : float, 1e-8
+        Bin is not included in the summation if its value is less than the threshold
 
-     threshold : float, 1e-8
-         Bin is not included in the summation if its value is less than the threshold
-
-     Returns : float
-     ------
-    KL divergence of the target from the reference
+    Returns : float
+    ------
+        KL divergence of the target from the reference
 
     """
     assert (
@@ -64,15 +70,15 @@ def js_divergence(
     -----------
 
     target, reference : np.typing.ArrayLike
-                            Target and reference probability distributions (histograms).
-                            Should have the same shape
+                Target and reference probability distributions (histograms).
+                Should have the same shape
 
     threshold : float, 1e-8
-         Bin is not included in the summation if its value is less than the threshold
+        Bin is not included in the summation if its value is less than the threshold
 
     Returns : float
     ------
-    JS divergence of the target from the reference
+        JS divergence of the target from the reference
     """
     target_normalized = target / np.sum(target)
     reference_normalized = reference / np.sum(reference)
@@ -111,3 +117,66 @@ def mse(target: np.ndarray, reference: np.ndarray) -> float:
     ), f"Dimension mismatch: target: {target.shape} reference: {reference.shape}"
 
     return np.average((target - reference) ** 2)
+
+def vector_kl_divergence(
+    target: np.ndarray, reference: np.ndarray, threshold: float = 1e-8
+) -> np.ndarray:
+    """
+    Compute independent KL divergences between specified vector data sets.
+
+    Parameters
+    -----------
+
+    target, reference : np.typing.ArrayLike
+                Target and reference probability distributions (histograms).
+                Should have the same shape
+
+    threshold : float, 1e-8
+        Bin is not included in the summation if its value is less than the threshold
+
+    Returns : np.ndarray
+    ------
+        Vector KL divergence of the target from the reference
+    """
+    assert target.shape == reference.shape
+    assert len(target.shape) > 1
+    num_feat = target.shape[-1]
+    kld = np.zeros(num_feat)
+    # slow implementation I know
+    for i in range(num_feat):
+        kld[i] = kl_divergence(
+            target[:, i], reference[:, i], threshold=threshold
+        )
+    return kld
+
+
+def vector_js_divergence(
+    target: np.ndarray, reference: np.ndarray, threshold: float = 1e-8
+) -> np.ndarray:
+    """
+    Compute independent JS divergences between specified vector data sets.
+
+    Parameters
+    -----------
+
+    target, reference : np.typing.ArrayLike
+                Target and reference probability distributions (histograms).
+                Should have the same shape
+
+    threshold : float, 1e-8
+        Bin is not included in the summation if its value is less than the threshold
+
+    Returns : np.ndarray
+    ------
+        Vector JS divergence of the target from the reference
+    """
+    assert target.shape == reference.shape
+    assert len(target.shape) > 1
+    num_feat = target.shape[-1]
+    jsd = np.zeros(num_feat)
+    # slow implementation I know
+    for i in range(num_feat):
+        jsd[i] = js_divergence(
+            target[:, i], reference[:, i], threshold=threshold
+        )
+    return jsd
