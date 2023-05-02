@@ -112,6 +112,7 @@ class EnsembleQualityMetrics(IMetrics):
         super().__init__()
 
         self.metrics_params = metrics_params
+        self.metrics_dict = {}
 
     def __call__(
         self,
@@ -251,6 +252,7 @@ class EnsembleQualityMetrics(IMetrics):
                 result = EnsembleQualityMetrics.compute_metric(
                     target, reference, feature, metric, **params
                 )
+                self.results.update(self.metrics_dict[metric], result)
         return
 
     @staticmethod
