@@ -122,6 +122,7 @@ class EnsembleQualityMetrics(IMetrics):
     ):
         super().__init__()
         self.metrics_params = metrics_params
+        self.metrics_dict = {}
 
     def __call__(
         self,
