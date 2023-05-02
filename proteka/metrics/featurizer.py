@@ -235,7 +235,7 @@ class Featurizer:
             ]
         )
         trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
-        rmsd = md.rmsd(trajectory, reference, **rmsd_kwargs)
+        rmsd = md.rmsd(trajectory, reference_structure, **rmsd_kwargs)
         quantity = Quantity(rmsd, "nanometers", metadata={"feature": "rmsd"})
         self.ensemble.set_quantity("rmsd", quantity)
         return
