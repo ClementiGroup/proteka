@@ -19,7 +19,7 @@ from .utils import (
     histogram_features,
     histogram_vector_features,
     histogram_features2d,
-    get_tica_features
+    get_tica_features,
 )
 
 __all__ = ["StructuralIntegrityMetrics", "EnsembleQualityMetrics"]
@@ -261,6 +261,7 @@ class EnsembleQualityMetrics(IMetrics):
                 result = EnsembleQualityMetrics.compute_metric(
                     target, reference, feature, metric, **params
                 )
+                self.results.update(self.metrics_dict[metric], result)
         return
 
     @staticmethod
@@ -273,7 +274,8 @@ class EnsembleQualityMetrics(IMetrics):
         **kwargs,
     ) -> Dict:
         """Computes the specified metric between the target and reference ensembles for the feature given as input.
-        If the input feature is 'tica' the computation is done consistently with what was done before"""
+        If the input feature is 'tica' the computation is done consistently with what was done before
+        """
 
         if metric not in [
             "kl_div",
@@ -314,4 +316,3 @@ class EnsembleQualityMetrics(IMetrics):
             hist_target, hist_ref
         )
         return {f"{feature}, {metric}": result}
-

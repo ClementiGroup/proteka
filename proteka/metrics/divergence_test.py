@@ -32,6 +32,7 @@ def manual_js_div(h1, h2):
     print(jsd)
     return jsd
 
+
 scaling = 5
 
 target_histogram1 = np.array([0.1, 0.2, 0.7, 0.0])
@@ -46,7 +47,7 @@ reference_jsd1 = manual_js_div(target_histogram1, reference_histogram1)
 reference_kld2 = manual_kl_div(target_histogram2, reference_histogram2)
 reference_jsd2 = manual_js_div(target_histogram2, reference_histogram2)
 
-reference_mse1 = np.average((target_histogram1 - reference_histogram1)**2)
+reference_mse1 = np.average((target_histogram1 - reference_histogram1) ** 2)
 
 ref_vector_hist = np.stack([reference_histogram1, reference_histogram2]).T
 target_vector_hist = np.stack([target_histogram1, target_histogram2]).T
@@ -102,7 +103,9 @@ def test_mse():
     """
     Test basic functionality
     """
-    assert np.isclose(mse(target_histogram1, reference_histogram1), reference_mse1)
+    assert np.isclose(
+        mse(target_histogram1, reference_histogram1), reference_mse1
+    )
 
 
 def test_mse2d():
@@ -110,7 +113,9 @@ def test_mse2d():
     Test basic functionality
     """
     assert np.isclose(
-        mse(target_histogram1.reshape(2, 2), reference_histogram1.reshape(2, 2)),
+        mse(
+            target_histogram1.reshape(2, 2), reference_histogram1.reshape(2, 2)
+        ),
         reference_mse1,
     )
 
@@ -134,6 +139,7 @@ def test_mse_shapes_match():
     """
     with pytest.raises(AssertionError):
         mse(target_histogram1[1::], reference_histogram1)
+
 
 def test_js_divergence():
     """

@@ -118,6 +118,7 @@ def mse(target: np.ndarray, reference: np.ndarray) -> float:
 
     return np.average((target - reference) ** 2)
 
+
 def vector_kl_divergence(
     target: np.ndarray, reference: np.ndarray, threshold: float = 1e-8
 ) -> np.ndarray:
