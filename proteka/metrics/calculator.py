@@ -252,7 +252,7 @@ class EnsembleQualityMetrics(IMetrics):
                 result = EnsembleQualityMetrics.compute_metric(
                     target, reference, feature, metric, **params
                 )
-                self.results.update(self.metrics_dict[metric], result)
+                self.results.update(result)
         return
 
     @staticmethod

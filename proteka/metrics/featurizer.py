@@ -5,6 +5,7 @@ import numpy as np
 import mdtraj as md
 from ..dataset import Ensemble
 from ..quantity import Quantity
+from typing import Optional, Dict
 
 __all__ = ["Featurizer"]
 
@@ -191,15 +192,22 @@ class Featurizer:
     def add_rmsd(
         self,
         reference: md.Trajectory = None,
-        frame: int = 0,
-        atom_indices: Iterable[int] = None,
+        rmsd_kwargs: Optional[Dict] = None,
     ) -> Quantity:
         """Get RMSD of a subset of atoms
         reference: Reference mdtraj.Trajectory object
         Wrapper of mdtraj.rmsd
         """
+        if rmsd_kwargs == None:
+            rmsd_kwargs = {}
+        assert all(
+            [
+                k in ["atom_indices", "frame", "parallel", "precentered"]
+                for k in rmsd_kwargs.keys()
+            ]
+        )
         trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
-        rmsd = md.rmsd(trajectory, reference, frame, atom_indices=atom_indices)
+        rmsd = md.rmsd(trajectory, reference, **rmsd_kwargs)
         quantity = Quantity(rmsd, "nanometers", metadata={"feature": "rmsd"})
         self.ensemble.set_quantity("rmsd", quantity)
         return
