@@ -12,8 +12,7 @@ __all__ = ["Featurizer"]
 
 
 class Featurizer:
-    """Extract features from an Ensemble entity and
-    return them as Quantity objects"""
+    """Class for computing features from Ensembles"""
 
     simple_dssp_lookup = {
         "NA": 0,
@@ -37,25 +36,26 @@ class Featurizer:
     def __init__(self, ensemble: Ensemble):
         self.ensemble = ensemble
 
-    def validate_c_alpha(self) -> bool:
+    @staticmethod
+    def validate_c_alpha(ensemble: Ensemble) -> bool:
         """Check if C-alpha-based metrics can be computed"""
-        ca_atoms = self.ensemble.top.select("name CA")
+        ca_atoms = ensemble.top.select("name CA")
         # Should have at least 2 CA atoms in total to compute CA-based statistics
         assert len(ca_atoms) > 1, "Number of CA atoms is less than 2"
 
         # Should have one CA atom per each residue
         assert (
-            len(ca_atoms) == self.ensemble.top.n_residues
+            len(ca_atoms) == ensemble.top.n_residues
         ), "Number of CA atoms does not match the number of residues"
 
         # Should have only one chain
-        if self.ensemble.top.n_chains > 1:
+        if ensemble.top.n_chains > 1:
             raise NotImplementedError(
                 "More than one chain is not supported yet"
             )
 
         # Should have no breaks in chain (i.e. no missing residues):
-        for chain in self.ensemble.top.chains:
+        for chain in ensemble.top.chains:
             assert (
                 chain.n_residues
                 == chain.residue(chain.n_residues - 1).resSeq
@@ -104,10 +104,10 @@ class Featurizer:
                 consecutives.append(atom_list)
         return consecutives
 
-    def add(self, feature: str, **kwargs):
+    def add(self, ensemble: Ensemble, feature: str, **kwargs):
         """Add a new feature to the Ensemble object"""
         if hasattr(self, "add_" + feature):
-            getattr(self, "add_" + feature)(**kwargs)
+            getattr(self, "add_" + feature)(ensemble, **kwargs)
         else:
             allowed_features = [
                 attr for attr in dir(self) if attr.startswith("add_")
@@ -115,26 +115,24 @@ class Featurizer:
             raise ValueError(
                 f"Feature {feature} is not supported. Supported features are: {allowed_features}"
             )
-        return
 
-    def add_ca_bonds(self):
+    def add_ca_bonds(self, ensemble: Ensemble):
         """
-        Returns a Quantity object that contains length of pseudobonds
+        Create a Quantity object that contains length of pseudobonds
         between consecutive CA atoms.
         """
-        trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
-        self.validate_c_alpha()
+        trajectory = ensemble.get_all_in_one_mdtraj_trj()
+        self.validate_c_alpha(ensemble)
 
         # Get the pairs of consecutive CA atoms
-        ca_pairs = self._get_consecutive_ca(self.ensemble.top, order=2)
+        ca_pairs = self._get_consecutive_ca(ensemble.top, order=2)
         ca_bonds = md.compute_distances(trajectory, ca_pairs, periodic=False)
         quantity = Quantity(
             ca_bonds, "nanometers", metadata={"feature": "ca_bonds"}
         )
-        self.ensemble.set_quantity("ca_bonds", quantity)
-        return
+        ensemble.set_quantity("ca_bonds", quantity)
 
-    def add_ca_distances(self, offset: int = 1):
+    def add_ca_distances(self, ensemble: Ensemble, offset: int = 1):
         """Get distances between CA atoms.
 
         Parameters:
@@ -145,9 +143,9 @@ class Featurizer:
             then all the distances are included.
 
         """
-        trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
+        trajectory = ensemble.get_all_in_one_mdtraj_trj()
         ca_atoms = trajectory.top.select("name CA")
-        self.validate_c_alpha()
+        self.validate_c_alpha(ensemble)
 
         # Get indices of pairs of atoms
         ind1, ind2 = np.triu_indices(len(ca_atoms), offset + 1)
@@ -160,54 +158,50 @@ class Featurizer:
             "nanometers",
             metadata={"feature": "ca_distances", "offset": offset},
         )
-        self.ensemble.set_quantity("ca_distances", quantity)
+        ensemble.set_quantity("ca_distances", quantity)
 
-    def add_ca_angles(self):
+    def add_ca_angles(self, ensemble: Ensemble):
         """Get angles between consecutive CA atoms"""
-        trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
-        self.validate_c_alpha()
+        trajectory = ensemble.get_all_in_one_mdtraj_trj()
+        self.validate_c_alpha(ensemble)
 
         # Get the triplets of consecutive CA atoms
-        ca_triplets = self._get_consecutive_ca(self.ensemble.top, order=3)
+        ca_triplets = self._get_consecutive_ca(ensemble.top, order=3)
         ca_angles = md.compute_angles(trajectory, ca_triplets, periodic=False)
         quantity = Quantity(
             ca_angles,
             "radians",
             metadata={"feature": "ca_angles"},
         )
-        self.ensemble.set_quantity("ca_angles", quantity)
-        return
+        ensemble.set_quantity("ca_angles", quantity)
 
-    def add_ca_dihedrals(self):
+    def add_ca_dihedrals(self, ensemble: Ensemble):
         """Get dihedral angles between consecutive CA atoms"""
-        self.validate_c_alpha()
-        trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
+        self.validate_c_alpha(ensemble)
+        trajectory = ensemble.get_all_in_one_mdtraj_trj()
         # Get the quadruplets of consecutive CA atoms
-        ca_quadruplets = self._get_consecutive_ca(self.ensemble.top, order=4)
+        ca_quadruplets = self._get_consecutive_ca(ensemble.top, order=4)
         ca_dihedrals = md.compute_dihedrals(
             trajectory, ca_quadruplets, periodic=False
         )
         quantity = Quantity(
             ca_dihedrals, "radians", metadata={"feature": "ca_dihedrals"}
         )
-        self.ensemble.set_quantity("ca_dihedrals", quantity)
-        return
+        ensemble.set_quantity("ca_dihedrals", quantity)
 
-    def add_phi(self):
+    def add_phi(self, ensemble: Ensemble):
         """Get protein backbone phi torsions"""
-        trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
+        trajectory = ensemble.get_all_in_one_mdtraj_trj()
         _, phi = md.compute_phi(trajectory)
         quantity = Quantity(phi, "radians", metadata={"feature": "phi"})
-        self.ensemble.set_quantity("phi", quantity)
-        return
+        ensemble.set_quantity("phi", quantity)
 
-    def add_psi(self):
+    def add_psi(self, ensemble: Ensemble):
         """Get protein backbone psi torsions"""
-        trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
+        trajectory = ensemble.get_all_in_one_mdtraj_trj()
         _, psi = md.compute_psi(trajectory)
         quantity = Quantity(psi, "radians", metadata={"feature": "psi"})
-        self.ensemble.set_quantity("psi", quantity)
-        return
+        ensemble.set_quantity("psi", quantity)
 
     def add_rmsd(self, reference_structure: md.Trajectory, **kwargs):
         """Get RMSD of a subset of atoms
@@ -228,25 +222,22 @@ class Featurizer:
         trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
         rmsd = md.rmsd(trajectory, reference_structure, **kwargs)
         quantity = Quantity(rmsd, "nanometers", metadata={"feature": "rmsd"})
-        self.ensemble.set_quantity("rmsd", quantity)
-        return
+        ensemble.set_quantity("rmsd", quantity)
 
-    def add_rg(self):
+    def add_rg(self, ensemble: Ensemble):
         """Get radius of gyration for each structure in an ensemble"""
-        trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
+        trajectory = ensemble.get_all_in_one_mdtraj_trj()
         rg = md.compute_rg(trajectory)
         quantity = Quantity(rg, "nanometers", metadata={"feature": "rg"})
-        self.ensemble.set_quantity("rg", quantity)
-        return
+        ensemble.set_quantity("rg", quantity)
 
-    def add_end2end_distance(self):
+    def add_end2end_distance(self, ensemble: Ensemble):
         """Get distance between CA atoms of the first and last residue in the protein
         for each structure in the ensemble
         """
-        self.validate_c_alpha()
-        trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
+        self.validate_c_alpha(ensemble)
+        trajectory = ensemble.get_all_in_one_mdtraj_trj()
         ca_atoms = trajectory.top.select("name CA")
-
         # Get the pair of the first and last CA atoms
         ca_pair = [[ca_atoms[0], ca_atoms[-1]]]
         distance = md.compute_distances(trajectory, ca_pair, periodic=False)
@@ -255,8 +246,8 @@ class Featurizer:
             "nanometers",
             metadata={"feature": "end2end_distance"},
         )
-        self.ensemble.set_quantity("end2end_distance", quantity)
-        return
+        ensemble.set_quantity("end2end_distance", quantity)
+
 
     def add_dssp(self, simplified: bool = True, digitize: bool = False):
         """Adds DSSP secondary codes to each amino acid. Requires high backbone resolution
@@ -397,6 +388,6 @@ class Featurizer:
         if hasattr(ensemble, feature) and (not recompute):
             return getattr(ensemble, feature)
         else:
-            featurizer = Featurizer(ensemble)
-            featurizer.add(feature, **kwargs)
+            featurizer = Featurizer()
+            featurizer.add(ensemble, feature, **kwargs)
             return getattr(ensemble, feature)
