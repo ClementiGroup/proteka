@@ -1,14 +1,128 @@
 """Featurizer takes a proteka.dataset.Ensemble and and extract features from it
     """
+from abc import ABC, abstractmethod
 from collections.abc import Iterable
 import numpy as np
 import mdtraj as md
+from typing import Dict
 from ..dataset import Ensemble
 from ..quantity import Quantity
 from typing import Callable, Dict, List, Optional
 
 
-__all__ = ["Featurizer"]
+__all__ = ["Featurizer", "Transform", "TICATransform"]
+
+
+class Transform(ABC):
+    """Abstract transformer class that defines a transformation of the
+    data. The class should be serializable, so it can be stored in Ensemble
+    """
+
+    @abstractmethod
+    def transform(self, Ensemble):
+        """Transform ensemble into a new set of features.
+        The result should be returned as a numpy array
+        """
+
+    @abstractmethod
+    def serialize(self):
+        """
+        Serialize object as a json string
+        """
+
+    @abstractmethod
+    def deserialize(self, string):
+        """
+        Instantiate Transformer from a string
+        """
+
+
+class TICATransform(Transform):
+
+    """Get TICA transform of the data.
+    A feature vector X is transformed as
+    (X - bias)@transform_matrix
+
+    Parameters
+    ----------
+    Transformer : _type_
+        _description_
+    """
+
+    def __init__(
+        self,
+        features: Dict,
+        bias=None,
+        transform_matrix=None,
+        estimation_params=None,
+    ):
+        """
+
+        Parameters
+        ----------
+        features : Dictionary
+            Dictionary of features to be used for TICA.
+            Each key is a string representing feature name and each value
+            is a dictionary of parameters used to compute corresponding feature
+            (see Featurizer.get_feature for details)
+        bias : _type_
+            _description_
+        transform_matrix : _type_
+            _description_
+        """
+        self.features = features
+        self.bias = bias
+        self.transform_matrix = transform_matrix
+        self.estimation_params = estimation_params
+
+    def fit_from_data(self, ensemble: Ensemble):
+        """
+        Fit TICA model from data, using Deeptime library
+        """
+        from deeptime.decomposition import TICA
+
+        features = []
+        for feature, params in self.features.items():
+            features.append(Featurizer.get_feature(ensemble, feature, **params))
+        features = np.concatenate(features, axis=1)
+        estimator = TICA(**self.estimation_params)
+        # TO DO: feat features for different trajectories separately
+        estimator.fit(features)
+        model = estimator.fetch_model()
+
+        # Set values that are required for further transformation
+        self.bias = model.instantaneous_obs.obs1.mean
+        self.transform_matrix = model.instantaneous_obs.obs1.sqrt_inv_cov
+
+    def transform(self, ensemble: Ensemble) -> np.ndarray:
+        """
+        Extract TICA features from ensemble
+        """
+        if self.transform_matrix is None or self.bias is None:
+            self.fit_from_data(ensemble)
+        features = []
+        for feature, params in self.features.items():
+            features.append(Featurizer.get_feature(ensemble, feature, **params))
+        features = np.concatenate(features, axis=1)
+        return (features - self.bias) @ self.transform_matrix
+    
+    def serialize(self):
+        """
+        Serialize object as a json string
+        """
+        raise NotImplementedError
+    
+    def deserialize(self, string):
+        """
+        Instantiate Transformer from a string
+        """
+        raise NotImplementedError
+    
+    def from_hdf5(self, h5file):
+        """
+        Instantiate Transformer from a hdf5 file
+        """
+        raise NotImplementedError
 
 
 class Featurizer:
@@ -248,6 +362,14 @@ class Featurizer:
         )
         ensemble.set_quantity("end2end_distance", quantity)
 
+    def add_tica(self, ensemble: Ensemble, transform: TICATransform):
+        tica_coordinates = transform.transform(ensemble)
+        quantity = Quantity(
+            tica_coordinates,
+            "mixed",
+            metadata={"feature": "tica", "transform": transform},
+        )
+        ensemble.set_quantity("tica", quantity)
 
     def add_dssp(self, simplified: bool = True, digitize: bool = False):
         """Adds DSSP secondary codes to each amino acid. Requires high backbone resolution
