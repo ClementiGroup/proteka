@@ -129,7 +129,7 @@ class EnsembleQualityMetrics(IMetrics):
         ]
     )
 
-    scalar_features = set(["rg", "all_ca_distances", "rmsd"])
+    scalar_features = set(["rg", "ca_distances", "rmsd", "end2end_distance"])
     vector_features = set(["local_contact_number", "dssp"])
 
     def __init__(
@@ -310,12 +310,12 @@ class EnsembleQualityMetrics(IMetrics):
             reference_feat = Featurizer.get_feature(reference, feature)
 
         if feature in EnsembleQualityMetrics.scalar_features:
-            metric_computer = EnsembleQualityMetrics.scalar_metrics[feature]
+            metric_computer = EnsembleQualityMetrics.scalar_metrics[metric]
             hist_target, hist_ref = histogram_features(
                 target_feat, reference_feat, bins=bins
             )
         elif feature in EnsembleQualityMetrics.vector_features:
-            metric_computer = EnsembleQualityMetrics.vector_metrics[feature]
+            metric_computer = EnsembleQualityMetrics.vector_metrics[metric]
             hist_target, hist_ref = histogram_vector_features(
                 target_feat, reference_feat, bins=bins
             )
