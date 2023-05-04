@@ -89,8 +89,8 @@ def get_6_bead_frame():
 def histogram_features(
     target: np.ndarray,
     reference: np.ndarray,
-    reference_weights: np.ndarray = None,
     target_weights: np.ndarray = None,
+    reference_weights: np.ndarray = None,
     bins: Union[int, np.ndarray] = 100,
 ):
     """Take a two arrays, and compute vector histograms of target
