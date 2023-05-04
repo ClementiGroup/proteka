@@ -2,6 +2,8 @@
     """
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
+import json
+
 import numpy as np
 import mdtraj as md
 from typing import Dict
@@ -23,15 +25,14 @@ class Transform(ABC):
         """Transform ensemble into a new set of features.
         The result should be returned as a numpy array
         """
-
     @abstractmethod
-    def serialize(self):
+    def to_json(self):
         """
         Serialize object as a json string
         """
 
     @abstractmethod
-    def deserialize(self, string):
+    def from_json(self, string):
         """
         Instantiate Transformer from a string
         """
@@ -106,18 +107,46 @@ class TICATransform(Transform):
         features = np.concatenate(features, axis=1)
         return (features - self.bias) @ self.transform_matrix
     
-    def serialize(self):
+    def to_dict(self, arrays2list=True) -> Dict:
+        """Generate dictionary from the class instance
         """
-        Serialize object as a json string
+        if arrays2list:
+            bias = self.bias.tolist()
+            transform_matrix = self.transform_matrix.tolist()
+        else:
+            bias = self.bias
+            transform_matrix = self.transform_matrix
+        return {
+            "features": self.features,
+            "bias": bias,
+            "transform_matrix": transform_matrix,
+            "estimation_params": self.estimation_params,
+        }
+        
+    def to_json(self):
+        """Serialize transformer to json string
         """
-        raise NotImplementedError
+        return json.dumps(self.to_dict(arrays2list=True))
     
-    def deserialize(self, string):
+    @classmethod
+    def from_dict(cls, dict):
+        """Instantiate transformer from a dictionary
         """
-        Instantiate Transformer from a string
+        return cls(
+            features=dict["features"],
+            bias=np.array(dict["bias"]),
+            transform_matrix=np.array(dict["transform_matrix"]),
+            estimation_params=dict["estimation_params"],
+        )
+        
+    @classmethod
+    def from_json(cls, string) -> Transform:
         """
-        raise NotImplementedError
+        Instantiate Transformer from a json string
+        """
+        return cls.from_dict(json.loads(string))
     
+    @staticmethod
     def from_hdf5(self, h5file):
         """
         Instantiate Transformer from a hdf5 file
