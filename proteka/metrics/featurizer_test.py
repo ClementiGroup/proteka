@@ -74,11 +74,9 @@ def test_get_consecutive_ca(single_frame, order, result):
 
 def test_get_ca_bonds(grid_polymer):
     grid_size = 0.4
-    traj = generate_grid_polymer(n_frames=10, n_atoms=5, grid_size=grid_size)
-    ens = Ensemble("CAgrid", traj.top, Quantity(traj.xyz, "nm"))
     featurizer = Featurizer()
-    featurizer.add_ca_bonds(ens)
-    assert np.all(np.isclose(ens.ca_bonds, grid_size))
+    featurizer.add_ca_bonds(grid_polymer)
+    assert np.all(np.isclose(grid_polymer.ca_bonds, grid_size))
 
 
 def test_ca_bonds(single_frame):
