@@ -128,6 +128,15 @@ def test_tica(grid_polymer):
     tica_deeptime = dt.decomposition.TICA(lagtime=lagtime, dim=dim).fit_transform(input_features)
     for i in range(dim):
         assert np.all(np.isclose(tica_proteka[:,i], tica_deeptime[:,i]))
+        
+def test_feature_rewriting(grid_polymer):
+    """Check that if a feature is already in the ensemble, but has different parameters, it is 
+    rewritten"""
+    
+    distances = Featurizer.get_feature(grid_polymer, 'ca_distances', offset=1)
+    new_distances = Featurizer.get_feature(grid_polymer, 'ca_distances', offset=2)
+    assert distances.shape != new_distances.shape
+    
 
 def test_local_contact_number(get_CLN_frame):
     """Tests local contact number calculation"""
