@@ -3,7 +3,7 @@
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 import json
-
+import warnings
 import numpy as np
 import mdtraj as md
 from typing import Dict
@@ -536,9 +536,15 @@ class Featurizer:
             Target : str
             feature name
         """
-        if hasattr(ensemble, feature) and (not recompute):
-            return getattr(ensemble, feature)
+        if not hasattr(ensemble, feature):
+            recompute = True
         else:
+            # Need to check, that current feature has the same
+            # parameters as the requested one
+            for key, value in kwargs.items():
+                if not ensemble[feature].metadata.get(key) == value:
+                    recompute=True
+        if recompute:
             featurizer = Featurizer()
             featurizer.add(ensemble, feature, **kwargs)
-            return getattr(ensemble, feature)
+        return getattr(ensemble, feature)
