@@ -129,7 +129,9 @@ class EnsembleQualityMetrics(IMetrics):
         ]
     )
 
-    scalar_features = set(["rg", "ca_distances", "rmsd", "end2end_distance"])
+    scalar_features = set(
+        ["rg", "ca_distances", "rmsd", "end2end_distance", "tic1", "tic2"]
+    )
     vector_features = set(["local_contact_number", "dssp"])
 
     def __init__(
