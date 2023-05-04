@@ -94,13 +94,25 @@ class StructuralIntegrityMetrics(IMetrics):
 class EnsembleQualityMetrics(IMetrics):
     """Metrics to compare a target ensemble to the reference ensemble"""
 
-    metric_compute_map = {
+    metric_types = set(["kl_div", "js_div", "mse"])
+    scalar_metrics = {
         "kl_div": kl_divergence,
         "js_div": js_divergence,
         "mse": mse,
     }
-
+    excluded_quantities = set(
+        [
+            "top",
+            "coords",
+            "time",
+            "forces",
+            "cell_angles",
+            "cell_lengths",
+            "trjs",
+        ]
+    )
     excluded_quantities = set(["top", "coords", "time", "forces"])
+    scalar_features = set(["rg", "ca_distances", "rmsd", "end2end_distance"])
 
     def __init__(
         self,
@@ -201,7 +213,7 @@ class EnsembleQualityMetrics(IMetrics):
         metrics: Union[Iterable[str], str] = "all",
     ) -> Iterable[str]:
         """Checks to make sure requested metrics are valid"""
-        valid_metrics = list(EnsembleQualityMetrics.metric_compute_map.keys())
+        valid_metrics = EnsembleQualityMetrics.metric_types
         if metrics == "all":
             metrics = valid_metrics
         elif isinstance(metrics, str):
@@ -288,11 +300,7 @@ class EnsembleQualityMetrics(IMetrics):
             and the value being the KL divergence between the reference and target ensembles on the selected feature.
         """
 
-        if metric not in [
-            "kl_div",
-            "js_div",
-            "mse",
-        ]:
+        if metric not in EnsembleQualityMetrics.metric_types:
             raise ValueError("Metric '{}' not defined.".format(metric))
 
         if feature == "tica":
@@ -304,26 +312,15 @@ class EnsembleQualityMetrics(IMetrics):
             target_feat = Featurizer.get_feature(target, feature)
             reference_feat = Featurizer.get_feature(reference, feature)
 
-        assert len(target_feat.shape) == len(
-            reference_feat.shape
-        ), f"mismatch in features dimensions : target has dimension {len(target_feat.shape)} and reference has dimension {len(reference_feat.shape)}"
-
-        if np.squeeze(target_feat).ndim == np.squeeze(reference_feat).ndim == 1:
+        if feature in EnsembleQualityMetrics.scalar_features:
+            metric_computer = EnsembleQualityMetrics.scalar_metrics[metric]
             hist_target, hist_ref = histogram_features(
                 target_feat, reference_feat, bins=bins
             )
-        elif (
-            np.squeeze(target_feat).ndim == np.squeeze(reference_feat).ndim == 2
-        ):
-            hist_target, hist_ref = histogram_features2d(
-                target_feat, reference_feat, bins=bins
-            )
         else:
-            raise NotImplementedError(
-                f"No histogram computation implemented for feature dimension {np.squeeze(target_feat).ndim}"
+            raise ValueError(
+                f"feature {feature} not registered in vector or scalar features"
             )
 
-        result = EnsembleQualityMetrics.metric_compute_map[metric](
-            hist_target, hist_ref
-        )
+        result = metric_computer(hist_target, hist_ref)
         return {f"{feature}, {metric}": result}
