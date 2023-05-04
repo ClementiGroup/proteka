@@ -182,7 +182,18 @@ class EnsembleQualityMetrics(IMetrics):
         all_target_feats = target.list_quantities()
         all_ref_feats = reference.list_quantities()
 
-        if features == "all" or isinstance(features, Iterable):
+        if isinstance(features, str):
+            # Case where single feature is specified
+            if (
+                features not in all_target_feats
+                and features not in all_ref_feats
+            ):
+                raise ValueError(
+                    f"feature {feature} is not registered in target nor reference ensemble."
+                )
+            else:
+                features = [features]
+        elif features == "all" or isinstance(features, Iterable):
             # Cases where "all" is chosen and target and ref have different feature sets
             if features == "all":
                 # if "all" take all reference features
@@ -196,14 +207,6 @@ class EnsembleQualityMetrics(IMetrics):
                 features = EnsembleQualityMetrics._feature_contraction(
                     all_target_feats, all_ref_feats, features
                 )
-        elif isinstance(features, str):
-            # Case where single feature is specified
-            if feature not in all_target_feats and feature not in all_ref_feats:
-                raise ValueError(
-                    f"feature {feature} is not registered in target nor reference ensemble."
-                )
-            else:
-                features = [features]
 
         # Unavailable feature filter
         skip_idx = []
