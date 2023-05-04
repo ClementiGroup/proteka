@@ -86,6 +86,46 @@ def get_6_bead_frame():
     return md.Trajectory(xyz, topology)
 
 
+def get_CA_CLN_trajectory() -> md.Trajectory:
+    """Get a random 10 CA atom CG model of CLN025 (nanometers),
+    with 100 noise-perturbed frames.
+    """
+    nframes = 100
+    coords = np.array(
+        [
+            [-14.7873, 5.3816147, 10.396086],
+            [-14.83472, 5.7334213, 10.234516],
+            [-14.715938, 5.8174625, 9.869332],
+            [-14.32896, 5.874776, 9.817286],
+            [-14.300314, 6.2079357, 9.648945],
+            [-14.044353, 6.4852165, 9.61912],
+            [-14.304504, 6.743461, 9.737951],
+            [-14.563983, 6.61594, 9.988833],
+            [-14.679219, 6.666923, 10.3409775],
+            [-14.751309, 6.301983, 10.4160034],
+        ]
+    )
+    noised_coords = coords + 0.01 * np.random.randn(nframes, 10, 3)
+    topology = md.Topology()
+    chain = topology.add_chain()
+    resnames = [
+        "TYR",
+        "TYR",
+        "ASP",
+        "PRO",
+        "GLU",
+        "THR",
+        "GLY",
+        "THR",
+        "TRP",
+        "TYR",
+    ]
+    for r in resnames:
+        residue = topology.add_residue(r, chain)
+        topology.add_atom("CA", md.element.carbon, residue)
+    return md.Trajectory(noised_coords, topology)
+
+
 def histogram_features(
     target: np.ndarray,
     reference: np.ndarray,
