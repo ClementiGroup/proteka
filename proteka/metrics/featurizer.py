@@ -321,7 +321,7 @@ class Featurizer:
         atom_type: str = "CA",
         min_res_dist: int = 3,
         cut: float = 1,
-        beta: float = 0.02,
+        beta: float = 50,
     ):
         """Adds PROTHON local contact number trajectory features for either CA
         or CB atoms. Based on the implementation in
