@@ -8,7 +8,7 @@ from proteka.dataset import Ensemble
 from proteka.quantity import Quantity
 from proteka.metrics import Featurizer
 from proteka.metrics import StructuralIntegrityMetrics, EnsembleQualityMetrics
-from proteka.metrics.utils import get_6_bead_frame, get_CA_CLN_trajectory
+from proteka.metrics.utils import get_6_bead_frame, get_CLN_trajectory
 
 
 @pytest.fixture
@@ -20,8 +20,8 @@ def single_frame():
 
 @pytest.fixture
 def get_two_ensembles():
-    ref_traj = get_CA_CLN_trajectory()
-    target_traj = get_CA_CLN_trajectory()
+    ref_traj = get_CLN_trajectory()
+    target_traj = get_CLN_trajectory()
     ref_ensemble = Ensemble.from_mdtraj_trj("ref", ref_traj)
     target_ensemble = Ensemble.from_mdtraj_trj("target", target_traj)
     return target_ensemble, ref_ensemble

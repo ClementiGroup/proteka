@@ -5,6 +5,7 @@ import numpy as np
 import pytest
 from scipy.spatial.distance import jensenshannon as js
 from proteka.metrics.divergence import (
+    mse,
     kl_divergence,
     js_divergence,
     vector_kl_divergence,
@@ -51,6 +52,8 @@ target_vector_hist = np.stack([target_histogram1, target_histogram2]).T
 
 ref_vector_kl = np.array([reference_kld1, reference_kld2])
 ref_vector_js = np.array([reference_jsd1, reference_jsd2])
+
+reference_mse1 = np.average((target_histogram1 - reference_histogram1) ** 2)
 
 
 def test_kl_divergence():
@@ -100,7 +103,9 @@ def test_mse():
     """
     Test basic functionality
     """
-    assert np.isclose(mse(target_histogram, reference_histogram), reference_mse)
+    assert np.isclose(
+        mse(target_histogram1, reference_histogram1), reference_mse1
+    )
 
 
 def test_mse2d():
@@ -108,8 +113,10 @@ def test_mse2d():
     Test basic functionality
     """
     assert np.isclose(
-        mse(target_histogram.reshape(2, 2), reference_histogram.reshape(2, 2)),
-        reference_mse,
+        mse(
+            target_histogram1.reshape(2, 2), reference_histogram1.reshape(2, 2)
+        ),
+        reference_mse1,
     )
 
 
@@ -119,10 +126,10 @@ def test_mse_normalized():
     """
     assert np.isclose(
         mse(
-            target_histogram * scaling,
-            reference_histogram * scaling,
+            target_histogram1 * scaling,
+            reference_histogram1 * scaling,
         ),
-        scaling**2 * reference_mse,
+        scaling**2 * reference_mse1,
     )
 
 
@@ -131,7 +138,7 @@ def test_mse_shapes_match():
     Test behavior when input shape mismatch
     """
     with pytest.raises(AssertionError):
-        mse(target_histogram[1::], reference_histogram)
+        mse(target_histogram1[1::], reference_histogram1)
 
 
 def test_js_divergence():
