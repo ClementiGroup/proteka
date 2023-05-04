@@ -209,28 +209,24 @@ class Featurizer:
         self.ensemble.set_quantity("psi", quantity)
         return
 
-    def add_rmsd(
-        self,
-        rmsd_kwargs: Optional[Dict] = None,
-    ):
+    def add_rmsd(self, reference_structure: md.Trajectory, **kwargs):
         """Get RMSD of a subset of atoms
         reference: Reference mdtraj.Trajectory object
         Wrapper of mdtraj.rmsd
 
         Parameters
         ----------
-        rmsd_kwargs:
-            Dictionary of kwarg options for `mdtraj.rmsd()`,
+        reference_structure:
+            Reference structure from which RMSD calculations are made
+        kwargs:
+            kwarg options for `mdtraj.rmsd()`,
             for example `{"frame": 0, "atom_indices": np.arange(10), "parallel": True,
             "precentered": False}`. See
             help(mdtraj.rmsd) for more information.
         """
 
-        if rmsd_kwargs == None:
-            rmsd_kwargs = {}
-
         trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
-        rmsd = md.rmsd(trajectory, reference_structure, **rmsd_kwargs)
+        rmsd = md.rmsd(trajectory, reference_structure, **kwargs)
         quantity = Quantity(rmsd, "nanometers", metadata={"feature": "rmsd"})
         self.ensemble.set_quantity("rmsd", quantity)
         return
