@@ -211,7 +211,6 @@ class Featurizer:
 
     def add_rmsd(
         self,
-        reference_structure: md.Trajectory,
         rmsd_kwargs: Optional[Dict] = None,
     ):
         """Get RMSD of a subset of atoms
@@ -220,20 +219,13 @@ class Featurizer:
 
         Parameters
         ----------
-        reference_structure:
-            MDTraj single-frame Trajectory which serves as the
-            reference structure for RMSD calculations.
         rmsd_kwargs:
-            Dictionary of kwarg options for `mdtraj.rmsd()`. See
+            Dictionary of kwarg options for `mdtraj.rmsd()`,
+            for example `{"frame": 0, "atom_indices": np.arange(10), "parallel": True,
+            "precentered": False}`. See
             help(mdtraj.rmsd) for more information.
         """
 
-        # RMSD kwarg sanity checks
-        valid_rmsd_opts = set(
-            ["frame", "atom_indices", "parallel", "precentered"]
-        )
-        if rmsd_kwargs != None:
-            assert all([opt in valid_rmsd_opts for opt in rmsd_kwargs.keys()])
         if rmsd_kwargs == None:
             rmsd_kwargs = {}
 
