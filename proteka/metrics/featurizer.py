@@ -25,6 +25,7 @@ class Transform(ABC):
         """Transform ensemble into a new set of features.
         The result should be returned as a numpy array
         """
+
     @abstractmethod
     def to_json(self):
         """
@@ -106,10 +107,9 @@ class TICATransform(Transform):
             features.append(Featurizer.get_feature(ensemble, feature, **params))
         features = np.concatenate(features, axis=1)
         return (features - self.bias) @ self.transform_matrix
-    
+
     def to_dict(self, arrays2list=True) -> Dict:
-        """Generate dictionary from the class instance
-        """
+        """Generate dictionary from the class instance"""
         if arrays2list:
             bias = self.bias.tolist()
             transform_matrix = self.transform_matrix.tolist()
@@ -122,30 +122,28 @@ class TICATransform(Transform):
             "transform_matrix": transform_matrix,
             "estimation_params": self.estimation_params,
         }
-        
+
     def to_json(self):
-        """Serialize transformer to json string
-        """
+        """Serialize transformer to json string"""
         return json.dumps(self.to_dict(arrays2list=True))
-    
+
     @classmethod
     def from_dict(cls, dict):
-        """Instantiate transformer from a dictionary
-        """
+        """Instantiate transformer from a dictionary"""
         return cls(
             features=dict["features"],
             bias=np.array(dict["bias"]),
             transform_matrix=np.array(dict["transform_matrix"]),
             estimation_params=dict["estimation_params"],
         )
-        
+
     @classmethod
     def from_json(cls, string) -> Transform:
         """
         Instantiate Transformer from a json string
         """
         return cls.from_dict(json.loads(string))
-    
+
     @staticmethod
     def from_hdf5(self, h5file):
         """
@@ -543,7 +541,7 @@ class Featurizer:
             # parameters as the requested one
             for key, value in kwargs.items():
                 if not ensemble[feature].metadata.get(key) == value:
-                    recompute=True
+                    recompute = True
         if recompute:
             featurizer = Featurizer()
             featurizer.add(ensemble, feature, **kwargs)

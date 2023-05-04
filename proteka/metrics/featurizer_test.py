@@ -110,31 +110,43 @@ def test_ca_distances(single_frame):
 
 def test_tica(grid_polymer):
     """Test that tics are correctly calculated"""
-    features = {'ca_distances': {'offset':1},
-                'ca_angles': {},
-                'ca_dihedrals': {} ,
-                }
-    dim=3
-    lagtime=1
+    features = {
+        "ca_distances": {"offset": 1},
+        "ca_angles": {},
+        "ca_dihedrals": {},
+    }
+    dim = 3
+    lagtime = 1
     # Get TICA from the proteka featurizer
-    transform = TICATransform(features, estimation_params={'lagtime':lagtime, 'dim':dim})
-    tica_proteka = Featurizer.get_feature(grid_polymer, 'tica', transform=transform)
+    transform = TICATransform(
+        features, estimation_params={"lagtime": lagtime, "dim": dim}
+    )
+    tica_proteka = Featurizer.get_feature(
+        grid_polymer, "tica", transform=transform
+    )
     # Get TICA from deeptime
     input_features = []
     for feature, params in features.items():
-        input_features.append(Featurizer.get_feature(grid_polymer, feature, **params))
+        input_features.append(
+            Featurizer.get_feature(grid_polymer, feature, **params)
+        )
     input_features = np.concatenate(input_features, axis=1)
     print(input_features.shape)
-    tica_deeptime = dt.decomposition.TICA(lagtime=lagtime, dim=dim).fit_transform(input_features)
+    tica_deeptime = dt.decomposition.TICA(
+        lagtime=lagtime, dim=dim
+    ).fit_transform(input_features)
     for i in range(dim):
-        assert np.all(np.isclose(tica_proteka[:,i], tica_deeptime[:,i]))
-        
+        assert np.all(np.isclose(tica_proteka[:, i], tica_deeptime[:, i]))
+
+
 def test_feature_rewriting(grid_polymer):
-    """Check that if a feature is already in the ensemble, but has different parameters, it is 
+    """Check that if a feature is already in the ensemble, but has different parameters, it is
     rewritten"""
-    
-    distances = Featurizer.get_feature(grid_polymer, 'ca_distances', offset=1)
-    new_distances = Featurizer.get_feature(grid_polymer, 'ca_distances', offset=2)
+
+    distances = Featurizer.get_feature(grid_polymer, "ca_distances", offset=1)
+    new_distances = Featurizer.get_feature(
+        grid_polymer, "ca_distances", offset=2
+    )
     assert distances.shape != new_distances.shape
     
 

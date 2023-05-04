@@ -102,7 +102,7 @@ class StructuralIntegrityMetrics(IMetrics):
 class EnsembleQualityMetrics(IMetrics):
     """Metrics to compare a target ensemble to the reference ensemble"""
 
-    def __init__(self, metrics_params = None):
+    def __init__(self, metrics_params=None):
         super().__init__()
         self.metrics_dict = {
             "end2end_distance_kl_div": self.end2end_distance_kl_div,
@@ -262,7 +262,7 @@ class EnsembleQualityMetrics(IMetrics):
             # Here, the plan is to either load transformer from hdf5 file or
             # deserialize a json string
             raise NotImplementedError()
-        
+
         tica_reference = Featurizer.get_feature(
             reference, "tica", transform=transform
         )
