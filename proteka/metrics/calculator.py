@@ -5,11 +5,20 @@ from abc import ABCMeta, abstractmethod
 from collections.abc import Iterable
 import numpy as np
 from typing import Union, Dict, List
-
 from .featurizer import Featurizer
 from ..dataset import Ensemble
-from .divergence import kl_divergence, js_divergence, mse
-from .utils import histogram_features, histogram_features2d, get_tica_features
+from .divergence import (
+    mse,
+    kl_divergence,
+    js_divergence,
+    vector_kl_divergence,
+    vector_js_divergence,
+)
+from .utils import (
+    histogram_features,
+    histogram_vector_features,
+    histogram_features2d,
+)
 
 __all__ = ["StructuralIntegrityMetrics", "EnsembleQualityMetrics"]
 
@@ -62,7 +71,7 @@ class StructuralIntegrityMetrics(IMetrics):
         return
 
     @staticmethod
-    def ca_clashes(ensemble: Ensemble) -> dict:
+    def ca_clashes(ensemble: Ensemble) -> Dict[str, int]:
         """Compute total number of instances when there is a clash between CA atoms
         Clashes are defined as any 2 nonconsecutive CA atoms been closer than  0.4 nm
         """
@@ -72,7 +81,7 @@ class StructuralIntegrityMetrics(IMetrics):
         return {"N clashes": clashes.size}
 
     @staticmethod
-    def ca_pseudobonds(ensemble: Ensemble) -> dict:
+    def ca_pseudobonds(ensemble: Ensemble) -> Dict[str, float]:
         """Computes maximum and rms z-score for d_ca_ca bonds over ensemble.
         Z-score is defined as (d_ca_ca - mean(d_ca_ca)) / std(d_ca_ca)
         d_ca_ca and std(d_ca_ca) are parametrized based on analysis of the proteka
@@ -122,7 +131,6 @@ class EnsembleQualityMetrics(IMetrics):
         },
     ):
         super().__init__()
-
         self.metrics_params = metrics_params
         self.metrics_dict = {}
 
@@ -279,27 +287,22 @@ class EnsembleQualityMetrics(IMetrics):
         """Computes the specified metric between the target and reference ensembles for the feature given as input.
         If the input feature is 'tica' the computation is done consistently with what was done before
 
-        Parameters:
-        -----------
-        target: Ensemble
-            target ensemble
-        reference: Ensemble
-            reference ensemble to compare to
-        feature: str
-            name of the feature to compute the metric on.
-            can be any of the 1D-features from the Featurizer, names have to be consistent, or it can be 'tica'
-        metric: str
-            specifies which metric to calculate
-        bins: np.ndarray
-            Number of bins to create histrograms with. If np.ndarray, the bins are scattered according to these edges
-
-        Returns:
-        --------
-        Dict:
-            with the key corresponding to 'feature, KL divergence'
-            and the value being the KL divergence between the reference and target ensembles on the selected feature.
+        Parameters
+        ----------
+        target:
+            Target Ensemble
+        reference:
+            Reference Ensemble
+        feature:
+            Particular feature from the target and reference ensembles for computing the specified metric over
+        metric:
+            Particular metric to compare the specified feature from the target and reference ensembles
+        bins:
+            Specifies the mututal set of bins with which the feature from the target and reference ensembles will
+            be histogrammed. If `int` the e specified number of identical-width bins will be tiled uniformly over
+            the range given by the reference distribution. If `npy.ndarray`, the specified array of bins will be used
+            for both distributions.
         """
-
         if metric not in EnsembleQualityMetrics.metric_types:
             raise ValueError("Metric '{}' not defined.".format(metric))
 
