@@ -2,10 +2,11 @@ import numpy as np
 import mdtraj as md
 import pytest
 from itertools import combinations
+import deeptime as dt
 
 from proteka.dataset import Ensemble
 from proteka.quantity import Quantity
-from proteka.metrics import Featurizer
+from proteka.metrics import Featurizer, TICATransform
 from proteka.metrics.utils import (
     generate_grid_polymer,
     get_6_bead_frame,
@@ -106,6 +107,27 @@ def test_ca_distances(single_frame):
     )
     assert np.all(np.isclose(distances, reference_distances))
 
+
+def test_tica(grid_polymer):
+    """Test that tics are correctly calculated"""
+    features = {'ca_distances': {'offset':1},
+                'ca_angles': {},
+                'ca_dihedrals': {} ,
+                }
+    dim=3
+    lagtime=1
+    # Get TICA from the proteka featurizer
+    transform = TICATransform(features, estimation_params={'lagtime':lagtime, 'dim':dim})
+    tica_proteka = Featurizer.get_feature(grid_polymer, 'tica', transform=transform)
+    # Get TICA from deeptime
+    input_features = []
+    for feature, params in features.items():
+        input_features.append(Featurizer.get_feature(grid_polymer, feature, **params))
+    input_features = np.concatenate(input_features, axis=1)
+    print(input_features.shape)
+    tica_deeptime = dt.decomposition.TICA(lagtime=lagtime, dim=dim).fit_transform(input_features)
+    for i in range(dim):
+        assert np.all(np.isclose(tica_proteka[:,i], tica_deeptime[:,i]))
 
 def test_local_contact_number(get_CLN_frame):
     """Tests local contact number calculation"""
