@@ -64,14 +64,14 @@ class TICATransform(Transform):
             (see Featurizer.get_feature for details)
         bias : np.ndarray, Optional
             Bias used to compute the TICA transformation. If not provided, it will be infrred from data
-            during the transformation. 
+            during the transformation.
         transform_matrix : np.ndarray, Optional
-            Transformation matrix used to compute the TICA transformation. 
+            Transformation matrix used to compute the TICA transformation.
             If not provided, it will be inferred from data.
         estimation_params: Optional[Dict]
             Parameters used to estimate TICA model. See `deeptime.decomposition.TICA` for details
             If bias and transform_matrix are provided, estimation_params are ignored
-            
+
         """
         self.features = features
         self.bias = bias
@@ -106,7 +106,9 @@ class TICATransform(Transform):
         if self.transform_matrix is None or self.bias is None:
             self.fit_from_data(ensemble)
         elif self.estimation_params is not None:
-            warnings.warn("Transform matrix and bias are provided, ignoring estimation_params")
+            warnings.warn(
+                "Transform matrix and bias are provided, ignoring estimation_params"
+            )
         features = []
         for feature, params in self.features.items():
             features.append(Featurizer.get_feature(ensemble, feature, **params))
@@ -156,10 +158,11 @@ class TICATransform(Transform):
         """
         raise NotImplementedError
 
+
 class Featurizer:
     """Class for computing features from Ensembles.
-       The class has no state, all the details of featurization
-       should be passed directly to """
+    The class has no state, all the details of featurization
+    should be passed directly to"""
 
     simple_dssp_lookup = {
         "NA": 0,
