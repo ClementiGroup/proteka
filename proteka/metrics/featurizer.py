@@ -6,7 +6,7 @@ import json
 import warnings
 import numpy as np
 import mdtraj as md
-from typing import Dict
+from typing import Dict, Optional
 from ..dataset import Ensemble
 from ..quantity import Quantity
 from typing import Callable, Dict, List, Optional
@@ -35,7 +35,7 @@ class Transform(ABC):
     @abstractmethod
     def from_json(self, string):
         """
-        Instantiate Transformer from a string
+        Instantiate Transformer from a json string
         """
 
 
@@ -44,19 +44,14 @@ class TICATransform(Transform):
     """Get TICA transform of the data.
     A feature vector X is transformed as
     (X - bias)@transform_matrix
-
-    Parameters
-    ----------
-    Transformer : _type_
-        _description_
     """
 
     def __init__(
         self,
         features: Dict,
-        bias=None,
-        transform_matrix=None,
-        estimation_params=None,
+        bias: Optional[np.ndarray] = None,
+        transform_matrix: Optional[np.ndarray] = None,
+        estimation_params: Optional[Dict] = None,
     ):
         """
 
@@ -67,10 +62,16 @@ class TICATransform(Transform):
             Each key is a string representing feature name and each value
             is a dictionary of parameters used to compute corresponding feature
             (see Featurizer.get_feature for details)
-        bias : _type_
-            _description_
-        transform_matrix : _type_
-            _description_
+        bias : np.ndarray, Optional
+            Bias used to compute the TICA transformation. If not provided, it will be infrred from data
+            during the transformation. 
+        transform_matrix : np.ndarray, Optional
+            Transformation matrix used to compute the TICA transformation. 
+            If not provided, it will be inferred from data.
+        estimation_params: Optional[Dict]
+            Parameters used to estimate TICA model. See `deeptime.decomposition.TICA` for details
+            If bias and transform_matrix are provided, estimation_params are ignored
+            
         """
         self.features = features
         self.bias = bias
@@ -88,8 +89,10 @@ class TICATransform(Transform):
             features.append(Featurizer.get_feature(ensemble, feature, **params))
         features = np.concatenate(features, axis=1)
         estimator = TICA(**self.estimation_params)
-        # TO DO: feat features for different trajectories separately
-        estimator.fit(features)
+        # Loop over trajectories in ensemble, get corresponding slice and perform
+        # partial fit
+        for slice in ensemble.trajectory_indices.values():
+            estimator.partial_fit(features[slice])
         model = estimator.fetch_model()
 
         # Set values that are required for further transformation
@@ -102,6 +105,8 @@ class TICATransform(Transform):
         """
         if self.transform_matrix is None or self.bias is None:
             self.fit_from_data(ensemble)
+        elif self.estimation_params is not None:
+            warnings.warn("Transform matrix and bias are provided, ignoring estimation_params")
         features = []
         for feature, params in self.features.items():
             features.append(Featurizer.get_feature(ensemble, feature, **params))
@@ -151,9 +156,10 @@ class TICATransform(Transform):
         """
         raise NotImplementedError
 
-
 class Featurizer:
-    """Class for computing features from Ensembles"""
+    """Class for computing features from Ensembles.
+       The class has no state, all the details of featurization
+       should be passed directly to """
 
     simple_dssp_lookup = {
         "NA": 0,
