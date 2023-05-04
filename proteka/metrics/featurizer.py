@@ -264,7 +264,7 @@ class Featurizer:
 
     def add_dssp(self, simplified: bool = True, digitize: bool = False):
         """Adds DSSP secondary codes to each amino acid. Requires high backbone resolution
-        (eg, N, C, O) in topoology. DSSP codes are categorically digitized according to the
+        (eg, N, C, O) in topology. DSSP codes are categorically digitized according to the
         following schemes if specified:
 
             Simplified:
