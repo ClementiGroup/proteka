@@ -271,6 +271,8 @@ def histogram_features2d(
         Number of bins to use, by default 100 over the support specified
         by the reference. If np.ndarray, those bins will be used instead
     """
+    assert target.shape[1] == 2, "Target should be 2d with shape (n, 2)"
+    assert reference.shape[1] == 2, "Reference should be 2d with shape (n, 2)"
 
     hist_reference, xedges, yedges = np.histogram2d(
         reference[:, 0], reference[:, 1], bins=bins, weights=reference_weights
