@@ -177,7 +177,24 @@ class EnsembleQualityMetrics(IMetrics):
         reference: Ensemble,
         features: Union[Iterable[str], str] = "all",
     ) -> List[str]:
-        """Checks feature inputs for `compute()`"""
+        """Checks feature inputs for `compute()`
+
+        Parameters
+        ----------
+        target:
+            target Ensemble
+        reference:
+            refernce Ensemble
+        features:
+            Iterable of strings or single string "all" or single string for valid feature
+            found in both the target and reference ensembles
+
+        Returns
+        -------
+        features:
+            Iterable of proper strings describing which features for which comparitive metrics
+            should be calculated
+        """
         # Feature checks
         all_target_feats = target.list_quantities()
         all_ref_feats = reference.list_quantities()
@@ -194,7 +211,8 @@ class EnsembleQualityMetrics(IMetrics):
             else:
                 features = [features]
         elif features == "all" or isinstance(features, Iterable):
-            # Cases where "all" is chosen and target and ref have different feature sets
+            # Cases where "all" is chosen or Iterable is given and target
+            # and ref have different feature sets
             if features == "all":
                 # if "all" take all reference features
                 features = list(all_target_feats)
@@ -223,12 +241,27 @@ class EnsembleQualityMetrics(IMetrics):
     def _check_metrics(
         metrics: Union[Iterable[str], str] = "all",
     ) -> Iterable[str]:
-        """Checks to make sure requested metrics are valid"""
+        """Checks to make sure requested metrics are valid
+
+        Parameters
+        ----------
+        metrics:
+            Iterable of strings or single string "all" or single string metric found in
+            in EnsembleQualityMetrics.metric_types
+
+        Returns
+        -------
+        metrics:
+            List of strings describing which metrics should be calculated for
+            the requested features
+        """
         valid_metrics = EnsembleQualityMetrics.metric_types
         if metrics == "all":
             metrics = valid_metrics
         elif isinstance(metrics, str):
             metrics = [metrics]
+        elif isinstance(metrics, Iterable):
+            pass
         else:
             raise ValueError(
                 f"metrics {metrics} not in '['all', str, Iterable[str]']'"
