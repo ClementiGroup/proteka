@@ -111,11 +111,13 @@ class EnsembleQualityMetrics(IMetrics):
         "kl_div": kl_divergence,
         "js_div": js_divergence,
         "mse": mse,
+        "mse_dist": mse
     }
     vector_metrics = {
         "kl_div": vector_kl_divergence,
         "js_div": vector_js_divergence,
         "mse": vector_mse,
+        "mse_dist": vector_mse,
     }
     excluded_quantities = set(
         [
@@ -325,6 +327,10 @@ class EnsembleQualityMetrics(IMetrics):
             raise ValueError(
                 f"feature {feature} not registered in vector or scalar features"
             )
-
-        result = metric_computer(hist_target, hist_ref)
+        if metric == "mse": # mse should be computed over the exact values, not over the prob distribution
+            result = metric_computer(target_feat, reference_feat)
+        elif metric == "mse_dist":
+            result = metric_computer(hist_target, hist_ref)
+        else:
+            result = metric_computer(hist_target, hist_ref)
         return {f"{feature}, {metric}": result}
