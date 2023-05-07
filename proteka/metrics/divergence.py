@@ -102,14 +102,14 @@ def mse(target: np.ndarray, reference: np.ndarray) -> float:
 
 
      Parameters
-     -----------
+     ----------
 
      target, reference : np.ndarray
         Target and reference probability distributions (histograms).
         Should have the same shape
 
      Returns : float
-     ------
+     -------
     Mean Squared Error of the target from the reference
 
     """
@@ -132,14 +132,14 @@ def vector_mse(target: np.ndarray, reference: np.ndarray) -> float:
      Here p corresponds to the reference (True) distribution, q corresponds to the target distribution.
 
      Parameters
-     -----------
+     ----------
 
      target, reference : np.ndarray
         Target and reference probability distributions (histograms).
         Should have the same shape
 
      Returns : float
-     ------
+     -------
     Mean Squared Error of the target from the reference
 
     """
@@ -160,7 +160,7 @@ def vector_kl_divergence(
     Compute independent KL divergences between specified vector data sets.
 
     Parameters
-    -----------
+    ----------
 
     target, reference : np.typing.ArrayLike
                 Target and reference probability distributions (histograms).
@@ -170,7 +170,7 @@ def vector_kl_divergence(
         Bin is not included in the summation if its value is less than the threshold
 
     Returns : np.ndarray
-    ------
+    -------
         Vector KL divergence of the target from the reference
     """
     assert target.shape == reference.shape
@@ -192,7 +192,7 @@ def vector_js_divergence(
     Compute independent JS divergences between specified vector data sets.
 
     Parameters
-    -----------
+    ----------
 
     target, reference : np.typing.ArrayLike
                 Target and reference probability distributions (histograms).
@@ -202,7 +202,7 @@ def vector_js_divergence(
         Bin is not included in the summation if its value is less than the threshold
 
     Returns : np.ndarray
-    ------
+    -------
         Vector JS divergence of the target from the reference
     """
     assert target.shape == reference.shape

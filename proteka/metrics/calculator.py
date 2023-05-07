@@ -300,7 +300,7 @@ class EnsembleQualityMetrics(IMetrics):
         """
 
         if metric not in EnsembleQualityMetrics.metric_types:
-            raise ValueError("Metric '{}' not defined.".format(metric))
+            raise ValueError(f"Metric '{metric}' not defined.")
 
         if feature == "tica":
             target_feat, reference_feat = get_tica_features(
