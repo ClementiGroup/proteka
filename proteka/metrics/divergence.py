@@ -117,9 +117,6 @@ def mse(target: np.ndarray, reference: np.ndarray) -> float:
         target.shape == reference.shape
     ), f"Dimension mismatch: target: {target.shape} reference: {reference.shape}"
 
-    target_normalized = target / np.sum(target)
-    reference_normalized = reference / np.sum(reference)
-
     return np.average((target - reference) ** 2)
 
 
