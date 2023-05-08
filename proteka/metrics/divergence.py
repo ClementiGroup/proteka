@@ -26,7 +26,8 @@ def clean_distribution(
 
     Parameters
     ----------
-
+    array:
+        input normalized distribution
     threshold : float, 1e-8
         Bin is not included in the summation if its value is less than the threshold
         and intersect_only is `True`
@@ -46,8 +47,13 @@ def clean_distribution(
         replaced by `value`
     """
 
+    if len(array.shape) not in [1, 2]:
+        raise ValueError(
+            f"input array shape {array.shape} is not 1 nor 2-dimensional"
+        )
+
     if intersect_only == True:
-        valid_bins = np.where(x > threshold)
+        valid_bins = np.argwhere(array > threshold).flatten()
         return valid_bins
     else:
         new_array = np.array([x if x > threshold else threshold for x in array])
@@ -59,7 +65,7 @@ def kl_divergence(
     reference: np.ndarray,
     threshold: float = 1e-8,
     replace_value: float = 1e-8,
-    intersect_only: bool = False,
+    intersect_only: bool = True,
 ) -> float:
     r"""
     Compute Kullback-Leibler divergence between specified data sets.
@@ -107,7 +113,11 @@ def kl_divergence(
             reference_normalized, threshold=threshold, intersect_only=True
         )
         valid_bins = np.array(
-            set(target_valid_bins).intersection(set(reference_valid_bins))
+            list(
+                set(target_valid_bins.tolist()).intersection(
+                    set(reference_valid_bins.tolist())
+                )
+            )
         )
         kl = rel_entr(
             reference_normalized[valid_bins],
@@ -129,7 +139,7 @@ def js_divergence(
     reference: np.ndarray,
     threshold: float = 1e-8,
     replace_value: float = 1e-8,
-    intersect_only: bool = False,
+    intersect_only: bool = True,
 ) -> float:
     """
     Compute Jensen_Shannon divergence between specified data sets.
@@ -149,7 +159,8 @@ def js_divergence(
         is `False`, then the bin gets replaced with this value instead
     intersect_only:
         if `True`, distributions will only be compared over their consistent support overlaps
-        (eg, only the mutual set of populated bins will be included in the computation)
+        (eg, only the mutual set of populated bins will be included in the computation) for KL
+        divergence subcomputations
 
     Returns : float
     ------
@@ -256,7 +267,11 @@ def mse_dist(
             reference_normalized, threshold=threshold, intersect_only=True
         )
         valid_bins = np.array(
-            set(target_valid_bins).intersection(set(reference_valid_bins))
+            list(
+                set(target_valid_bins.tolist()).intersection(
+                    set(reference_valid_bins.tolist())
+                )
+            )
         )
         val = mse(
             reference_normalized[valid_bins], target_normalized[valid_bins]
@@ -333,7 +348,11 @@ def mse_log(
             reference_normalized, threshold=threshold, intersect_only=True
         )
         valid_bins = np.array(
-            set(target_valid_bins).intersection(set(reference_valid_bins))
+            list(
+                set(target_valid_bins.tolist()).intersection(
+                    set(reference_valid_bins.tolist())
+                )
+            )
         )
         val = mse(
             np.log(reference_normalized[valid_bins]),
@@ -394,7 +413,11 @@ def wasserstein(
             reference_normalized, threshold=threshold, intersect_only=True
         )
         valid_bins = np.array(
-            set(target_valid_bins).intersection(set(reference_valid_bins))
+            list(
+                set(target_valid_bins.tolist()).intersection(
+                    set(reference_valid_bins.tolist())
+                )
+            )
         )
         was = wasserstein_distance(
             reference_normalized[valid_bins], target_normalized[valid_bins]
@@ -415,7 +438,7 @@ def vector_kl_divergence(
     reference: np.ndarray,
     threshold: float = 1e-8,
     replace_value: float = 1e-8,
-    intersect_only: bool = False,
+    intersect_only: bool = True,
 ) -> np.ndarray:
     """
     Compute independent KL divergences between specified vector data sets.
@@ -462,7 +485,6 @@ def vector_js_divergence(
     reference: np.ndarray,
     threshold: float = 1e-8,
     replace_value: float = 1e-8,
-    intersect_only: bool = False,
 ) -> np.ndarray:
     """
     Compute independent JS divergences between specified vector data sets.
@@ -499,7 +521,6 @@ def vector_js_divergence(
             reference[:, i],
             threshold=threshold,
             replace_value=replace_value,
-            intersect_only=intersect_only,
         )
     return jsd
 
@@ -625,7 +646,11 @@ def vector_mse_log(
                 reference_normalized, threshold=threshold, intersect_only=True
             )
             valid_bins = np.array(
-                set(target_valid_bins).intersection(set(reference_valid_bins))
+                list(
+                    set(target_valid_bins.tolist()).intersection(
+                        set(reference_valid_bins.tolist())
+                    )
+                )
             )
             val[i] = mse(
                 np.log(reference_normalized[valid_bins]),
