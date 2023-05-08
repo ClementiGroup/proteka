@@ -376,7 +376,7 @@ class Ensemble(HDF5Group):
             - forces: (n_frames, n_atoms, 3) _ATOMIC_VECTOR_.
             - velocities: (n_frames, n_atoms, 3) _ATOMIC_VECTOR_ with dimension [L]/[T].
             - time: (n_frames,) _per-frame_ scalar indicating the elapsed simulation
-            time with dimension [T].
+                time with dimension [T].
             - weights: (n_frames,) _per-frame_ scalar indicating the Boltzmann weight of
             each frame.
         metadata : dict, optional
@@ -401,6 +401,7 @@ class Ensemble(HDF5Group):
         ------
         ValueError
         """
+
         coords = Quantity(trj.xyz, "nm")
         if quantities is None:
             quantities = {}
