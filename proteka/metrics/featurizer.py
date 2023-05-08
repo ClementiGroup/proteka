@@ -5,6 +5,8 @@ import numpy as np
 import mdtraj as md
 from ..dataset import Ensemble
 from ..quantity import Quantity
+from typing import Callable, Dict, List, Optional
+
 
 __all__ = ["Featurizer"]
 
@@ -12,6 +14,25 @@ __all__ = ["Featurizer"]
 class Featurizer:
     """Extract features from an Ensemble entity and
     return them as Quantity objects"""
+
+    simple_dssp_lookup = {
+        "NA": 0,
+        "H": 1,
+        "E": 2,
+        "C": 3,
+    }
+
+    full_dssp_lookup = {
+        "NA": 0,
+        "H": 1,
+        "B": 2,
+        "E": 3,
+        "G": 4,
+        "I": 5,
+        "T": 6,
+        "S": 7,
+        " ": 8,
+    }
 
     def __init__(self, ensemble: Ensemble):
         self.ensemble = ensemble
@@ -96,7 +117,7 @@ class Featurizer:
             )
         return
 
-    def add_ca_bonds(self) -> Quantity:
+    def add_ca_bonds(self):
         """
         Returns a Quantity object that contains length of pseudobonds
         between consecutive CA atoms.
@@ -113,7 +134,7 @@ class Featurizer:
         self.ensemble.set_quantity("ca_bonds", quantity)
         return
 
-    def add_ca_distances(self, offset: int = 1) -> Quantity:
+    def add_ca_distances(self, offset: int = 1):
         """Get distances between CA atoms.
 
         Parameters:
@@ -141,7 +162,7 @@ class Featurizer:
         )
         self.ensemble.set_quantity("ca_distances", quantity)
 
-    def add_ca_angles(self) -> Quantity:
+    def add_ca_angles(self):
         """Get angles between consecutive CA atoms"""
         trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
         self.validate_c_alpha()
@@ -157,7 +178,7 @@ class Featurizer:
         self.ensemble.set_quantity("ca_angles", quantity)
         return
 
-    def add_ca_dihedrals(self) -> Quantity:
+    def add_ca_dihedrals(self):
         """Get dihedral angles between consecutive CA atoms"""
         self.validate_c_alpha()
         trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
@@ -172,7 +193,7 @@ class Featurizer:
         self.ensemble.set_quantity("ca_dihedrals", quantity)
         return
 
-    def add_phi(self) -> Quantity:
+    def add_phi(self):
         """Get protein backbone phi torsions"""
         trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
         _, phi = md.compute_phi(trajectory)
@@ -180,7 +201,7 @@ class Featurizer:
         self.ensemble.set_quantity("phi", quantity)
         return
 
-    def add_psi(self) -> Quantity:
+    def add_psi(self):
         """Get protein backbone psi torsions"""
         trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
         _, psi = md.compute_psi(trajectory)
@@ -188,23 +209,29 @@ class Featurizer:
         self.ensemble.set_quantity("psi", quantity)
         return
 
-    def add_rmsd(
-        self,
-        reference: md.Trajectory = None,
-        frame: int = 0,
-        atom_indices: Iterable[int] = None,
-    ) -> Quantity:
+    def add_rmsd(self, reference_structure: md.Trajectory, **kwargs):
         """Get RMSD of a subset of atoms
         reference: Reference mdtraj.Trajectory object
         Wrapper of mdtraj.rmsd
+
+        Parameters
+        ----------
+        reference_structure:
+            Reference structure from which RMSD calculations are made
+        kwargs:
+            kwarg options for `mdtraj.rmsd()`,
+            for example `{"frame": 0, "atom_indices": np.arange(10), "parallel": True,
+            "precentered": False}`. See
+            help(mdtraj.rmsd) for more information.
         """
+
         trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
-        rmsd = md.rmsd(trajectory, reference, frame, atom_indices=atom_indices)
+        rmsd = md.rmsd(trajectory, reference_structure, **kwargs)
         quantity = Quantity(rmsd, "nanometers", metadata={"feature": "rmsd"})
         self.ensemble.set_quantity("rmsd", quantity)
         return
 
-    def add_rg(self) -> Quantity:
+    def add_rg(self):
         """Get radius of gyration for each structure in an ensemble"""
         trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
         rg = md.compute_rg(trajectory)
@@ -212,7 +239,7 @@ class Featurizer:
         self.ensemble.set_quantity("rg", quantity)
         return
 
-    def add_end2end_distance(self) -> Quantity:
+    def add_end2end_distance(self):
         """Get distance between CA atoms of the first and last residue in the protein
         for each structure in the ensemble
         """
@@ -229,6 +256,129 @@ class Featurizer:
             metadata={"feature": "end2end_distance"},
         )
         self.ensemble.set_quantity("end2end_distance", quantity)
+        return
+
+    def add_dssp(self, simplified: bool = True, digitize: bool = False):
+        """Adds DSSP secondary codes to each amino acid. Requires high backbone resolution
+        (eg, N, C, O) in topology. DSSP codes are categorically digitized according to the
+        following schemes if specified:
+
+            Simplified:
+                'NA' -> 0
+                'H' -> 1
+                'E' -> 2
+                'C' -> 3
+
+            Full:
+                'NA' -> 0
+                'H' -> 1
+                'B' -> 2
+                'E' -> 3
+                'G' -> 4
+                'I' -> 5
+                'T' -> 6
+                'S' -> 7
+                ' ' -> 8
+
+        Parameters
+        ----------
+        simplified:
+            If True, only simplified DSSP codes are reported. See help(mdtraj.compute_dssp)
+        digitize:
+            If True, the DSSP codes with be digitized according to the mappings above
+        """
+
+        trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
+        dssp_codes = md.compute_dssp(trajectory, simplified=simplified)
+
+        if digitize:
+            # use np.unique array reconstruction, with an intermediate lookup transform
+            lookup = (
+                Featurizer.simple_dssp_lookup
+                if simplified
+                else Featurizer.full_dssp_lookup
+            )
+            unique_codes, inverse_idx = np.unique(
+                dssp_codes, return_inverse=True
+            )
+            found_digits = np.array([lookup[code] for code in unique_codes])
+            dssp_codes = found_digits[inverse_idx].reshape(dssp_codes.shape)
+
+        quantity = Quantity(
+            dssp_codes,
+            None,
+            metadata={"feature": "dssp"},
+        )
+        self.ensemble.set_quantity("dssp", quantity)
+        return
+
+    def add_local_contact_number(
+        self,
+        atom_type: str = "CA",
+        min_res_dist: int = 3,
+        cut: float = 1,
+        beta: float = 50,
+    ):
+        """Adds PROTHON local contact number trajectory features for either CA
+        or CB atoms. Based on the implementation in
+        https://www.biorxiv.org/content/10.1101/2023.04.11.536474v1.full
+
+        Parameter
+        ---------
+        atom_type:
+            Either "CA" or "CB". Determines the heavy atoms used to determine
+            contacts
+        min_res_dist:
+            Specifies the minumum residue separation to be considered as part
+            set of non-bonded distances for contact calculations.
+        cut:
+            Contact distance cutoff
+        beta:
+            Smoothing parameter for contact discriminator with a default of
+            50 nm^-1
+        """
+
+        if atom_type not in ["CA", "CB"]:
+            raise ValueError(
+                "`atom_type` must be 'CA' or 'CB', but '{}' was supplied".format(
+                    atom_type
+                )
+            )
+
+        # prepare atom/residue index arrays
+        trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
+        atoms = np.array(list(trajectory.topology.atoms))
+        residues = np.array(list(trajectory.topology.residues))
+        atom_inds = trajectory.topology.select("name {}".format(atom_type))
+        residue_inds = np.array([res.index for res in residues])
+
+        # grab fully connected pairs
+        ind1, ind2 = np.triu_indices(len(atom_inds), 1)
+
+        # apply residue neighbor restriction
+        pairs = np.array([atom_inds[ind1], atom_inds[ind2]]).T
+        res_pairs = np.array([residue_inds[ind1], residue_inds[ind2]]).T
+        idx_to_del = []
+        for i, pair in enumerate(pairs):
+            a1, a2 = atoms[pair]
+            if np.abs(a1.residue.index - a2.residue.index) < min_res_dist:
+                idx_to_del.append(i)
+        pairs = np.delete(pairs, idx_to_del, axis=0)
+        res_pairs = np.delete(res_pairs, idx_to_del, axis=0)
+        distances = md.compute_distances(trajectory, pairs, periodic=False)
+
+        # compute local contacts
+        contacts = 1.0 / (1.0 + np.exp(beta * (distances - cut)))
+        contacts = md.geometry.squareform(contacts, res_pairs)
+        contact_per_atom = np.sum(contacts, axis=-1)
+        assert contact_per_atom.shape[-1] == len(atom_inds)
+
+        quantity = Quantity(
+            contact_per_atom,
+            None,
+            metadata={"feature": "local_contact_number"},
+        )
+        self.ensemble.set_quantity("local_contact_number", quantity)
         return
 
     @staticmethod
