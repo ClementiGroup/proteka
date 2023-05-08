@@ -10,6 +10,9 @@ from ..dataset import Ensemble
 from typing import Union, Dict
 from .divergence import (
     mse,
+    mse_dist,
+    mse_log,
+    wasserstein,
     kl_divergence,
     js_divergence,
     vector_kl_divergence,
@@ -106,18 +109,22 @@ class StructuralIntegrityMetrics(IMetrics):
 class EnsembleQualityMetrics(IMetrics):
     """Metrics to compare a target ensemble to the reference ensemble"""
 
-    metric_types = set(["kl_div", "js_div", "mse"])
+    metric_types = set(["kl_div", "js_div", "mse","mse_dist","mse_ldist","wasserstein"])
     scalar_metrics = {
         "kl_div": kl_divergence,
         "js_div": js_divergence,
         "mse": mse,
-        "mse_dist": mse
+        "mse_dist": mse_dist,
+        "mse_ldist": mse_log,
+        "wasserstein" : wasserstein
     }
     vector_metrics = {
         "kl_div": vector_kl_divergence,
         "js_div": vector_js_divergence,
         "mse": vector_mse,
         "mse_dist": vector_mse,
+        "mse_ldist": mse_log,
+        "wasserstein" : wasserstein
     }
     excluded_quantities = set(
         [
@@ -239,6 +246,8 @@ class EnsembleQualityMetrics(IMetrics):
             metrics = valid_metrics
         elif isinstance(metrics, str):
             metrics = [metrics]
+        elif isinstance(metrics,Iterable) and all([isinstance(met,str) for met in metrics]):
+            pass
         else:
             raise ValueError(
                 f"metrics {metrics} not in '['all', str, Iterable[str]']'"
@@ -329,8 +338,6 @@ class EnsembleQualityMetrics(IMetrics):
             )
         if metric == "mse": # mse should be computed over the exact values, not over the prob distribution
             result = metric_computer(target_feat, reference_feat)
-        elif metric == "mse_dist":
-            result = metric_computer(hist_target, hist_ref)
         else:
             result = metric_computer(hist_target, hist_ref)
         return {f"{feature}, {metric}": result}

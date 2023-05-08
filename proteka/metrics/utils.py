@@ -151,10 +151,10 @@ def histogram_features(
     """
 
     hist_reference, bin_edges = np.histogram(
-        reference, bins=bins, weights=reference_weights, density = True
+        reference, bins=bins, weights=reference_weights
     )
     hist_target, _ = np.histogram(
-        target, bins=bin_edges, weights=target_weights, density = True
+        target, bins=bin_edges, weights=target_weights
     )
     return hist_target, hist_reference
 
@@ -231,15 +231,13 @@ def histogram_features2d(
         reference[:, 0], 
         reference[:, 1], 
         bins=bins, 
-        weights=reference_weights,
-        density = True
+        weights=reference_weights
     )
     hist_target, _, _ = np.histogram2d(
         target[:, 0],
         target[:, 1],
         bins=[xedges, yedges],
-        weights=target_weights,
-        density = True
+        weights=target_weights
     )
     return hist_target, hist_reference
 
