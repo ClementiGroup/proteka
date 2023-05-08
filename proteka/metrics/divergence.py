@@ -47,11 +47,6 @@ def clean_distribution(
         replaced by `value`
     """
 
-    if len(array.shape) not in [1, 2]:
-        raise ValueError(
-            f"input array shape {array.shape} is not 1 nor 2-dimensional"
-        )
-
     if intersect_only == True:
         valid_bins = np.argwhere(array > threshold).flatten()
         return valid_bins
@@ -104,6 +99,13 @@ def kl_divergence(
 
     target_normalized = target / np.sum(target)
     reference_normalized = reference / np.sum(reference)
+
+    # reshape everything into a flattened array
+    target_normalized = np.squeeze(target_normalized)
+    reference_normalized = np.squeeze(reference_normalized)
+
+    target_normalized = target_normalized.flatten()
+    reference_normalized = reference_normalized.flatten()
 
     if intersect_only == True:
         target_valid_bins = clean_distribution(

@@ -68,16 +68,18 @@ def test_kl_divergence():
     )
 
 
-# def test_kl_divergence2d():
-#    """
-#    Test basic functionality
-#    """
-#    assert np.isclose(
-#        kl_divergence(
-#            target_histogram1.reshape(2, 2), reference_histogram1.reshape(2, 2), intersect_only=True
-#        ),
-#        reference_kld1,
-#    )
+def test_kl_divergence2d():
+    """
+    Test basic functionality
+    """
+    assert np.isclose(
+        kl_divergence(
+            target_histogram1.reshape(2, 2),
+            reference_histogram1.reshape(2, 2),
+            intersect_only=True,
+        ),
+        reference_kld1,
+    )
 
 
 def test_kl_divergence_normalized():
