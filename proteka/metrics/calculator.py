@@ -109,14 +109,16 @@ class StructuralIntegrityMetrics(IMetrics):
 class EnsembleQualityMetrics(IMetrics):
     """Metrics to compare a target ensemble to the reference ensemble"""
 
-    metric_types = set(["kl_div", "js_div", "mse","mse_dist","mse_ldist","wasserstein"])
+    metric_types = set(
+        ["kl_div", "js_div", "mse", "mse_dist", "mse_ldist", "wasserstein"]
+    )
     scalar_metrics = {
         "kl_div": kl_divergence,
         "js_div": js_divergence,
         "mse": mse,
         "mse_dist": mse_dist,
         "mse_ldist": mse_log,
-        "wasserstein" : wasserstein
+        "wasserstein": wasserstein,
     }
     vector_metrics = {
         "kl_div": vector_kl_divergence,
@@ -124,7 +126,7 @@ class EnsembleQualityMetrics(IMetrics):
         "mse": vector_mse,
         "mse_dist": vector_mse,
         "mse_ldist": mse_log,
-        "wasserstein" : wasserstein
+        "wasserstein": wasserstein,
     }
     excluded_quantities = set(
         [
@@ -246,7 +248,9 @@ class EnsembleQualityMetrics(IMetrics):
             metrics = valid_metrics
         elif isinstance(metrics, str):
             metrics = [metrics]
-        elif isinstance(metrics,Iterable) and all([isinstance(met,str) for met in metrics]):
+        elif isinstance(metrics, Iterable) and all(
+            [isinstance(met, str) for met in metrics]
+        ):
             pass
         else:
             raise ValueError(
@@ -336,7 +340,9 @@ class EnsembleQualityMetrics(IMetrics):
             raise ValueError(
                 f"feature {feature} not registered in vector or scalar features"
             )
-        if metric == "mse": # mse should be computed over the exact values, not over the prob distribution
+        if (
+            metric == "mse"
+        ):  # mse should be computed over the exact values, not over the prob distribution
             result = metric_computer(target_feat, reference_feat)
         else:
             result = metric_computer(hist_target, hist_ref)
