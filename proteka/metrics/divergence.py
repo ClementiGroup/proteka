@@ -99,7 +99,7 @@ def kl_divergence(
     target_normalized = target / np.sum(target)
     reference_normalized = reference / np.sum(reference)
 
-    if interesect_only == True:
+    if intersect_only == True:
         target_valid_bins = clean_distribution(
             target_normalized, threshold=threshold, intersect_only=True
         )
@@ -172,7 +172,7 @@ def js_divergence(
             reference_normalized,
             threshold=threshold,
             replace_value=replace_value,
-            intersect_only=interesect_only,
+            intersect_only=intersect_only,
         )
     )
     return jsd
@@ -248,7 +248,7 @@ def mse_dist(
     target_normalized = target / np.sum(target)
     reference_normalized = reference / np.sum(reference)
 
-    if interesect_only == True:
+    if intersect_only == True:
         target_valid_bins = clean_distribution(
             target_normalized, threshold=threshold, intersect_only=True
         )
@@ -325,7 +325,7 @@ def mse_log(
     target_normalized = clean_distribution(target_normalized)
     reference_normalized = clean_distribution(reference_normalized)
 
-    if interesect_only == True:
+    if intersect_only == True:
         target_valid_bins = clean_distribution(
             target_normalized, threshold=threshold, intersect_only=True
         )
@@ -386,7 +386,7 @@ def wasserstein(
     target_normalized = target / np.sum(target)
     reference_normalized = reference / np.sum(reference)
 
-    if interesect_only == True:
+    if intersect_only == True:
         target_valid_bins = clean_distribution(
             target_normalized, threshold=threshold, intersect_only=True
         )
@@ -617,7 +617,7 @@ def vector_mse_log(
     val = np.zeros(num_feat)
     # slow implementation I know
     for i in range(num_feat):
-        if interesect_only == True:
+        if intersect_only == True:
             target_valid_bins = clean_distribution(
                 target_normalized, threshold=threshold, intersect_only=True
             )
