@@ -12,6 +12,7 @@ from .divergence import (
     mse,
     mse_dist,
     mse_log,
+    fraction_smaller,
     wasserstein,
     kl_divergence,
     js_divergence,
@@ -109,8 +110,15 @@ class StructuralIntegrityMetrics(IMetrics):
 class EnsembleQualityMetrics(IMetrics):
     """Metrics to compare a target ensemble to the reference ensemble"""
 
-    metric_types = set(
-        ["kl_div", "js_div", "mse", "mse_dist", "mse_ldist", "wasserstein"]
+    metric_types = set([
+         "kl_div", 
+         "js_div", 
+         "mse",
+         "mse_dist", 
+         "mse_ldist", 
+         "fraction_smaller"
+         #"wasserstein"
+         ]
     )
     scalar_metrics = {
         "kl_div": kl_divergence,
@@ -118,7 +126,8 @@ class EnsembleQualityMetrics(IMetrics):
         "mse": mse,
         "mse_dist": mse_dist,
         "mse_ldist": mse_log,
-        "wasserstein": wasserstein,
+        "fraction_smaller" : fraction_smaller
+        #"wasserstein": wasserstein,
     }
     vector_metrics = {
         "kl_div": vector_kl_divergence,
@@ -130,8 +139,10 @@ class EnsembleQualityMetrics(IMetrics):
     metrics_2d = {
         "kl_div": kl_divergence,
         "js_div": js_divergence,
+        "mse": mse,
         "mse_dist": mse_dist,
         "mse_ldist": mse_log,
+        "fraction_smaller" : fraction_smaller
     }
 
     excluded_quantities = set(
@@ -351,15 +362,17 @@ class EnsembleQualityMetrics(IMetrics):
             hist_target, hist_ref = histogram_features2d(
                 target_feat, reference_feat, bins=bins
             )
+            hist_target = hist_target.flatten()
+            hist_ref = hist_ref.flatten()
         else:
             raise ValueError(
                 f"feature {feature} not registered in vector or scalar features"
             )
 
         if (
-            metric == "mse"
+            metric == "mse" or metric == "fraction_smaller"
         ):  # mse should be computed over the exact values, not over the prob distribution
-            result = metric_computer(target_feat, reference_feat)
+            result = metric_computer(target_feat, reference_feat,**kwargs)
         else:
             result = metric_computer(hist_target, hist_ref)
         return {f"{feature}, {metric}": result}

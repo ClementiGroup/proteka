@@ -273,7 +273,8 @@ def mse_dist(
 def mse_log(
     target: np.ndarray,
     reference: np.ndarray,
-    replace_value: float = 1e-8,
+    threshold: float = 1e-8,
+    replace_value: float = 1e-10,
     intersect_only: bool = False,
 ) -> float:
     r"""
@@ -352,6 +353,43 @@ def mse_log(
 
     return val
 
+def fraction_smaller(
+    target: np.ndarray,
+    reference: np.ndarray,
+    threshold: float = 1,
+    relative : bool = False,
+    **kwargs
+) -> float:
+    """
+    Parameters
+    ----------
+
+    target, reference : np.ndarray
+        Target and reference data arrays.
+        Should have the same shape. Reference is only used if scaling is required
+    threshold : float
+        value to which we will compare this feature
+    relative : bool
+        bool to defermine if the value should come normalized by the reference value
+        If false, then `reference` is not used
+    Returns : float
+    """
+    assert (
+        target.shape == reference.shape
+    ), f"Dimension mismatch: target: {target.shape} reference: {reference.shape}"
+
+    smaller = np.mean( target < threshold)
+    if relative:
+        smaller_ref = np.mean( reference < threshold)
+        if smaller_ref > 0:
+            return smaller/smaller_ref
+        else:
+            raise ValueError(
+                f"Reference has no value below selected threshold {threshold}"
+            )
+    else:
+        return smaller
+    
 
 def wasserstein(
     target: np.ndarray,
