@@ -126,8 +126,14 @@ class EnsembleQualityMetrics(IMetrics):
         "mse": vector_mse,
         "mse_dist": vector_mse,
         "mse_ldist": mse_log,
-        "wasserstein": wasserstein,
     }
+    metrics_2d = {
+        "kl_div": kl_divergence,
+        "js_div": js_divergence,
+        "mse_dist": mse_dist,
+        "mse_ldist": mse_log,
+    }
+
     excluded_quantities = set(
         [
             "top",
@@ -144,6 +150,7 @@ class EnsembleQualityMetrics(IMetrics):
         ["rg", "ca_distances", "rmsd", "end2end_distance", "tic1", "tic2"]
     )
     vector_features = set(["local_contact_number", "dssp"])
+    features_2d = set(["tic1_tic2"])
 
     def __init__(
         self,
@@ -204,7 +211,18 @@ class EnsembleQualityMetrics(IMetrics):
         all_target_feats = target.list_quantities()
         all_ref_feats = reference.list_quantities()
 
-        if features == "all" or isinstance(features, Iterable):
+        if isinstance(features, str) and features != "all":
+            # Case where single feature is specified
+            if (
+                features not in all_target_feats
+                and features not in all_ref_feats
+            ):
+                raise ValueError(
+                    f"feature {feature} is not registered in target nor reference ensemble."
+                )
+            else:
+                features = [features]
+        elif features == "all" or isinstance(features, Iterable):
             # Cases where "all" is chosen and target and ref have different feature sets
             if features == "all":
                 # if "all" take all reference features
@@ -218,14 +236,6 @@ class EnsembleQualityMetrics(IMetrics):
                 features = EnsembleQualityMetrics._feature_contraction(
                     all_target_feats, all_ref_feats, features
                 )
-        elif isinstance(features, str):
-            # Case where single feature is specified
-            if feature not in all_target_feats and feature not in all_ref_feats:
-                raise ValueError(
-                    f"feature {feature} is not registered in target nor reference ensemble."
-                )
-            else:
-                features = [features]
 
         # Unavailable feature filter
         skip_idx = []
@@ -336,10 +346,16 @@ class EnsembleQualityMetrics(IMetrics):
             hist_target, hist_ref = histogram_vector_features(
                 target_feat, reference_feat, bins=bins
             )
+        elif feature in EnsembleQualityMetrics.features_2d:
+            metric_computer = EnsembleQualityMetrics.metrics_2d[metric]
+            hist_target, hist_ref = histogram_features2d(
+                target_feat, reference_feat, bins=bins
+            )
         else:
             raise ValueError(
                 f"feature {feature} not registered in vector or scalar features"
             )
+
         if (
             metric == "mse"
         ):  # mse should be computed over the exact values, not over the prob distribution
