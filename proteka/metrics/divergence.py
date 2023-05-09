@@ -220,9 +220,6 @@ def mse(
 def mse_dist(
     target: np.ndarray,
     reference: np.ndarray,
-    threshold: float = 1e-8,
-    replace_value: float = 1e-8,
-    intersect_only: bool = False,
 ) -> float:
     r"""
      Compute Mean Squared Error between the log  specified data sets.
@@ -261,31 +258,14 @@ def mse_dist(
     target_normalized = target / np.sum(target)
     reference_normalized = reference / np.sum(reference)
 
-    if intersect_only == True:
-        target_valid_bins = clean_distribution(
-            target_normalized, threshold=threshold, intersect_only=True
-        )
-        reference_valid_bins = clean_distribution(
-            reference_normalized, threshold=threshold, intersect_only=True
-        )
-        valid_bins = np.array(
-            list(
-                set(target_valid_bins.tolist()).intersection(
-                    set(reference_valid_bins.tolist())
-                )
-            )
-        )
-        val = mse(
-            reference_normalized[valid_bins], target_normalized[valid_bins]
-        )
-    else:
-        target_normalized = clean_distribution(
-            target_normalized, threshold=threshold, value=replace_value
-        )
-        reference_normalized = clean_distribution(
-            reference_normalized, threshold=threshold, value=replace_value
-        )
-        val = mse(reference_normalized, target_normalized)
+    # reshape everything into a flattened array
+    target_normalized = np.squeeze(target_normalized)
+    reference_normalized = np.squeeze(reference_normalized)
+
+    target_normalized = target_normalized.flatten()
+    reference_normalized = reference_normalized.flatten()
+
+    val = mse(reference_normalized, target_normalized)
 
     return val
 
@@ -293,7 +273,6 @@ def mse_dist(
 def mse_log(
     target: np.ndarray,
     reference: np.ndarray,
-    threshold: float = 1e-8,
     replace_value: float = 1e-8,
     intersect_only: bool = False,
 ) -> float:
@@ -333,14 +312,16 @@ def mse_log(
 
     target_normalized = target / np.sum(target)
     reference_normalized = reference / np.sum(reference)
-    """
-    # Find the valid bins
-    valid_bins = np.logical_and(
-    target_normalized > threshold, reference_normalized > threshold
-    )
-    """
+
     target_normalized = clean_distribution(target_normalized)
     reference_normalized = clean_distribution(reference_normalized)
+
+    # reshape everything into a flattened array
+    target_normalized = np.squeeze(target_normalized)
+    reference_normalized = np.squeeze(reference_normalized)
+
+    target_normalized = target_normalized.flatten()
+    reference_normalized = reference_normalized.flatten()
 
     if intersect_only == True:
         target_valid_bins = clean_distribution(
@@ -640,33 +621,6 @@ def vector_mse_log(
     val = np.zeros(num_feat)
     # slow implementation I know
     for i in range(num_feat):
-        if intersect_only == True:
-            target_valid_bins = clean_distribution(
-                target_normalized, threshold=threshold, intersect_only=True
-            )
-            reference_valid_bins = clean_distribution(
-                reference_normalized, threshold=threshold, intersect_only=True
-            )
-            valid_bins = np.array(
-                list(
-                    set(target_valid_bins.tolist()).intersection(
-                        set(reference_valid_bins.tolist())
-                    )
-                )
-            )
-            val[i] = mse(
-                np.log(reference_normalized[valid_bins]),
-                np.log(target_normalized[valid_bins]),
-            )
-        else:
-            target_normalized = clean_distribution(
-                target_normalized, threshold=threshold, value=replace_value
-            )
-            reference_normalized = clean_distribution(
-                reference_normalized, threshold=threshold, value=replace_value
-            )
-            val[i] = mse(
-                np.log(reference_normalized), np.log(target_normalized)
-            )
+        val[i] = mse(np.log(reference_normalized), np.log(target_normalized))
 
     return val
