@@ -353,7 +353,7 @@ class Featurizer:
         quantity = Quantity(psi, "radians", metadata={"feature": "psi"})
         ensemble.set_quantity("psi", quantity)
 
-    def add_rmsd(self, reference_structure: md.Trajectory, **kwargs):
+    def add_rmsd(self, ensemble: Ensemble, reference_structure: md.Trajectory, **kwargs):
         """Get RMSD of a subset of atoms
         reference: Reference mdtraj.Trajectory object
         Wrapper of mdtraj.rmsd
@@ -369,7 +369,7 @@ class Featurizer:
             help(mdtraj.rmsd) for more information.
         """
 
-        trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
+        trajectory = ensemble.get_all_in_one_mdtraj_trj()
         rmsd = md.rmsd(trajectory, reference_structure, **kwargs)
         quantity = Quantity(rmsd, "nanometers", metadata={"feature": "rmsd"})
         ensemble.set_quantity("rmsd", quantity)
