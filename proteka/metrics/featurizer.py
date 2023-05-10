@@ -9,7 +9,6 @@ import mdtraj as md
 from typing import Dict, Optional
 from ..dataset import Ensemble
 from ..quantity import Quantity
-from typing import Callable, Dict, List, Optional
 
 
 __all__ = ["Featurizer", "Transform", "TICATransform"]
