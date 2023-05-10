@@ -151,8 +151,8 @@ def test_feature_rewriting(grid_polymer):
 def test_local_contact_number(get_CLN_frame):
     """Tests local contact number calculation"""
     ens = get_CLN_frame
-    feat = Featurizer(ens)
-    feat.add_local_contact_number()
+    feat = Featurizer()
+    feat.add_local_contact_number(ens)
     local_contact_number = ens.get_quantity("local_contact_number")
     np.allclose(ref_local_contact_number, local_contact_number)
 
