@@ -1,6 +1,5 @@
 import numpy as np
 import mdtraj as md
-from ..dataset import Ensemble
 from typing import Union, Tuple
 
 __all__ = [
