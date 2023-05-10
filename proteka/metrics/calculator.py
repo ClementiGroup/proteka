@@ -225,8 +225,7 @@ class EnsembleQualityMetrics(IMetrics):
         hist_target, hist_ref = histogram_vector_features(
             local_contact_num_target, local_contact_num_reference, bins=100
         )
-        js = vector_js_divergence(hist_
-        target, hist_ref)
+        js = vector_js_divergence(hist_target, hist_ref)
         return {"local contact number, JS divergence": js}
 
     @staticmethod
