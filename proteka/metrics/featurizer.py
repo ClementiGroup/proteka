@@ -462,7 +462,7 @@ class Featurizer:
         return
 
     def add_local_contact_number(
-        self,
+        ensemble: Ensemble,
         atom_type: str = "CA",
         min_res_dist: int = 3,
         cut: float = 1,
@@ -495,7 +495,7 @@ class Featurizer:
             )
 
         # prepare atom/residue index arrays
-        trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
+        trajectory = ensemble.get_all_in_one_mdtraj_trj()
         atoms = np.array(list(trajectory.topology.atoms))
         residues = np.array(list(trajectory.topology.residues))
         atom_inds = trajectory.topology.select("name {}".format(atom_type))
@@ -527,7 +527,7 @@ class Featurizer:
             None,
             metadata={"feature": "local_contact_number"},
         )
-        self.ensemble.set_quantity("local_contact_number", quantity)
+        ensemble.set_quantity("local_contact_number", quantity)
         return
 
     @staticmethod
