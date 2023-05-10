@@ -192,7 +192,7 @@ def histogram_vector_features(
     hist_target = np.zeros((num_bins, num_feats))
 
     for i in range(num_feats):
-        hist_reference[:, i], hist_target[:, i] = histogram_features(
+        hist_target[:, i], hist_reference[:, i] = histogram_features(
             target[:, i],
             reference[:, i],
             target_weights=target_weights,
