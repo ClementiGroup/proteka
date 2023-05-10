@@ -7,6 +7,7 @@ __all__ = [
     "get_6_bead_frame",
     "histogram_features",
     "histogram_features2d",
+    "histogram_vector_features",
 ]
 
 
