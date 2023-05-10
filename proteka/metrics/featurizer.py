@@ -182,8 +182,8 @@ class Featurizer:
         " ": 8,
     }
 
-    def __init__(self, ensemble: Ensemble):
-        self.ensemble = ensemble
+    def __init__(self):
+        pass
 
     @staticmethod
     def validate_c_alpha(ensemble: Ensemble) -> bool:
