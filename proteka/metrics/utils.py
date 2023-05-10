@@ -182,7 +182,7 @@ def histogram_features(
     and reference. Histogram of the target is computed over the range,
     defined by reference. The function returns the histograms of the target and
     reference. Marginal histograms
-    will be returned by accumulating indepentdly over the last array axis.
+    will be returned by accumulating independently over the last array axis.
 
     Parameters
     ----------
