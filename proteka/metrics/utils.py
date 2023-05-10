@@ -283,4 +283,4 @@ def histogram_features2d(
         bins=[xedges, yedges],
         weights=target_weights,
     )
-    return hist_reference, hist_target
+    return hist_target, hist_reference 
