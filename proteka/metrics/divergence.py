@@ -374,10 +374,7 @@ def fraction_smaller(
         If false, then `reference` is not used
     Returns : float
     """
-    assert (
-        target.shape == reference.shape
-    ), f"Dimension mismatch: target: {target.shape} reference: {reference.shape}"
-
+    
     smaller = np.mean( target < threshold)
     if relative:
         smaller_ref = np.mean( reference < threshold)
