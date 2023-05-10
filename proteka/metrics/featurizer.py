@@ -407,7 +407,7 @@ class Featurizer:
         )
         ensemble.set_quantity("tica", quantity)
 
-    def add_dssp(self, simplified: bool = True, digitize: bool = False):
+    def add_dssp(self, ensemble: Ensemble, simplified: bool = True, digitize: bool = False):
         """Adds DSSP secondary codes to each amino acid. Requires high backbone resolution
         (eg, N, C, O) in topology. DSSP codes are categorically digitized according to the
         following schemes if specified:
@@ -437,7 +437,7 @@ class Featurizer:
             If True, the DSSP codes with be digitized according to the mappings above
         """
 
-        trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
+        trajectory = ensemble.get_all_in_one_mdtraj_trj()
         dssp_codes = md.compute_dssp(trajectory, simplified=simplified)
 
         if digitize:
@@ -458,7 +458,7 @@ class Featurizer:
             None,
             metadata={"feature": "dssp"},
         )
-        self.ensemble.set_quantity("dssp", quantity)
+        ensemble.set_quantity("dssp", quantity)
         return
 
     def add_local_contact_number(self,
