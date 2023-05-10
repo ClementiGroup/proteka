@@ -352,7 +352,9 @@ class Featurizer:
         quantity = Quantity(psi, "radians", metadata={"feature": "psi"})
         ensemble.set_quantity("psi", quantity)
 
-    def add_rmsd(self, ensemble: Ensemble, reference_structure: md.Trajectory, **kwargs):
+    def add_rmsd(
+        self, ensemble: Ensemble, reference_structure: md.Trajectory, **kwargs
+    ):
         """Get RMSD of a subset of atoms
         reference: Reference mdtraj.Trajectory object
         Wrapper of mdtraj.rmsd
@@ -406,7 +408,12 @@ class Featurizer:
         )
         ensemble.set_quantity("tica", quantity)
 
-    def add_dssp(self, ensemble: Ensemble, simplified: bool = True, digitize: bool = False):
+    def add_dssp(
+        self,
+        ensemble: Ensemble,
+        simplified: bool = True,
+        digitize: bool = False,
+    ):
         """Adds DSSP secondary codes to each amino acid. Requires high backbone resolution
         (eg, N, C, O) in topology. DSSP codes are categorically digitized according to the
         following schemes if specified:
@@ -460,7 +467,8 @@ class Featurizer:
         ensemble.set_quantity("dssp", quantity)
         return
 
-    def add_local_contact_number(self,
+    def add_local_contact_number(
+        self,
         ensemble: Ensemble,
         atom_type: str = "CA",
         min_res_dist: int = 3,
