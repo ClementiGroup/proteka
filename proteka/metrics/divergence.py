@@ -353,12 +353,13 @@ def mse_log(
 
     return val
 
+
 def fraction_smaller(
     target: np.ndarray,
     reference: np.ndarray,
     threshold: float = 1,
-    relative : bool = False,
-    **kwargs
+    relative: bool = False,
+    **kwargs,
 ) -> float:
     """
     Parameters
@@ -374,19 +375,19 @@ def fraction_smaller(
         If false, then `reference` is not used
     Returns : float
     """
-    
-    smaller = np.mean( target < threshold)
+
+    smaller = np.mean(target < threshold)
     if relative:
-        smaller_ref = np.mean( reference < threshold)
+        smaller_ref = np.mean(reference < threshold)
         if smaller_ref > 0:
-            return smaller/smaller_ref
+            return smaller / smaller_ref
         else:
             raise ValueError(
                 f"Reference has no value below selected threshold {threshold}"
             )
     else:
         return smaller
-    
+
 
 def wasserstein(
     target: np.ndarray,
@@ -603,7 +604,7 @@ def vector_mse_dist(
     target_normalized = target / np.sum(target, axis=0)
     reference_normalized = reference / np.sum(reference, axis=0)
 
-    val = vector_mse(reference_normalized, target_normalized)
+    val = vector_mse(target_normalized, reference_normalized)
 
     return val
 
@@ -656,6 +657,12 @@ def vector_mse_log(
     val = np.zeros(num_feat)
     # slow implementation I know
     for i in range(num_feat):
-        val[i] = mse(np.log(reference_normalized), np.log(target_normalized))
+        val[i] = mse_log(
+            target_normalized[:, i],
+            reference_normalized[:, i],
+            threshold=threshold,
+            replace_value=replace_value,
+            intersect_only=intersect_only,
+        )
 
     return val
