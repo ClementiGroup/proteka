@@ -461,7 +461,7 @@ class Featurizer:
         self.ensemble.set_quantity("dssp", quantity)
         return
 
-    def add_local_contact_number(
+    def add_local_contact_number(self,
         ensemble: Ensemble,
         atom_type: str = "CA",
         min_res_dist: int = 3,
