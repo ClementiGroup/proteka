@@ -146,7 +146,7 @@ def test_feature_rewriting(grid_polymer):
         grid_polymer, "ca_distances", offset=2
     )
     assert distances.shape != new_distances.shape
-    
+
 
 def test_local_contact_number(get_CLN_frame):
     """Tests local contact number calculation"""

@@ -233,7 +233,6 @@ class EnsembleQualityMetrics(IMetrics):
         target: Ensemble,
         reference: Ensemble,
         transform: Union[TICATransform, str, None] = None,
-    
     ) -> Dict[str, float]:
         """Perform TICA on the reference enseble and use it to transform target ensemble.
         Then compute KL divergence between the two TICA projections, using the first 2 TICA components

@@ -196,7 +196,7 @@ def histogram_features(
         by the reference. If np.ndarray, those bins will be used instead
     open_edges : bool, optional
         If True, the leftmost edge of the first bin for the target array
-        is assigned to -inf, and the rightmost edge of the last bin for the 
+        is assigned to -inf, and the rightmost edge of the last bin for the
         target array is assigned to +inf. If False, the first bin includes
         the left edge and the last bin includes the right edge. Default is False.
     """
@@ -238,7 +238,7 @@ def histogram_vector_features(
         by the reference. If np.ndarray, those bins will be used instead
     open_edges: bool = False,
         If True, the leftmost edge of the first bin for the target array
-        is assigned to -inf, and the rightmost edge of the last bin for the 
+        is assigned to -inf, and the rightmost edge of the last bin for the
         target array is assigned to +inf. If False, the first bin includes
         the left edge and the last bin includes the right edge. Default is False.
     """
@@ -271,7 +271,6 @@ def histogram_features2d(
     reference_weights: np.ndarray = None,
     bins: int = 100,
     open_edges: bool = False,
-    
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Take a two 2 feature arrays, and compute 2D histograms of target
     and reference. Histogram of the target is computed over the range,
@@ -290,7 +289,7 @@ def histogram_features2d(
         by the reference. If np.ndarray, those bins will be used instead
     open_edges: bool = False,
         If True, the leftmost edge of the first bin for the target array
-        is assigned to -inf, and the rightmost edge of the last bin for the 
+        is assigned to -inf, and the rightmost edge of the last bin for the
         target array is assigned to +inf. If False, the first bin includes
         the left edge and the last bin includes the right edge. Default is False.
     """
@@ -305,11 +304,11 @@ def histogram_features2d(
         xedges[-1] = np.inf
         yedges[0] = -np.inf
         yedges[-1] = np.inf
-    
+
     hist_target, _, _ = np.histogram2d(
         target[:, 0],
         target[:, 1],
         bins=[xedges, yedges],
         weights=target_weights,
     )
-    return hist_target, hist_reference 
+    return hist_target, hist_reference
