@@ -177,6 +177,7 @@ def histogram_features(
     target_weights: np.ndarray = None,
     reference_weights: np.ndarray = None,
     bins: Union[int, np.ndarray] = 100,
+    open_edges: bool = False,
 ):
     """Take a two arrays, and compute vector histograms of target
     and reference. Histogram of the target is computed over the range,
@@ -193,11 +194,19 @@ def histogram_features(
     bins : int or np.ndarray, optional
         Number of bins to use, by default 100 over the support specified
         by the reference. If np.ndarray, those bins will be used instead
+    open_edges : bool, optional
+        If True, the leftmost edge of the first bin for the target array
+        is assigned to -inf, and the rightmost edge of the last bin for the 
+        target array is assigned to +inf. If False, the first bin includes
+        the left edge and the last bin includes the right edge. Default is False.
     """
 
     hist_reference, bin_edges = np.histogram(
         reference, bins=bins, weights=reference_weights
     )
+    if open_edges:
+        bin_edges[0] = -np.inf
+        bin_edges[-1] = np.inf
     hist_target, _ = np.histogram(
         target, bins=bin_edges, weights=target_weights
     )
@@ -210,6 +219,7 @@ def histogram_vector_features(
     target_weights: np.ndarray = None,
     reference_weights: np.ndarray = None,
     bins: Union[int, np.ndarray] = 100,
+    open_edges: bool = False,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Take a two multi-feature arrays, and compute vector histograms of target
     and reference. Histogram of the target is computed over the range,
@@ -226,6 +236,11 @@ def histogram_vector_features(
     bins : int or np.ndarray, optional
         Number of bins to use, by default 100 over the support specified
         by the reference. If np.ndarray, those bins will be used instead
+    open_edges: bool = False,
+        If True, the leftmost edge of the first bin for the target array
+        is assigned to -inf, and the rightmost edge of the last bin for the 
+        target array is assigned to +inf. If False, the first bin includes
+        the left edge and the last bin includes the right edge. Default is False.
     """
 
     assert target.shape[-1] == reference.shape[-1]
@@ -243,6 +258,7 @@ def histogram_vector_features(
             target_weights=target_weights,
             reference_weights=reference_weights,
             bins=bins,
+            open_edges=open_edges,
         )
 
     return hist_target, hist_reference
@@ -254,6 +270,8 @@ def histogram_features2d(
     target_weights: np.ndarray = None,
     reference_weights: np.ndarray = None,
     bins: int = 100,
+    open_edges: bool = False,
+    
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Take a two 2 feature arrays, and compute 2D histograms of target
     and reference. Histogram of the target is computed over the range,
@@ -270,6 +288,11 @@ def histogram_features2d(
     bins : int or np.ndarray, optional
         Number of bins to use, by default 100 over the support specified
         by the reference. If np.ndarray, those bins will be used instead
+    open_edges: bool = False,
+        If True, the leftmost edge of the first bin for the target array
+        is assigned to -inf, and the rightmost edge of the last bin for the 
+        target array is assigned to +inf. If False, the first bin includes
+        the left edge and the last bin includes the right edge. Default is False.
     """
     assert target.shape[1] == 2, "Target should be 2d with shape (n, 2)"
     assert reference.shape[1] == 2, "Reference should be 2d with shape (n, 2)"
@@ -277,6 +300,12 @@ def histogram_features2d(
     hist_reference, xedges, yedges = np.histogram2d(
         reference[:, 0], reference[:, 1], bins=bins, weights=reference_weights
     )
+    if open_edges:
+        xedges[0] = -np.inf
+        xedges[-1] = np.inf
+        yedges[0] = -np.inf
+        yedges[-1] = np.inf
+    
     hist_target, _, _ = np.histogram2d(
         target[:, 0],
         target[:, 1],
