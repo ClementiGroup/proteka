@@ -160,20 +160,20 @@ def test_local_contact_number(get_CLN_frame):
 def test_dssp(get_CLN_frame):
     """Tests DSSP recording"""
     ens = get_CLN_frame
-    feat = Featurizer(ens)
-    feat.add_dssp(digitize=False)
+    feat = Featurizer()
+    feat.add_dssp(ens, digitize=False)
     simple_dssp = ens.get_quantity("dssp").raw_value
 
-    feat = Featurizer(ens)
-    feat.add_dssp(digitize=True)
+    feat = Featurizer()
+    feat.add_dssp(ens, digitize=True)
     simple_dssp_digit = ens.get_quantity("dssp").raw_value
 
-    feat = Featurizer(ens)
-    feat.add_dssp(digitize=False, simplified=False)
+    feat = Featurizer()
+    feat.add_dssp(ens, digitize=False, simplified=False)
     full_dssp = ens.get_quantity("dssp").raw_value
 
-    feat = Featurizer(ens)
-    feat.add_dssp(digitize=True, simplified=False)
+    feat = Featurizer()
+    feat.add_dssp(ens, digitize=True, simplified=False)
     full_dssp_digit = ens.get_quantity("dssp").raw_value
 
     np.testing.assert_array_equal(simple_dssp.flatten(), ref_dssp_simple)
