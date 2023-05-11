@@ -5,6 +5,7 @@ tqdm
 numpy
 h5py
 scipy
+deeptime[optional]
 
 # developer tools
 pytest
