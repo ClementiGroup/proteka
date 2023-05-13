@@ -219,7 +219,20 @@ class EnsembleQualityMetrics(IMetrics):
         reference: Ensemble,
         features: Union[Iterable[str], str] = "all",
     ) -> List[str]:
-        """Checks feature inputs for `compute()`"""
+        """Checks feature inputs for `compute()`
+
+        Parameters
+        ----------
+        metrics:
+            specified metric(s) for computation.
+
+        Returns
+        -------
+        metrics:
+            List of string(s) specifying the vetted features(s)
+            for which metrics should be computed downstream
+        """
+
         # Feature checks
         all_target_feats = target.list_quantities()
         all_ref_feats = reference.list_quantities()
@@ -265,7 +278,19 @@ class EnsembleQualityMetrics(IMetrics):
     def _check_metrics(
         metrics: Union[Iterable[str], str] = "all",
     ) -> Iterable[str]:
-        """Checks to make sure requested metrics are valid"""
+        """Checks to make sure requested metrics are valid
+
+        Parameters
+        ----------
+        metrics:
+            specified metric(s) for computation.
+
+        Returns
+        -------
+        metrics:
+            List of string(s) specifying the vetted metric(s)
+            that should be computed downstream
+        """
         valid_metrics = EnsembleQualityMetrics.metric_types
         if metrics == "all":
             metrics = valid_metrics
@@ -294,7 +319,9 @@ class EnsembleQualityMetrics(IMetrics):
         metrics: Union[Iterable[str], str] = "all",
     ):
         """
-        Compute the metrics that compare the target ensemble to the reference
+        Compute the metrics that compare the target ensemble to the reference over
+        the specified features. Comute metrics are stored in the `EnsembleQualityMetrics.results`
+        attribute.
 
         Parameters:
         -----------
@@ -332,9 +359,35 @@ class EnsembleQualityMetrics(IMetrics):
         metric: str = "kl_div",
         bins: Union[int, np.ndarray] = 100,
         **kwargs,
-    ) -> Dict:
-        """Computes the specified metric between the target and reference ensembles for the feature given as input.
-        If the input feature is 'tica' the computation is done consistently with what was done before
+    ) -> Dict[str, float]:
+        """Computes metric for desired feature between two ensembles.
+
+        Parameters
+        ----------
+        target:
+            Target ensemble
+        reference:
+            Refernce ensemble
+        feature:
+            string specifying the feature for which the desired metric should be computed
+            over from the target to the reference ensemble. Valid features can be
+            scalars (eg, `EnsembleQualityMetrics.scalar_features`) or vector features
+            (eg, `EnsembleQualityMetrics.vector_features`)
+        metric:
+            string specifying the metric to compute for the desire feature between the
+            target and reference ensembles. Valid metrics are contained in
+            `EnsembleQualityMetrics.metrics`
+        bins:
+            In the case that the metric is calculated over probability distributions,
+            this integer number of bins or `np.ndarray` of bins is used to compute
+            histograms for both the target and reference ensembles
+
+        Returns
+        -------
+        result:
+            dict of the form {"{feature}, {metric}" : metric_result} for
+            the specified feature and metric between the target and
+            reference ensembles.
         """
 
         if metric not in EnsembleQualityMetrics.metric_types:
