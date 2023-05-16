@@ -360,7 +360,7 @@ class Featurizer:
         else:
             residue_inds = np.array([res.index for res in residues])
 
-        assert len(residues) == len(atom_inds)
+        assert len(residue_inds) == len(atom_inds)
         # grab fully connected pairs
         ind1, ind2 = np.triu_indices(len(atom_inds), 1)
 
