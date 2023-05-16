@@ -352,6 +352,15 @@ class Featurizer:
         atom_inds = trajectory.topology.select("name {}".format(atom_type))
         residue_inds = np.array([res.index for res in residues])
 
+        # Handle GLY residues for CB choice
+        if atom_type == "CB":
+            residue_inds = np.array(
+                [res.index for res in residues if res.name != "GLY"]
+            )
+        else:
+            residue_inds = np.array([res.index for res in residues])
+
+        assert len(residues) == len(atom_inds)
         # grab fully connected pairs
         ind1, ind2 = np.triu_indices(len(atom_inds), 1)
 
