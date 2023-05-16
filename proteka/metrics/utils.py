@@ -187,7 +187,7 @@ def histogram_vector_features(
 
     # slow implementation, I know.
     num_feats = target.shape[-1]
-    num_bins = len(bins) if isinstance(bins, np.ndarray) else bins
+    num_bins = (len(bins) - 1) if isinstance(bins, np.ndarray) else bins
     hist_reference = np.zeros((num_bins, num_feats))
     hist_target = np.zeros((num_bins, num_feats))
 
