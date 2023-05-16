@@ -267,7 +267,12 @@ class Featurizer:
         self.ensemble.set_quantity("end2end_distance", quantity)
         return
 
-    def add_dssp(self, simplified: bool = True, digitize: bool = False):
+    def add_dssp(
+        self,
+        simplified: bool = True,
+        digitize: bool = False,
+        residue_idx: Optional[np.ndarray] = None,
+    ):
         """Adds DSSP secondary codes to each amino acid. Requires high backbone resolution
         (eg, N, C, O) in topoology. DSSP codes are categorically digitized according to the
         following schemes if specified:
@@ -295,10 +300,16 @@ class Featurizer:
             If True, only simplified DSSP codes are reported. See help(mdtraj.compute_dssp)
         digitize:
             If True, the DSSP codes with be digitized according to the mappings above
+        residue_idx:
+            If not None, this array specifies which residues (with zero-based indexing)
+            should be included for DSSP computation
         """
 
         trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
         dssp_codes = md.compute_dssp(trajectory, simplified=simplified)
+
+        if residue_idx != None:
+            dssp_codes = dssp_codes[:, residue_idx]
 
         if digitize:
             # use np.unique array reconstruction, with an intermediate lookup transform
