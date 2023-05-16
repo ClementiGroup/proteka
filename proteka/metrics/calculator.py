@@ -393,11 +393,13 @@ class EnsembleQualityMetrics(IMetrics):
         if metric not in EnsembleQualityMetrics.metric_types:
             raise ValueError(f"Metric '{metric}' not defined.")
 
+        if metric == "fraction_smaller" and feature != "rmsd":
+            return {f"{feature}, {metric}": None}
+
         if feature == "tica":
             target_feat, reference_feat = get_tica_features(
                 target, reference, **kwargs
             )
-
         else:
             target_feat = Featurizer.get_feature(target, feature)
             reference_feat = Featurizer.get_feature(reference, feature)
