@@ -337,7 +337,7 @@ class Featurizer:
         atom_type: str = "CA",
         min_res_dist: int = 3,
         cut: float = 1,
-        beta: float = 0.02,
+        beta: float = 50,
     ):
         """Adds PROTHON local contact number trajectory features for either CA
         or CB atoms. Based on the implementation in
@@ -347,7 +347,8 @@ class Featurizer:
         ---------
         atom_type:
             Either "CA" or "CB". Determines the heavy atoms used to determine
-            contacts
+            contacts. If "CB" is used, contacts for GLY residues will be computed using
+            GLY CA atoms.
         min_res_dist:
             Specifies the minumum residue separation to be considered as part
             set of non-bonded distances for contact calculations.
@@ -369,20 +370,20 @@ class Featurizer:
         trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
         atoms = np.array(list(trajectory.topology.atoms))
         residues = np.array(list(trajectory.topology.residues))
-        atom_inds = trajectory.topology.select("name {}".format(atom_type))
-
+        if atom_type == "CA":
+            atom_inds = trajectory.topology.select("name {}".format(atom_type))
         if atom_type == "CB":
-            residue_inds = np.array(
-                [res.index for res in residues if res.name != "GLY"]
+            atom_inds = trajectory.topology.select(
+                "name {} or (name CA and resname GLY)".format(atom_type)
             )
-        else:
-            residue_inds = np.array([res.index for res in residues])
+        assert all(np.diff(atom_inds) > 0)
+
+        residue_inds = np.array([res.index for res in residues])
 
         assert len(residue_inds) == len(atom_inds)
 
         # grab fully connected pairs
         ind1, ind2 = np.triu_indices(len(atom_inds), 1)
-
         # apply residue neighbor restriction
         pairs = np.array([atom_inds[ind1], atom_inds[ind2]]).T
         res_pairs = np.array([residue_inds[ind1], residue_inds[ind2]]).T
@@ -398,7 +399,9 @@ class Featurizer:
         # compute local contacts
         contacts = 1.0 / (1.0 + np.exp(beta * (distances - cut)))
         contacts = md.geometry.squareform(contacts, res_pairs)
+
         contact_per_atom = np.sum(contacts, axis=-1)
+
         assert contact_per_atom.shape[-1] == len(atom_inds)
 
         quantity = Quantity(
