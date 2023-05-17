@@ -427,9 +427,8 @@ class EnsembleQualityMetrics(IMetrics):
                 f"feature {feature} not registered in vector or scalar features"
             )
         metric_args = {k:v for k,v in kwargs.items() if not k in ["bins","reference_weights"]}
-        if (
-            metric == "mse" or metric == "fraction_smaller"
-        ):  # mse should be computed over the exact values, not over the prob distribution
+        if metric in ["mse", "fraction_smaller"]:  
+            # mse should be computed over the exact values, not over the prob distribution
             result = metric_computer(target_feat, reference_feat, **metric_args)
         else:
             result = metric_computer(hist_target, hist_ref,**metric_args)

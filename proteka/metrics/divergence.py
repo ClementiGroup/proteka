@@ -320,7 +320,7 @@ def mse_log(
     threshold: float = 1e-8,
     replace_value: float = 1e-10,
     intersect_only: bool = False,
-    use_optimal_offset: bool = False
+    use_optimal_offset: bool = True
 ) -> float:
     r"""
      Compute Mean Squared Error between the log  specified data sets.
@@ -406,7 +406,7 @@ def mse_log(
         )
         log_ref = np.log(reference_normalized)
         log_tar = np.log(target_normalized)
-        
+
         if use_optimal_offset:
             offset = optimal_offset(log_tar,log_ref)
         else:
