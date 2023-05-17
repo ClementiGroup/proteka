@@ -259,6 +259,8 @@ class Featurizer:
         # Get the pair of the first and last CA atoms
         ca_pair = [[ca_atoms[0], ca_atoms[-1]]]
         distance = md.compute_distances(trajectory, ca_pair, periodic=False)
+        # reshape to have the samme shape than frames
+        distance = distance.reshape(-1)
         quantity = Quantity(
             distance,
             "nanometers",
