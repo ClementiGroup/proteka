@@ -61,7 +61,7 @@ def kl_divergence(
     threshold: float = 1e-8,
     replace_value: float = 1e-8,
     intersect_only: bool = True,
-    **kwagrs
+    **kwagrs,
 ) -> float:
     r"""
     Compute Kullback-Leibler divergence between specified data sets.
@@ -192,11 +192,7 @@ def js_divergence(
     return jsd
 
 
-def mse(
-    target: np.ndarray,
-    reference: np.ndarray,
-    offset: float = 0
-) -> float:
+def mse(target: np.ndarray, reference: np.ndarray, offset: float = 0) -> float:
     r"""
      Compute Mean Squared Error between specified data sets.
 
@@ -218,16 +214,14 @@ def mse(
     assert (
         target.shape == reference.shape
     ), f"Dimension mismatch: target: {target.shape} reference: {reference.shape}"
-    
+
     if np.abs(offset) < 1e-12:
         return np.average((target - reference) ** 2)
     else:
         return np.average(((target - reference) + offset) ** 2)
 
-def optimal_offset(
-    target: np.ndarray,
-    reference: np.ndarray
-) -> float:
+
+def optimal_offset(target: np.ndarray, reference: np.ndarray) -> float:
     r"""
     Compute the value of lambda that minimizes the residual
 
@@ -250,13 +244,12 @@ def optimal_offset(
         target.shape == reference.shape
     ), f"Dimension mismatch: target: {target.shape} reference: {reference.shape}"
 
-    lam = np.mean(reference-target)
+    lam = np.mean(reference - target)
     return lam
 
+
 def mse_dist(
-    target: np.ndarray,
-    reference: np.ndarray,
-    use_optimal_offset: bool = False
+    target: np.ndarray, reference: np.ndarray, use_optimal_offset: bool = False
 ) -> float:
     r"""
      Compute Mean Squared Error between the log  specified data sets.
@@ -303,15 +296,13 @@ def mse_dist(
     reference_normalized = reference_normalized.flatten()
 
     if use_optimal_offset:
-        offset = optimal_offset(target_normalized,reference_normalized)
+        offset = optimal_offset(target_normalized, reference_normalized)
     else:
         offset = 0
-    
-    val = mse(target_normalized, reference_normalized,offset=offset)
+
+    val = mse(target_normalized, reference_normalized, offset=offset)
 
     return val
-
-
 
 
 def mse_log(
@@ -320,7 +311,7 @@ def mse_log(
     threshold: float = 1e-8,
     replace_value: float = 1e-10,
     intersect_only: bool = False,
-    use_optimal_offset: bool = True
+    use_optimal_offset: bool = True,
 ) -> float:
     r"""
      Compute Mean Squared Error between the log  specified data sets.
@@ -387,15 +378,11 @@ def mse_log(
         log_tar = np.log(target_normalized[valid_bins])
 
         if use_optimal_offset:
-            offset = optimal_offset(log_tar,log_ref)
+            offset = optimal_offset(log_tar, log_ref)
         else:
             offset = 0
-        
-        val = mse(
-            log_tar,
-            log_ref,
-            offset
-        )
+
+        val = mse(log_tar, log_ref, offset)
 
     else:
         target_normalized = clean_distribution(
@@ -408,15 +395,11 @@ def mse_log(
         log_tar = np.log(target_normalized)
 
         if use_optimal_offset:
-            offset = optimal_offset(log_tar,log_ref)
+            offset = optimal_offset(log_tar, log_ref)
         else:
             offset = 0
-        
-        val = mse(
-            log_tar,
-            log_ref,
-            offset
-        )
+
+        val = mse(log_tar, log_ref, offset)
 
     return val
 
@@ -425,7 +408,7 @@ def fraction_smaller(
     target: np.ndarray,
     reference: np.ndarray,
     threshold: float = 1,
-    relative: bool = False
+    relative: bool = False,
 ) -> float:
     """
     Parameters

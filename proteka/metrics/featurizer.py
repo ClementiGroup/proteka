@@ -376,7 +376,9 @@ class Featurizer:
             atom_inds = trajectory.topology.select("name {}".format(atom_type))
         if atom_type == "CB":
             atom_inds = trajectory.topology.select(
-                "name {} or (name CA and resname GLY)".format(atom_type)
+                "name {} or (name CA and resname GLY) or (name CA and resname IGL)".format(
+                    atom_type
+                )
             )
         assert all(np.diff(atom_inds) > 0)
 
