@@ -359,14 +359,6 @@ class Featurizer:
         assert all(np.diff(atom_inds) > 0)
         residue_inds = np.array([res.index for res in residues])
 
-        # Handle GLY residues for CB choice
-        if atom_type == "CB":
-            residue_inds = np.array(
-                [res.index for res in residues if res.name != "GLY"]
-            )
-        else:
-            residue_inds = np.array([res.index for res in residues])
-
         assert len(residue_inds) == len(atom_inds)
         # grab fully connected pairs
         ind1, ind2 = np.triu_indices(len(atom_inds), 1)
