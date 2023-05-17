@@ -358,6 +358,7 @@ class EnsembleQualityMetrics(IMetrics):
         feature: str,
         metric: str = "kl_div",
         bins: Union[int, np.ndarray] = 100,
+        reference_weights: np.ndarray = None,
         **kwargs,
     ) -> Dict[str, float]:
         """Computes metric for desired feature between two ensembles.
@@ -407,17 +408,17 @@ class EnsembleQualityMetrics(IMetrics):
         if feature in EnsembleQualityMetrics.scalar_features:
             metric_computer = EnsembleQualityMetrics.scalar_metrics[metric]
             hist_target, hist_ref = histogram_features(
-                target_feat, reference_feat, bins=bins
+                target_feat, reference_feat, bins=bins, reference_weights=reference_weights
             )
         elif feature in EnsembleQualityMetrics.vector_features:
             metric_computer = EnsembleQualityMetrics.vector_metrics[metric]
             hist_target, hist_ref = histogram_vector_features(
-                target_feat, reference_feat, bins=bins
+                target_feat, reference_feat, bins=bins, reference_weights=reference_weights
             )
         elif feature in EnsembleQualityMetrics.features_2d:
             metric_computer = EnsembleQualityMetrics.metrics_2d[metric]
             hist_target, hist_ref = histogram_features2d(
-                target_feat, reference_feat, bins=bins
+                target_feat, reference_feat, bins=bins, reference_weights=reference_weights
             )
             hist_target = hist_target.flatten()
             hist_ref = hist_ref.flatten()
@@ -425,11 +426,11 @@ class EnsembleQualityMetrics(IMetrics):
             raise ValueError(
                 f"feature {feature} not registered in vector or scalar features"
             )
-
+        metric_args = {k:v for k,v in kwargs.items() if not k in ["bins","reference_weights"]}
         if (
             metric == "mse" or metric == "fraction_smaller"
         ):  # mse should be computed over the exact values, not over the prob distribution
-            result = metric_computer(target_feat, reference_feat, **kwargs)
+            result = metric_computer(target_feat, reference_feat, **metric_args)
         else:
-            result = metric_computer(hist_target, hist_ref)
+            result = metric_computer(hist_target, hist_ref,**metric_args)
         return {f"{feature}, {metric}": result}
