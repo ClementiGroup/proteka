@@ -61,6 +61,7 @@ def kl_divergence(
     threshold: float = 1e-8,
     replace_value: float = 1e-8,
     intersect_only: bool = True,
+    **kwagrs
 ) -> float:
     r"""
     Compute Kullback-Leibler divergence between specified data sets.
@@ -194,6 +195,7 @@ def js_divergence(
 def mse(
     target: np.ndarray,
     reference: np.ndarray,
+    offset: float = 0
 ) -> float:
     r"""
      Compute Mean Squared Error between specified data sets.
@@ -205,6 +207,9 @@ def mse(
         Target and reference data arrays.
         Should have the same shape
 
+     offset : float
+        offset to add to the reference array. 0 by default
+
      Returns : float
      -------
     Mean Squared Error of the target from the reference
@@ -213,13 +218,45 @@ def mse(
     assert (
         target.shape == reference.shape
     ), f"Dimension mismatch: target: {target.shape} reference: {reference.shape}"
+    
+    if np.abs(offset) < 1e-12:
+        return np.average((target - reference) ** 2)
+    else:
+        return np.average(((target - reference) + offset) ** 2)
 
-    return np.average((target - reference) ** 2)
+def optimal_offset(
+    target: np.ndarray,
+    reference: np.ndarray
+) -> float:
+    r"""
+    Compute the value of lambda that minimizes the residual
 
+    .. math  \sum_{i=1}^N (p_i -  q_i + \lambda)^2
+
+    This uses the analytical solution given by
+
+    .. math \lambda = -\frac{1}{N} \sum_{i=1}^N (p_i -  q_i)
+
+    Parameters
+     ----------
+
+     target, reference : np.ndarray
+        Target and reference probability distributions (histograms).
+        Should have the same shape
+
+    Returns : floats
+    """
+    assert (
+        target.shape == reference.shape
+    ), f"Dimension mismatch: target: {target.shape} reference: {reference.shape}"
+
+    lam = np.mean(reference-target)
+    return lam
 
 def mse_dist(
     target: np.ndarray,
     reference: np.ndarray,
+    use_optimal_offset: bool = False
 ) -> float:
     r"""
      Compute Mean Squared Error between the log  specified data sets.
@@ -265,9 +302,16 @@ def mse_dist(
     target_normalized = target_normalized.flatten()
     reference_normalized = reference_normalized.flatten()
 
-    val = mse(reference_normalized, target_normalized)
+    if use_optimal_offset:
+        offset = optimal_offset(target_normalized,reference_normalized)
+    else:
+        offset = 0
+    
+    val = mse(target_normalized, reference_normalized,offset=offset)
 
     return val
+
+
 
 
 def mse_log(
@@ -276,6 +320,7 @@ def mse_log(
     threshold: float = 1e-8,
     replace_value: float = 1e-10,
     intersect_only: bool = False,
+    use_optimal_offset: bool = False
 ) -> float:
     r"""
      Compute Mean Squared Error between the log  specified data sets.
@@ -338,10 +383,20 @@ def mse_log(
                 )
             )
         )
+        log_ref = np.log(reference_normalized[valid_bins])
+        log_tar = np.log(target_normalized[valid_bins])
+
+        if use_optimal_offset:
+            offset = optimal_offset(log_tar,log_ref)
+        else:
+            offset = 0
+        
         val = mse(
-            np.log(reference_normalized[valid_bins]),
-            np.log(target_normalized[valid_bins]),
+            log_tar,
+            log_ref,
+            offset
         )
+
     else:
         target_normalized = clean_distribution(
             target_normalized, threshold=threshold, value=replace_value
@@ -349,7 +404,19 @@ def mse_log(
         reference_normalized = clean_distribution(
             reference_normalized, threshold=threshold, value=replace_value
         )
-        val = mse(np.log(reference_normalized), np.log(target_normalized))
+        log_ref = np.log(reference_normalized)
+        log_tar = np.log(target_normalized)
+        
+        if use_optimal_offset:
+            offset = optimal_offset(log_tar,log_ref)
+        else:
+            offset = 0
+        
+        val = mse(
+            log_tar,
+            log_ref,
+            offset
+        )
 
     return val
 
@@ -358,8 +425,7 @@ def fraction_smaller(
     target: np.ndarray,
     reference: np.ndarray,
     threshold: float = 1,
-    relative: bool = False,
-    **kwargs,
+    relative: bool = False
 ) -> float:
     """
     Parameters
