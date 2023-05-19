@@ -483,7 +483,8 @@ class Featurizer:
         ---------
         atom_type:
             Either "CA" or "CB". Determines the heavy atoms used to determine
-            contacts
+            contacts. If "CB" is used, all contacts for involving GLY will be
+            computed using GLY CA
         min_res_dist:
             Specifies the minumum residue separation to be considered as part
             set of non-bonded distances for contact calculations.
@@ -505,9 +506,16 @@ class Featurizer:
         trajectory = ensemble.get_all_in_one_mdtraj_trj()
         atoms = np.array(list(trajectory.topology.atoms))
         residues = np.array(list(trajectory.topology.residues))
-        atom_inds = trajectory.topology.select("name {}".format(atom_type))
+        if atom_type == "CA":
+            atom_inds = trajectory.topology.select("name {}".format(atom_type))
+        if atom_type == "CB":
+            atom_inds = trajectory.topology.select(
+                "name {} or (name CA and resname GLY)".format(atom_type)
+            )
+        assert all(np.diff(atom_inds) > 0)
         residue_inds = np.array([res.index for res in residues])
 
+        assert len(residue_inds) == len(atom_inds)
         # grab fully connected pairs
         ind1, ind2 = np.triu_indices(len(atom_inds), 1)
 
