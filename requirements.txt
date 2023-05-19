@@ -5,8 +5,8 @@ tqdm
 numpy
 h5py
 scipy
+deeptime
 
 # developer tools
 pytest
 black[jupyter]
-
