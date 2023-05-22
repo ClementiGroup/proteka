@@ -230,7 +230,14 @@ class Featurizer:
             rmsd_kwargs = {}
         assert all(
             [
-                k in ["atom_indices", "frame", "parallel", "precentered"]
+                k
+                in [
+                    "atom_indices",
+                    "ref_atom_indices",
+                    "frame",
+                    "parallel",
+                    "precentered",
+                ]
                 for k in rmsd_kwargs.keys()
             ]
         )
