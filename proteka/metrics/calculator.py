@@ -4,6 +4,7 @@ from abc import ABCMeta, abstractmethod
 from collections.abc import Iterable
 import numpy as np
 from typing import Union, Dict
+from itertools import combinations
 
 from .featurizer import Featurizer
 from ..dataset import Ensemble
@@ -77,6 +78,67 @@ class StructuralIntegrityMetrics(IMetrics):
         # Only consider distances between nonconsecutive CA atoms, hence the offset=1
         distances = Featurizer.get_feature(ensemble, "ca_distances", offset=1)
         clashes = np.where(distances < 0.4)[0]
+        return {"N clashes": clashes.size}
+
+    def clashes(
+        ensemble: Ensemble,
+        atom_type_1: str,
+        atom_type_2: str,
+        threshold: float,
+        res_offset: int = 1,
+        stride: Optional[int] = None,
+    ) -> Dict[str, int]:
+        """ "Compute clashes between atoms of types `atom_type_1/2` according
+        to the supplied `distance` threshold.
+
+        Parameters
+        ----------
+        ensemble:
+            `Ensemble` over which clashes should be detected
+        atom_type_1:
+            `str` that denotes the first atom type according to MDTraj selection language
+        atom_type_2:
+            `str` that denotes the first atom type according to MDTraj selection language
+        res_offset:
+            `int` that determines the minimum residue separation for inclusion in distance
+            calculations.
+        stride:
+            If specified, this stride is applied to the trajectory before the distance
+            calculations
+
+        Returns
+        -------
+        Dict[str, int]:
+            Dictionary with key `N_clashes` and value reporting the number of clashes found
+        """
+
+        if len(enesemble.top.select(f"name {atom_type_1}")) == 0:
+            raise RuntimeError(
+                f"atom type {atom_type_1} not found in ensemble topology"
+            )
+        if len(enesemble.top.select(f"name {atom_type_2}")) == 0:
+            raise RuntimeError(
+                f"atom type {atom_type_2} not found in ensemble topology"
+            )
+
+        all_atoms = list(ensemble.top.atoms)
+        atom_indices = ensemble.top.select(
+            f"name {atom_type_1} or name {atom_type_2}"
+        )
+        all_pairs = list(combinations(atom_indices, 2))
+
+        pruned_pairs = []
+        # res exclusion filtering
+        for pair in all_pairs:
+            a1, a2 = all_atoms[pair[0]], all_atoms[pair[1]]
+            if np.abs(a1.residue.index - a2.residue.index) > res_offset:
+                pruned_pairs.appen((a1, a2))
+
+        traj = ensemble.get_all_in_one_trj()
+        if stride != None:
+            traj.xyz = traj.xyz[::stride]
+        distances = md.compute_distances(traj, pruned_pairs)
+        clashes = np.where(distances < threshold)[0]
         return {"N clashes": clashes.size}
 
     @staticmethod
