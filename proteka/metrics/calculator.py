@@ -3,7 +3,8 @@
 from abc import ABCMeta, abstractmethod
 from collections.abc import Iterable
 import numpy as np
-from typing import Union, Dict
+import mdtraj as md
+from typing import Union, Dict, Optional, List, Tuple
 from itertools import combinations
 
 from .featurizer import Featurizer
@@ -78,13 +79,13 @@ class StructuralIntegrityMetrics(IMetrics):
         # Only consider distances between nonconsecutive CA atoms, hence the offset=1
         distances = Featurizer.get_feature(ensemble, "ca_distances", offset=1)
         clashes = np.where(distances < 0.4)[0]
-        return {"N clashes": clashes.size}
+        return {"CA-CA clashes": clashes.size}
 
-    def clashes(
+    @staticmethod
+    def general_clashes(
         ensemble: Ensemble,
-        atom_type_1: str,
-        atom_type_2: str,
-        threshold: float,
+        atom_type_pairs: List[Tuple[str, str]],
+        thresholds: List[float],
         res_offset: int = 1,
         stride: Optional[int] = None,
     ) -> Dict[str, int]:
@@ -95,10 +96,11 @@ class StructuralIntegrityMetrics(IMetrics):
         ----------
         ensemble:
             `Ensemble` over which clashes should be detected
-        atom_type_1:
-            `str` that denotes the first atom type according to MDTraj selection language
-        atom_type_2:
-            `str` that denotes the first atom type according to MDTraj selection language
+        atom_type_pairs:
+            List of `str` tuples that denote the first atom type pairs according to
+            the MDTraj selection language
+        thresholds:
+            List of clash thresholds for each type pair in atom_type_pairs
         res_offset:
             `int` that determines the minimum residue separation for inclusion in distance
             calculations.
@@ -109,37 +111,55 @@ class StructuralIntegrityMetrics(IMetrics):
         Returns
         -------
         Dict[str, int]:
-            Dictionary with key `N_clashes` and value reporting the number of clashes found
+            Dictionary with keys `{type1}_{type2}_clashes` and values reporting
+            the number of clashes found for that pair type
         """
 
-        if len(enesemble.top.select(f"name {atom_type_1}")) == 0:
-            raise RuntimeError(
-                f"atom type {atom_type_1} not found in ensemble topology"
+        clash_dictionary = {}
+        if not isinstance(atom_type_pairs, list):
+            raise ValueError(
+                "atom_type_pairs must be a list of tuples of strings"
             )
-        if len(enesemble.top.select(f"name {atom_type_2}")) == 0:
+        if not isinstance(thresholds, list):
+            raise ValueError("thresholds must be a list of floats")
+        if len(atom_type_pairs) != len(thresholds):
             raise RuntimeError(
-                f"atom type {atom_type_2} not found in ensemble topology"
+                f"atom_type_pairs and thresholds are {len(atom_type_pairs)} and {len(thresholds)} long, respectively, but they should be the same length"
             )
 
-        all_atoms = list(ensemble.top.atoms)
-        atom_indices = ensemble.top.select(
-            f"name {atom_type_1} or name {atom_type_2}"
-        )
-        all_pairs = list(combinations(atom_indices, 2))
+        for atom_types, threshold in zip(atom_type_pairs, thresholds):
+            atom_type_1, atom_type_2 = atom_types[0], atom_types[1]
+            if len(ensemble.top.select(f"name {atom_type_1}")) == 0:
+                raise RuntimeError(
+                    f"atom type {atom_type_1} not found in ensemble topology"
+                )
+            if len(ensemble.top.select(f"name {atom_type_2}")) == 0:
+                raise RuntimeError(
+                    f"atom type {atom_type_2} not found in ensemble topology"
+                )
 
-        pruned_pairs = []
-        # res exclusion filtering
-        for pair in all_pairs:
-            a1, a2 = all_atoms[pair[0]], all_atoms[pair[1]]
-            if np.abs(a1.residue.index - a2.residue.index) > res_offset:
-                pruned_pairs.appen((a1, a2))
+            all_atoms = list(ensemble.top.atoms)
+            atom_indices = ensemble.top.select(
+                f"name {atom_type_1} or name {atom_type_2}"
+            )
+            all_pairs = list(combinations(atom_indices, 2))
 
-        traj = ensemble.get_all_in_one_trj()
-        if stride != None:
-            traj.xyz = traj.xyz[::stride]
-        distances = md.compute_distances(traj, pruned_pairs)
-        clashes = np.where(distances < threshold)[0]
-        return {"N clashes": clashes.size}
+            pruned_pairs = []
+            # res exclusion filtering
+            for pair in all_pairs:
+                a1, a2 = all_atoms[pair[0]], all_atoms[pair[1]]
+                if np.abs(a1.residue.index - a2.residue.index) > res_offset:
+                    pruned_pairs.append((pair[0], pair[1]))
+
+            traj = ensemble.get_all_in_one_mdtraj_trj()
+            if stride != None:
+                traj.xyz = traj.xyz[::stride]
+            distances = md.compute_distances(traj, pruned_pairs)
+            clashes = np.where(distances < threshold)[0]
+            clash_dictionary[
+                f"{atom_type_1}-{atom_type_2} clashes"
+            ] = clashes.size
+        return clash_dictionary
 
     @staticmethod
     def ca_pseudobonds(ensemble: Ensemble) -> Dict[str, float]:
