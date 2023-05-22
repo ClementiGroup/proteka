@@ -1,11 +1,12 @@
 """Featurizer takes a proteka.dataset.Ensemble and and extract features from it
     """
 from collections.abc import Iterable
+from itertools import combinations
 import numpy as np
 import mdtraj as md
 from ..dataset import Ensemble
 from ..quantity import Quantity
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, List, Optional, Tuple
 
 
 __all__ = ["Featurizer"]
@@ -161,6 +162,78 @@ class Featurizer:
             metadata={"feature": "ca_distances", "offset": offset},
         )
         self.ensemble.set_quantity("ca_distances", quantity)
+
+    @staticmethod
+    def get_general_distances(
+        ensemble: Ensemble,
+        atom_types: Tuple[str],
+        threshold: float,
+        res_offset: int = 1,
+        stride: Optional[int] = None,
+    ) -> np.ndarray:
+        """ "Compute clashes between atoms of types `atom_type_1/2` according
+        to the supplied `distance` threshold.
+
+        Parameters
+        ----------
+        ensemble:
+            `Ensemble` over which clashes should be detected
+        atom_types:
+            Tuple of strings specifying for which two atom types distances should be
+            computed. Uses MDTraj atom type names.
+        threshold:
+            Clash threshold for type pairs
+        res_offset:
+            `int` that determines the minimum residue separation for inclusion in distance
+            calculations.
+        stride:
+            If specified, this stride is applied to the trajectory before the distance
+            calculations
+
+        Returns
+        -------
+        distances:
+            `np.ndarray` of distances for the requested atom type pairs
+        """
+
+        if not isinstance(atom_types, tuple):
+            raise ValueError(
+                "atom_type_pairs must be a list of tuples of strings"
+            )
+        if len(atom_types) != 2:
+            raise ValueError(
+                f"Only 2 atom types may be specified but {atom_types} was supplied"
+            )
+
+        atom_type_1, atom_type_2 = atom_types[0], atom_types[1]
+        if len(ensemble.top.select(f"name {atom_type_1}")) == 0:
+            raise RuntimeError(
+                f"atom type {atom_type_1} not found in ensemble topology"
+            )
+        if len(ensemble.top.select(f"name {atom_type_2}")) == 0:
+            raise RuntimeError(
+                f"atom type {atom_type_2} not found in ensemble topology"
+            )
+
+        all_atoms = list(ensemble.top.atoms)
+        atom_indices = ensemble.top.select(
+            f"name {atom_type_1} or name {atom_type_2}"
+        )
+        all_pairs = list(combinations(atom_indices, 2))
+
+        pruned_pairs = []
+        # res exclusion filtering
+        for pair in all_pairs:
+            a1, a2 = all_atoms[pair[0]], all_atoms[pair[1]]
+            if np.abs(a1.residue.index - a2.residue.index) > res_offset:
+                pruned_pairs.append((pair[0], pair[1]))
+
+        traj = ensemble.get_all_in_one_mdtraj_trj()
+        if stride != None:
+            traj.xyz = traj.xyz[::stride]
+        distances = md.compute_distances(traj, pruned_pairs)
+
+        return distances
 
     def add_ca_angles(self):
         """Get angles between consecutive CA atoms"""

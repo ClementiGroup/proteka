@@ -44,7 +44,8 @@ def test_general_clashes(cln_single_frame):
     assert clashes["CB-CB clashes"] == 2
 
 
-def test_general_clashes_len_raises(cln_single_frame):
+def test_general_clashes_raises(cln_single_frame):
+    """Test raises for improper inputs"""
     with pytest.raises(RuntimeError):
         clashes = StructuralIntegrityMetrics.general_clashes(
             cln_single_frame,
@@ -53,8 +54,6 @@ def test_general_clashes_len_raises(cln_single_frame):
             res_offset=2,
         )
 
-
-def test_general_clashes_type_raises(cln_single_frame):
     with pytest.raises(ValueError):
         clashes = StructuralIntegrityMetrics.general_clashes(
             cln_single_frame,
@@ -67,15 +66,5 @@ def test_general_clashes_type_raises(cln_single_frame):
             cln_single_frame,
             [("N", "O")],
             thresholds="silly_input",
-            res_offset=2,
-        )
-
-
-def test_general_clashes_atom_type_raises(cln_single_frame):
-    with pytest.raises(RuntimeError):
-        clashes = StructuralIntegrityMetrics.general_clashes(
-            cln_single_frame,
-            [("silly_atom", "O")],
-            thresholds=[0.35, 0.5],
             res_offset=2,
         )

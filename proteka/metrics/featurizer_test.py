@@ -107,6 +107,33 @@ def test_ca_distances(single_frame):
     assert np.all(np.isclose(distances, reference_distances))
 
 
+def test_general_clashes_atom_input_raises(get_CLN_frame):
+    """Tests raises for improper atom_type inputs for Featurizer.get_general_distances"""
+    with pytest.raises(ValueError):
+        distances = Featurizer.get_general_distances(
+            get_CLN_frame,
+            [("CA", "O", "C")],
+            threshold=0.35,
+            res_offset=2,
+        )
+
+    with pytest.raises(ValueError):
+        distances = Featurizer.get_general_distances(
+            get_CLN_frame,
+            ["CA", "CB"],
+            threshold=0.35,
+            res_offset=2,
+        )
+
+    with pytest.raises(RuntimeError):
+        distances = Featurizer.get_general_distances(
+            get_CLN_frame,
+            ("silly atom", "O"),
+            threshold=0.35,
+            res_offset=2,
+        )
+
+
 def test_local_contact_number(get_CLN_frame):
     """Tests local contact number calculation"""
     ens = get_CLN_frame
