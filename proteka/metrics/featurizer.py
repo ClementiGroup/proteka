@@ -167,7 +167,6 @@ class Featurizer:
     def get_general_distances(
         ensemble: Ensemble,
         atom_types: Tuple[str],
-        threshold: float,
         res_offset: int = 1,
         stride: Optional[int] = None,
     ) -> np.ndarray:
@@ -177,15 +176,14 @@ class Featurizer:
         Parameters
         ----------
         ensemble:
-            `Ensemble` over which clashes should be detected
+            `Ensemble` from which distances should be computed
         atom_types:
             Tuple of strings specifying for which two atom types distances should be
             computed. Uses MDTraj atom type names.
-        threshold:
-            Clash threshold for type pairs
         res_offset:
             `int` that determines the minimum residue separation for inclusion in distance
-            calculations.
+            calculations; only those atoms separated by more than this number of residues
+            will be included in the calculation.
         stride:
             If specified, this stride is applied to the trajectory before the distance
             calculations

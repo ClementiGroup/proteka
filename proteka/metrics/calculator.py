@@ -103,7 +103,8 @@ class StructuralIntegrityMetrics(IMetrics):
             List of clash thresholds for each type pair in atom_type_pairs
         res_offset:
             `int` that determines the minimum residue separation for inclusion in distance
-            calculations.
+            calculations; only those atoms separated by more than this number of residues
+            will be included in the calculation.
         stride:
             If specified, this stride is applied to the trajectory before the distance
             calculations
@@ -130,7 +131,7 @@ class StructuralIntegrityMetrics(IMetrics):
         for atom_types, threshold in zip(atom_type_pairs, thresholds):
             atom_type_1, atom_type_2 = atom_types[0], atom_types[1]
             distances = Featurizer.get_general_distances(
-                ensemble, atom_types, threshold, res_offset, stride
+                ensemble, atom_types, res_offset, stride
             )
             clashes = np.where(distances < threshold)[0]
             clash_dictionary[
