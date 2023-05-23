@@ -119,8 +119,8 @@ class HDF5Group:
     def from_hdf5(h5grp, skip=None, offset=None, stride=None):
         """Create an instance from the content of HDF5 Group `h5grp`. The Datasets under
         `h5grp`, except for those contained in `skip`, will be read in and interpreted
-        as a `Quantity`. The attributes on `h5grp` will be interpreted as metadata. Input 
-        `offset` and `stride` can be set to allow a partial loading of the non-scalar 
+        as a `Quantity`. The attributes on `h5grp` will be interpreted as metadata. Input
+        `offset` and `stride` can be set to allow a partial loading of the non-scalar
         datasets with indexing `[offset::stride]`.
 
         Parameters
@@ -160,8 +160,9 @@ class HDF5Group:
                     f"`{h5grp.name}/{dt_name}` is not a valid Dataset."
                 )
             if dt_name not in skip:
-                data[dt_name] = Quantity.from_hdf5(dt, offset=offset, stride=stride, 
-                                                   suppress_unit_warn=True)
+                data[dt_name] = Quantity.from_hdf5(
+                    dt, offset=offset, stride=stride, suppress_unit_warn=True
+                )
         metadata = {}
         for k, v in h5grp.attrs.items():
             metadata[k] = v
@@ -839,11 +840,13 @@ class Ensemble(HDF5Group):
         self.__dict__[name] = quantity.raw_value
 
     @classmethod
-    def from_hdf5(cls, h5grp, unit_system="nm-g/mol-ps-kJ/mol", offset=None, stride=None):
+    def from_hdf5(
+        cls, h5grp, unit_system="nm-g/mol-ps-kJ/mol", offset=None, stride=None
+    ):
         """Create an instance from the content of HDF5 Group `h5grp` (h5py.Group).
         When given `unit_system` differs from the stored record, units will be converted
-        when reading the `Quantity` into memory. Input `offset` and `stride` can be set 
-        to allow a partial loading of the non-scalar datasets with indexing 
+        when reading the `Quantity` into memory. Input `offset` and `stride` can be set
+        to allow a partial loading of the non-scalar datasets with indexing
         `[offset::stride]`.
 
         Parameters
@@ -909,14 +912,17 @@ class Ensemble(HDF5Group):
             if k != "coords" and k != "top":
                 other_quantities[k] = v
         # adapt the `trjs` records to the striding
-        # Only implemented for simple cases where the `start` and `stop` are both 
+        # Only implemented for simple cases where the `start` and `stop` are both
         # nonnegative and `step` = 1
-        if "trjs" in other_quantities and (offset is not None or stride is not None):
+        if "trjs" in other_quantities and (
+            offset is not None or stride is not None
+        ):
             if offset is None:
                 offset = 0
             if stride is None:
                 stride = 1
             from math import ceil
+
             try:
                 trjs_dict = json.loads(other_quantities["trjs"][()])
             except json.JSONDecodeError:
@@ -928,14 +934,18 @@ class Ensemble(HDF5Group):
             for slice_name in trjs_dict:
                 start, stop, step = trjs_dict[slice_name]
                 if start < 0 or stop < 0 or step != 1:
-                    warn("Auto adjusting of the `trjs` records is only implemented for "
-                         "simple cases where all slices has nonnegative `start`s and "
-                         "`stop`s and the `step` is 1. Therefore, the `trjs` records "
-                         "are discarded due to inconsistency.")
+                    warn(
+                        "Auto adjusting of the `trjs` records is only implemented for "
+                        "simple cases where all slices has nonnegative `start`s and "
+                        "`stop`s and the `step` is 1. Therefore, the `trjs` records "
+                        "are discarded due to inconsistency."
+                    )
                     new_trjs_dict = {}
-                new_range = [ceil(max(start - offset, 0) / stride),
-                                       ceil(max(stop - offset, 0) / stride),
-                                       1]
+                new_range = [
+                    ceil(max(start - offset, 0) / stride),
+                    ceil(max(stop - offset, 0) / stride),
+                    1,
+                ]
                 if (new_range[1] - new_range[0]) > 0:
                     # non-empty slice
                     new_trjs_dict[slice_name] = new_range

@@ -182,6 +182,7 @@ def test_ensemble_serialize_trjs(example_ensemble, tmpdir):
     for trj_name, trj_slice in trjs_dict.items():
         assert ensemble2.trjs[trj_name] == trj_slice
 
+
 def test_ensemble_from_h5_offset_stride(example_ensemble, tmpdir):
     """Test loading ensembles from h5 file with offset and stride."""
     offset = 2
@@ -198,9 +199,12 @@ def test_ensemble_from_h5_offset_stride(example_ensemble, tmpdir):
         group = f["example_ensemble"]
         ensemble2 = Ensemble.from_hdf5(group, offset=offset, stride=stride)
     from math import ceil
+
     assert ensemble2.n_frames == ceil((10 - offset) / stride)
     assert np.allclose(ensemble2.forces, ensemble.forces[offset::stride])
-    assert np.allclose(ensemble2.custom_field, ensemble.custom_field[offset::stride])
+    assert np.allclose(
+        ensemble2.custom_field, ensemble.custom_field[offset::stride]
+    )
     assert ensemble2.top == ensemble.top
     assert ensemble2.name == ensemble.name
     assert ensemble2["custom_field"].unit == "dimensionless"

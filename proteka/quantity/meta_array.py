@@ -86,8 +86,8 @@ class MetaArray:
     @staticmethod
     def from_hdf5(h5dt, offset=None, stride=None):
         """Create an instance from the content of HDF5 dataset `h5dt`. For a non-scalar
-        dataset, offset and stride can be set to read in the slice 
-        `h5dt[offset::stride]`. For scalar dataset, `offset` 
+        dataset, offset and stride can be set to read in the slice
+        `h5dt[offset::stride]`. For scalar dataset, `offset`
         and `stride` will be simply ignored.
 
         Parameters

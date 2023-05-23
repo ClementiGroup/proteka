@@ -34,4 +34,9 @@ def test_str_meta_array():
             ma2 = MetaArray.from_hdf5(hdf_root["test_dt"])
             ma2_offsetted = MetaArray.from_hdf5(hdf_root["test_dt"], offset=2)
             ma2_strided = MetaArray.from_hdf5(hdf_root["test_dt"], stride=2)
-    assert ma2[()] == ma2_offsetted[()] == ma2_strided[()] == "asadfghjk".encode("utf8")
+    assert (
+        ma2[()]
+        == ma2_offsetted[()]
+        == ma2_strided[()]
+        == "asadfghjk".encode("utf8")
+    )

@@ -194,9 +194,9 @@ class Quantity(MetaArray, BaseQuantity):
     @staticmethod
     def from_hdf5(h5dt, offset=None, stride=None, suppress_unit_warn=False):
         """Create an instance from the content of HDF5 dataset `h5dt`. If no `unit` is
-        present in the HDF5 attributes, then assumed as "dimensionless" with warning. 
-        For non-scalar dataset, `offset` and `stride` can be set, such that the slice 
-        `h5dt[offset::stride]` will be read to the memory. For scalar dataset, `offset` 
+        present in the HDF5 attributes, then assumed as "dimensionless" with warning.
+        For non-scalar dataset, `offset` and `stride` can be set, such that the slice
+        `h5dt[offset::stride]` will be read to the memory. For scalar dataset, `offset`
         and `stride` will be simply ignored.
 
         Parameters
