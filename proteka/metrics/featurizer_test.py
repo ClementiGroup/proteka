@@ -1,7 +1,6 @@
 import numpy as np
 import mdtraj as md
 import pytest
-from itertools import combinations
 import deeptime as dt
 
 from proteka.dataset import Ensemble
