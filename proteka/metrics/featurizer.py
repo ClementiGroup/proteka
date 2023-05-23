@@ -247,9 +247,13 @@ class Featurizer:
         self.ensemble.set_quantity("rmsd", quantity)
         return
 
-    def add_rg(self):
+    def add_rg(self, ca_only=False):
         """Get radius of gyration for each structure in an ensemble"""
         trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
+        if ca_only == True:
+            trajectory = trajectory.atom_slice(
+                trajectory.topology.select("name CA")
+            )
         rg = md.compute_rg(trajectory)
         quantity = Quantity(rg, "nanometers", metadata={"feature": "rg"})
         self.ensemble.set_quantity("rg", quantity)
