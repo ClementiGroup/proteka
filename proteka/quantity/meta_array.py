@@ -84,7 +84,7 @@ class MetaArray:
         return f'<MetaArray: shape {self._value.shape}, type "{self._value.dtype}">'
 
     @staticmethod
-    def from_hdf5(h5dt, offset=None, stride=None):
+    def from_hdf5(h5dt, offset: Optiona[int]=None, stride: Optional[int]=None):
         """Create an instance from the content of HDF5 dataset `h5dt`. For a non-scalar
         dataset, offset and stride can be set to read in the slice
         `h5dt[offset::stride]`. For scalar dataset, `offset`

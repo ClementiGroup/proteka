@@ -119,9 +119,9 @@ class HDF5Group:
     def from_hdf5(
         h5grp,
         skip=None,
-        offset=None,
-        stride=None,
-        no_offset_stride_quantities=None,
+        offset: Optional[int] = None,
+        stride: Optional[int] = None,
+        no_offset_stride_quantities: Optional[List[str]] = None,
     ):
         """Create an instance from the content of HDF5 Group `h5grp`. The Datasets under
         `h5grp`, except for those contained in `skip`, will be read in and interpreted
@@ -863,10 +863,10 @@ class Ensemble(HDF5Group):
     def from_hdf5(
         cls,
         h5grp,
-        unit_system="nm-g/mol-ps-kJ/mol",
-        offset=None,
-        stride=None,
-        no_offset_stride_quantities=None,
+        unit_system: str="nm-g/mol-ps-kJ/mol",
+        offset: Optional[int]=None,
+        stride: Optional[int]=None,
+        no_offset_stride_quantities: Optional[[List[str]]=None,
     ):
         """Create an instance from the content of HDF5 Group `h5grp` (h5py.Group).
         When given `unit_system` differs from the stored record, units will be converted
@@ -908,9 +908,9 @@ class Ensemble(HDF5Group):
         """
         hdf5grp = HDF5Group.from_hdf5(
             h5grp,
-            offset=offset,
-            stride=stride,
-            no_offset_stride_quantities=no_offset_stride_quantities,
+            offset: Optional[int]=offset,
+            stride: Optional[int]=stride,
+            no_offset_stride_quantities: Optional[List[str]]=no_offset_stride_quantities,
         )
         dataset_unit_system_str = str(
             UnitSystem.parse_from_str(hdf5grp.metadata["unit_system"])
