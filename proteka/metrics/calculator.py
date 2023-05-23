@@ -91,7 +91,7 @@ class StructuralIntegrityMetrics(IMetrics):
         thresholds: Optional[List[float]] = None,
         res_offset: int = 1,
         stride: Optional[int] = None,
-        allowance: float = 6,
+        allowance: float = 0.07,
     ) -> Dict[str, int]:
         """ "Compute clashes between atoms of types `atom_name_1/2` according
         to user-supplied thresholds or according to the method of allowance-modified
@@ -119,11 +119,11 @@ class StructuralIntegrityMetrics(IMetrics):
             for atoms i,j.
         allowance:
             Additional distance tolerance for atoms involved in hydrogen bonding. Only
-            used if thresholds is `None`.
+            used if thresholds is `None`. Set to 0.07 nm by default
         res_offset:
             `int` that determines the minimum residue separation for inclusion in distance
             calculations; two atoms that belong to residues i and j are included in the
-            calculations if |i-j| > res_offset
+            calculations if `|i-j| > res_offset`.
         stride:
             If specified, this stride is applied to the trajectory before the distance
             calculations
@@ -131,8 +131,8 @@ class StructuralIntegrityMetrics(IMetrics):
         Returns
         -------
         Dict[str, int]:
-            Dictionary with keys `{type1}_{type2}_clashes` and values reporting
-            the number of clashes found for that pair type
+            Dictionary with keys `{name1}_{name2}_clashes` and values reporting
+            the number of clashes found for those name pairs
         """
         if not isinstance(atom_name_pairs, list):
             raise ValueError(
@@ -142,7 +142,7 @@ class StructuralIntegrityMetrics(IMetrics):
         # populate default thresholds
         if thresholds == None:
             thresholds = []
-            atoms = np.array(ensemble.top.atoms)
+            atoms = np.array(list(ensemble.top.atoms))
             for pair in atom_name_pairs:
                 assert len(pair) == 2
                 # Take elements from first occurrence in topology - selection language gaurantees that they
@@ -158,11 +158,16 @@ class StructuralIntegrityMetrics(IMetrics):
                 threshold = vdw_r1 + vdw_r2
 
                 # Handle hydrogen bonding allowances
-                if all(
-                    [
-                        p in StructuralIntegrityMetrics.acceptors_or_donors
-                        for p in pairs
-                    ]
+                # between donors and acceptors with
+                # different names
+                if (
+                    all(
+                        [
+                            p in StructuralIntegrityMetrics.acceptors_or_donors
+                            for p in pair
+                        ]
+                    )
+                    and pair[0] != pair[1]
                 ):
                     threshold = threshold - allowance
                 thresholds.append(threshold)

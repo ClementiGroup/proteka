@@ -238,12 +238,12 @@ def get_CLN_trajectory(single_frame=False) -> md.Trajectory:
     ]
     for r in resnames:
         residue = topology.add_residue(r, chain)
-        topology.add_atom("N", md.element.carbon, residue)
+        topology.add_atom("N", md.element.nitrogen, residue)
         topology.add_atom("CA", md.element.carbon, residue)
         if r != "GLY":
             topology.add_atom("CB", md.element.carbon, residue)
         topology.add_atom("C", md.element.carbon, residue)
-        topology.add_atom("O", md.element.carbon, residue)
+        topology.add_atom("O", md.element.oxygen, residue)
     return md.Trajectory(coords, topology)
 
 
