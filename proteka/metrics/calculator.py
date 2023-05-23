@@ -47,6 +47,8 @@ class IMetrics(metaclass=ABCMeta):
 class StructuralIntegrityMetrics(IMetrics):
     """Class takes a dataset and checks if for chemical integrity"""
 
+    acceptors_or_donors = ["N", "O", "S"]
+
     def __init__(self):
         super().__init__()
         self.metrics_dict = {
@@ -86,12 +88,20 @@ class StructuralIntegrityMetrics(IMetrics):
     def general_clashes(
         ensemble: Ensemble,
         atom_name_pairs: List[Tuple[str, str]],
-        thresholds: List[float],
+        thresholds: Optional[List[float]] = None,
         res_offset: int = 1,
         stride: Optional[int] = None,
+        allowance: float = 6,
     ) -> Dict[str, int]:
         """ "Compute clashes between atoms of types `atom_name_1/2` according
-        to the supplied `distance` threshold.
+        to user-supplied thresholds or according to the method of allowance-modified
+        VDW radii overlap described here:
+
+        https://www.cgl.usf.edu/chimera/docs/ContributedSoftware/findclash/findclash.html
+
+        with VDW radii in nm taken from `mdtraj.core.element.Element`. If the pair
+        is composed of hydrogen bonding atom species (e.g., ("N", "O", "S")), then
+        an additional default allowance of 0.6 nm is permitted.
 
         Parameters
         ----------
@@ -101,7 +111,15 @@ class StructuralIntegrityMetrics(IMetrics):
             List of `str` tuples that denote the first atom type pairs according to
             the MDTraj selection language
         thresholds:
-            List of clash thresholds for each type pair in atom_name_pairs
+            List of clash thresholds for each type pair in atom_name_pairs. If `None`,
+            the clash thresholds are calculated according to:
+
+                thresh = r_vdw_i + r_vdw_j - allowance
+
+            for atoms i,j.
+        allowance:
+            Additional distance tolerance for atoms involved in hydrogen bonding. Only
+            used if thresholds is `None`.
         res_offset:
             `int` that determines the minimum residue separation for inclusion in distance
             calculations; two atoms that belong to residues i and j are included in the
@@ -116,18 +134,47 @@ class StructuralIntegrityMetrics(IMetrics):
             Dictionary with keys `{type1}_{type2}_clashes` and values reporting
             the number of clashes found for that pair type
         """
-
-        clash_dictionary = {}
         if not isinstance(atom_name_pairs, list):
             raise ValueError(
                 "atom_name_pairs must be a list of tuples of strings"
             )
+
+        # populate default thresholds
+        if thresholds == None:
+            thresholds = []
+            atoms = np.array(ensemble.top.atoms)
+            for pair in atom_name_pairs:
+                assert len(pair) == 2
+                # Take elements from first occurrence in topology - selection language gaurantees that they
+                # all should be the same (unless you have made a very nonstandard topology)
+                idx1, idx2 = (
+                    ensemble.top.select(f"name {pair[0]}")[0],
+                    ensemble.top.select(f"name {pair[1]}")[0],
+                )
+                vdw_r1, vdw_r2 = (
+                    atoms[idx1].element.radius,
+                    atoms[idx2].element.radius,
+                )
+                threshold = vdw_r1 + vdw_r2
+
+                # Handle hydrogen bonding allowances
+                if all(
+                    [
+                        p in StructuralIntegrityMetrics.acceptors_or_donors
+                        for p in pairs
+                    ]
+                ):
+                    threshold = threshold - allowance
+                thresholds.append(threshold)
+
         if not isinstance(thresholds, list):
             raise ValueError("thresholds must be a list of floats")
         if len(atom_name_pairs) != len(thresholds):
             raise RuntimeError(
                 f"atom_name_pairs and thresholds are {len(atom_name_pairs)} and {len(thresholds)} long, respectively, but they should be the same length"
             )
+
+        clash_dictionary = {}
 
         for atom_names, threshold in zip(atom_name_pairs, thresholds):
             atom_name_1, atom_name_2 = atom_names[0], atom_names[1]
