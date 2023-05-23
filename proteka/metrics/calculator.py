@@ -6,7 +6,7 @@ import numpy as np
 import mdtraj as md
 from typing import Union, Dict, Optional, List, Tuple
 
-from .featurizer import Featurizer
+from .featurizer import Featurizer, TICATransform
 from ..dataset import Ensemble
 from .divergence import (
     kl_divergence,
@@ -162,7 +162,7 @@ class StructuralIntegrityMetrics(IMetrics):
 class EnsembleQualityMetrics(IMetrics):
     """Metrics to compare a target ensemble to the reference ensemble"""
 
-    def __init__(self, metrics_params={"tica_div": {"lagtime": 10}}):
+    def __init__(self, metrics_params=None):
         super().__init__()
         self.metrics_dict = {
             "end2end_distance_kl_div": self.end2end_distance_kl_div,
@@ -172,6 +172,8 @@ class EnsembleQualityMetrics(IMetrics):
             "local_contact_number_js_div": self.local_contact_number_js_div,
             "tica_div": self.tica_div,
         }
+        if metrics_params is None:
+            metrics_params = {}
         self.metrics_params = metrics_params
 
     def __call__(
@@ -288,7 +290,9 @@ class EnsembleQualityMetrics(IMetrics):
 
     @staticmethod
     def tica_div(
-        target: Ensemble, reference: Ensemble, **kwargs
+        target: Ensemble,
+        reference: Ensemble,
+        transform: Union[TICATransform, str, None] = None,
     ) -> Dict[str, float]:
         """Perform TICA on the reference enseble and use it to transform target ensemble.
         Then compute KL divergence between the two TICA projections, using the first 2 TICA components
@@ -299,28 +303,37 @@ class EnsembleQualityMetrics(IMetrics):
             target ensemble
         reference : Ensemble
             reference ensemble, will be used for TICA model fitting
+        transform : TICATransform
+            TICA transform used to compute TICA
 
         Returns
         -------
         dict
             Resulting scores
         """
-        from deeptime.decomposition import TICA
+        if transform is None:
+            transform = TICATransform(
+                features={"ca_distances": {"offset": 1}},
+                estimation_params={"lagtime": 10, "dim": 2},
+            )
+        elif type(transform) == str:
+            # Here, the plan is to either load transformer from hdf5 file or
+            # deserialize a json string
+            raise NotImplementedError()
 
-        # Fit TICA model on the reference ensemble
-        estimator = TICA(dim=2, **kwargs)
-        # will fit on the CA distances of the reference ensemble.
-        ca_reference = Featurizer.get_feature(reference, "ca_distances")
-        estimator.fit(ca_reference)
-        model = estimator.fetch_model()
-        # Transform the reference ensemble
-        tica_reference = model.transform(ca_reference)
-        # Transform the target ensemble
-        ca_target = Featurizer.get_feature(target, "ca_distances")
-        tica_target = model.transform(ca_target)
+        tica_reference = Featurizer.get_feature(
+            reference, "tica", transform=transform
+        )
+        # Transform can be modified during the call to get_feature, so we need to extract it again
+        # Later, here will be deserialization of the transform
+        transform_reference = reference["tica"].metadata["transform"]
+
+        tica_target = Featurizer.get_feature(
+            target, "tica", transform=transform_reference
+        )
         # histogram data
         hist_target, hist_ref = histogram_features2d(
-            tica_target, tica_reference, bins=100
+            tica_target[:, :2], tica_reference[:, :2], bins=100
         )
         # Compute KL divergence
         kl = kl_divergence(hist_target, hist_ref)
