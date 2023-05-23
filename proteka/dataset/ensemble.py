@@ -116,12 +116,19 @@ class HDF5Group:
             )
 
     @staticmethod
-    def from_hdf5(h5grp, skip=None, offset=None, stride=None):
+    def from_hdf5(
+        h5grp,
+        skip=None,
+        offset=None,
+        stride=None,
+        no_offset_stride_quantities=None,
+    ):
         """Create an instance from the content of HDF5 Group `h5grp`. The Datasets under
         `h5grp`, except for those contained in `skip`, will be read in and interpreted
         as a `Quantity`. The attributes on `h5grp` will be interpreted as metadata. Input
         `offset` and `stride` can be set to allow a partial loading of the non-scalar
-        datasets with indexing `[offset::stride]`.
+        datasets with indexing `[offset::stride]`, unless the dataset's name is contained
+        in `no_offset_stride_quantities`.
 
         Parameters
         ----------
@@ -134,6 +141,9 @@ class HDF5Group:
             The offset for loading from the HDF5 file. Default is `None`.
         stride : None | int, optional
             The stride for loading from the HDF5 file. Default is `None`.
+        no_offset_stride_quantities : List[str], optional
+            The names of entries, for which no offset or stride should be considered
+            during loading, by default None
 
         Returns
         -------
@@ -152,6 +162,8 @@ class HDF5Group:
             )
         if skip is None:
             skip = []
+        if no_offset_stride_quantities is None:
+            no_offset_stride_quantities = []
         # TODO: check there is no sub group
         data = {}
         for dt_name, dt in h5grp.items():
@@ -160,9 +172,17 @@ class HDF5Group:
                     f"`{h5grp.name}/{dt_name}` is not a valid Dataset."
                 )
             if dt_name not in skip:
-                data[dt_name] = Quantity.from_hdf5(
-                    dt, offset=offset, stride=stride, suppress_unit_warn=True
-                )
+                if dt_name not in no_offset_stride_quantities:
+                    data[dt_name] = Quantity.from_hdf5(
+                        dt,
+                        offset=offset,
+                        stride=stride,
+                        suppress_unit_warn=True,
+                    )
+                else:
+                    data[dt_name] = Quantity.from_hdf5(
+                        dt, suppress_unit_warn=True
+                    )
         metadata = {}
         for k, v in h5grp.attrs.items():
             metadata[k] = v
@@ -841,13 +861,19 @@ class Ensemble(HDF5Group):
 
     @classmethod
     def from_hdf5(
-        cls, h5grp, unit_system="nm-g/mol-ps-kJ/mol", offset=None, stride=None
+        cls,
+        h5grp,
+        unit_system="nm-g/mol-ps-kJ/mol",
+        offset=None,
+        stride=None,
+        no_offset_stride_quantities=None,
     ):
         """Create an instance from the content of HDF5 Group `h5grp` (h5py.Group).
         When given `unit_system` differs from the stored record, units will be converted
         when reading the `Quantity` into memory. Input `offset` and `stride` can be set
         to allow a partial loading of the non-scalar datasets with indexing
-        `[offset::stride]`.
+        `[offset::stride]`, unless the dataset's name is contained in
+        `no_offset_stride_quantities`.
 
         Parameters
         ----------
@@ -865,6 +891,9 @@ class Ensemble(HDF5Group):
             The offset for loading from the HDF5 file. Default is `None`.
         stride : None | int, optional
             The stride for loading from the HDF5 file. Default is `None`.
+        no_offset_stride_quantities : List[str], optional
+            The names of entries, for which no offset or stride should be considered
+            during loading, by default None
 
         Returns
         -------
@@ -877,7 +906,12 @@ class Ensemble(HDF5Group):
             When the Dataset corresponding to `top`, `coords` or other fields does not
             exist or has invalid format.
         """
-        hdf5grp = HDF5Group.from_hdf5(h5grp, offset=offset, stride=stride)
+        hdf5grp = HDF5Group.from_hdf5(
+            h5grp,
+            offset=offset,
+            stride=stride,
+            no_offset_stride_quantities=no_offset_stride_quantities,
+        )
         dataset_unit_system_str = str(
             UnitSystem.parse_from_str(hdf5grp.metadata["unit_system"])
         )

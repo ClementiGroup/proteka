@@ -189,7 +189,7 @@ def test_ensemble_from_h5_offset_stride(example_ensemble, tmpdir):
     stride = 3
     ensemble = example_ensemble
     ensemble.forces = np.random.rand(10, ensemble.n_atoms, 3)
-    ensemble.custom_field = np.random.rand(10, ensemble.n_atoms, 3)
+    ensemble.custom_field = np.random.rand(5, ensemble.n_atoms, 3)
     trjs_dict = {"part1": slice(0, 5, 1), "part2": slice(5, 10, 1)}
     example_ensemble.register_trjs(trjs_dict)
     with h5py.File(tmpdir / "test.h5", "w") as f:
@@ -197,14 +197,18 @@ def test_ensemble_from_h5_offset_stride(example_ensemble, tmpdir):
 
     with h5py.File(tmpdir / "test.h5", "r") as f:
         group = f["example_ensemble"]
-        ensemble2 = Ensemble.from_hdf5(group, offset=offset, stride=stride)
+        ensemble2 = Ensemble.from_hdf5(
+            group,
+            offset=offset,
+            stride=stride,
+            no_offset_stride_quantities=["custom_field"],
+        )
     from math import ceil
 
     assert ensemble2.n_frames == ceil((10 - offset) / stride)
+    assert np.allclose(ensemble2.coords, ensemble.coords[offset::stride])
     assert np.allclose(ensemble2.forces, ensemble.forces[offset::stride])
-    assert np.allclose(
-        ensemble2.custom_field, ensemble.custom_field[offset::stride]
-    )
+    assert np.allclose(ensemble2.custom_field, ensemble.custom_field)
     assert ensemble2.top == ensemble.top
     assert ensemble2.name == ensemble.name
     assert ensemble2["custom_field"].unit == "dimensionless"
