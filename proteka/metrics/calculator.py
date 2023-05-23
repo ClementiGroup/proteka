@@ -358,7 +358,6 @@ class EnsembleQualityMetrics(IMetrics):
         feature: str,
         metric: str = "kl_div",
         bins: Union[int, np.ndarray] = 100,
-        reference_weights: np.ndarray = None,
         **kwargs,
     ) -> Dict[str, float]:
         """Computes metric for desired feature between two ensembles.
@@ -411,7 +410,12 @@ class EnsembleQualityMetrics(IMetrics):
                 target_feat,
                 reference_feat,
                 bins=bins,
-                reference_weights=reference_weights,
+                reference_weights=reference.weights
+                if hasattr(reference, "weights")
+                else None,
+                target_weights=target.weights
+                if hasattr(target, "weights")
+                else None,
             )
         elif feature in EnsembleQualityMetrics.vector_features:
             metric_computer = EnsembleQualityMetrics.vector_metrics[metric]
@@ -419,7 +423,12 @@ class EnsembleQualityMetrics(IMetrics):
                 target_feat,
                 reference_feat,
                 bins=bins,
-                reference_weights=reference_weights,
+                reference_weights=reference.weights
+                if hasattr(reference, "weights")
+                else None,
+                target_weights=target.weights
+                if hasattr(target, "weights")
+                else None,
             )
         elif feature in EnsembleQualityMetrics.features_2d:
             metric_computer = EnsembleQualityMetrics.metrics_2d[metric]
@@ -427,7 +436,12 @@ class EnsembleQualityMetrics(IMetrics):
                 target_feat,
                 reference_feat,
                 bins=bins,
-                reference_weights=reference_weights,
+                reference_weights=reference.weights
+                if hasattr(reference, "weights")
+                else None,
+                target_weights=target.weights
+                if hasattr(target, "weights")
+                else None,
             )
             hist_target = hist_target.flatten()
             hist_ref = hist_ref.flatten()
