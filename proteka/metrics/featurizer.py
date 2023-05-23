@@ -134,13 +134,13 @@ class TICATransform(Transform):
         return json.dumps(self.to_dict(arrays2list=True))
 
     @classmethod
-    def from_dict(cls, dict):
+    def from_dict(cls, input_dict: Dict) -> Transform:
         """Instantiate transformer from a dictionary"""
         return cls(
-            features=dict["features"],
-            bias=np.array(dict["bias"]),
-            transform_matrix=np.array(dict["transform_matrix"]),
-            estimation_params=dict["estimation_params"],
+            features=input_dict["features"],
+            bias=np.array(input_dict["bias"]),
+            transform_matrix=np.array(input_dict["transform_matrix"]),
+            estimation_params=input_dict["estimation_params"],
         )
 
     @classmethod
