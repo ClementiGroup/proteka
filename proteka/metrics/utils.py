@@ -106,9 +106,9 @@ def get_general_distances(
         Tuple of strings specifying for which two atom names distances should be
         computed. Uses MDTraj atom type names (e.g., "CA" or "CB").
     res_offset:
-        `int` that determines the minimum residue separation for inclusion in distance
-        calculations; only those atoms separated by more than this number of residues
-        will be included in the calculation.
+                `int` that determines the minimum residue separation for inclusion in distance
+                calculations; two atoms that belong to residues i and j are included in the
+                calculations if |i-j| > res_offset
     stride:
         If specified, this stride is applied to the trajectory before the distance
         calculations

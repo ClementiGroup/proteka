@@ -4,6 +4,7 @@ from abc import ABCMeta, abstractmethod
 from collections.abc import Iterable
 import numpy as np
 import mdtraj as md
+from mdtraj.core.element import Element
 from typing import Union, Dict, Optional, List, Tuple
 
 from .featurizer import Featurizer, TICATransform
@@ -103,8 +104,8 @@ class StructuralIntegrityMetrics(IMetrics):
             List of clash thresholds for each type pair in atom_name_pairs
         res_offset:
             `int` that determines the minimum residue separation for inclusion in distance
-            calculations; only those atoms separated by more than this number of residues
-            will be included in the calculation.
+            calculations; two atoms that belong to residues i and j are included in the
+            calculations if |i-j| > res_offset
         stride:
             If specified, this stride is applied to the trajectory before the distance
             calculations
