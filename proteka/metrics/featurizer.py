@@ -114,7 +114,7 @@ class TICATransform(Transform):
         features = np.concatenate(features, axis=1)
         return (features - self.bias) @ self.transform_matrix
 
-    def to_dict(self, arrays2list: bool=True) -> Dict:
+    def to_dict(self, arrays2list: bool = True) -> Dict:
         """Generate dictionary from the class instance"""
         if arrays2list:
             bias = self.bias.tolist()
