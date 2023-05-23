@@ -272,8 +272,8 @@ class EnsembleQualityMetrics(IMetrics):
             target, "tica", transform=transform_reference
         )
         # histogram data
-        hist_ref, hist_target = histogram_features2d(
-            tica_reference[:, :2], tica_target[:, :2], bins=100
+        hist_target, hist_ref = histogram_features2d(
+            tica_target[:, :2], tica_reference[:, :2], bins=100
         )
         # Compute KL divergence
         kl = kl_divergence(hist_target, hist_ref)
