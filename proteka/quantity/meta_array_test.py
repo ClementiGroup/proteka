@@ -15,8 +15,12 @@ def test_meta_array():
             ma.write_to_hdf5(hdf_root, "test_dt")
         with h5py.File(fp, "r") as hdf_root:
             ma2 = MetaArray.from_hdf5(hdf_root["test_dt"])
+            ma2_strided = MetaArray.from_hdf5(hdf_root["test_dt"], stride=2)
+            ma2_offsetted = MetaArray.from_hdf5(hdf_root["test_dt"], offset=1)
     assert np.allclose(ma2[1:, 1:3], value[1:, 1:3])
     assert ma2.metadata["test"] == "metadata_no1"
+    assert np.allclose(ma2_strided[:], value[::2])
+    assert np.allclose(ma2_offsetted[:], value[1:])
 
 
 def test_str_meta_array():
@@ -28,4 +32,6 @@ def test_str_meta_array():
             ma.write_to_hdf5(hdf_root, "test_dt")
         with h5py.File(fp, "r") as hdf_root:
             ma2 = MetaArray.from_hdf5(hdf_root["test_dt"])
-    assert ma2[()] == "asadfghjk".encode("utf8")
+            ma2_offsetted = MetaArray.from_hdf5(hdf_root["test_dt"], offset=2)
+            ma2_strided = MetaArray.from_hdf5(hdf_root["test_dt"], stride=2)
+    assert ma2[()] == ma2_offsetted[()] == ma2_strided[()] == "asadfghjk".encode("utf8")

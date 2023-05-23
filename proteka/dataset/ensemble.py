@@ -116,10 +116,12 @@ class HDF5Group:
             )
 
     @staticmethod
-    def from_hdf5(h5grp, skip=None):
+    def from_hdf5(h5grp, skip=None, offset=None, stride=None):
         """Create an instance from the content of HDF5 Group `h5grp`. The Datasets under
         `h5grp`, except for those contained in `skip`, will be read in and interpreted
-        as a `Quantity`. The attributes on `h5grp` will be interpreted as metadata.
+        as a `Quantity`. The attributes on `h5grp` will be interpreted as metadata. Input 
+        `offset` and `stride` can be set to allow a partial loading of the non-scalar 
+        datasets with indexing `[offset::stride]`.
 
         Parameters
         ----------
@@ -128,6 +130,10 @@ class HDF5Group:
         skip : List[str], optional
             The names of entries to skip, e.g., when it is a subgroup or not compatible
             with `Quantity`, by default None
+        offset : None | int, optional
+            The offset for loading from the HDF5 file. Default is `None`.
+        stride : None | int, optional
+            The stride for loading from the HDF5 file. Default is `None`.
 
         Returns
         -------
@@ -154,7 +160,8 @@ class HDF5Group:
                     f"`{h5grp.name}/{dt_name}` is not a valid Dataset."
                 )
             if dt_name not in skip:
-                data[dt_name] = Quantity.from_hdf5(dt, suppress_unit_warn=True)
+                data[dt_name] = Quantity.from_hdf5(dt, offset=offset, stride=stride, 
+                                                   suppress_unit_warn=True)
         metadata = {}
         for k, v in h5grp.attrs.items():
             metadata[k] = v
@@ -832,10 +839,12 @@ class Ensemble(HDF5Group):
         self.__dict__[name] = quantity.raw_value
 
     @classmethod
-    def from_hdf5(cls, h5grp, unit_system="nm-g/mol-ps-kJ/mol"):
+    def from_hdf5(cls, h5grp, unit_system="nm-g/mol-ps-kJ/mol", offset=None, stride=None):
         """Create an instance from the content of HDF5 Group `h5grp` (h5py.Group).
         When given `unit_system` differs from the stored record, units will be converted
-        when reading the `Quantity` into memory.
+        when reading the `Quantity` into memory. Input `offset` and `stride` can be set 
+        to allow a partial loading of the non-scalar datasets with indexing 
+        `[offset::stride]`.
 
         Parameters
         ----------
@@ -849,6 +858,10 @@ class Ensemble(HDF5Group):
         unit_system : str, optional
             Should have the format "[L]-[M]-[T]-[E(nergy)]" for units of builtin
             quantities (see class docstring), by default "nm-g/mol-ps-kJ/mol"
+        offset : None | int, optional
+            The offset for loading from the HDF5 file. Default is `None`.
+        stride : None | int, optional
+            The stride for loading from the HDF5 file. Default is `None`.
 
         Returns
         -------
@@ -861,7 +874,7 @@ class Ensemble(HDF5Group):
             When the Dataset corresponding to `top`, `coords` or other fields does not
             exist or has invalid format.
         """
-        hdf5grp = HDF5Group.from_hdf5(h5grp)
+        hdf5grp = HDF5Group.from_hdf5(h5grp, offset=offset, stride=stride)
         dataset_unit_system_str = str(
             UnitSystem.parse_from_str(hdf5grp.metadata["unit_system"])
         )
@@ -895,6 +908,41 @@ class Ensemble(HDF5Group):
         for k, v in hdf5grp._data.items():
             if k != "coords" and k != "top":
                 other_quantities[k] = v
+        # adapt the `trjs` records to the striding
+        # Only implemented for simple cases where the `start` and `stop` are both 
+        # nonnegative and `step` = 1
+        if "trjs" in other_quantities and (offset is not None or stride is not None):
+            if offset is None:
+                offset = 0
+            if stride is None:
+                stride = 1
+            from math import ceil
+            try:
+                trjs_dict = json.loads(other_quantities["trjs"][()])
+            except json.JSONDecodeError:
+                raise ValueError(
+                    "Invalid `trjs` (trajectories) information in the H5 dataset "
+                    "(invalid JSON)?"
+                )
+            new_trjs_dict = {}
+            for slice_name in trjs_dict:
+                start, stop, step = trjs_dict[slice_name]
+                if start < 0 or stop < 0 or step != 1:
+                    warn("Auto adjusting of the `trjs` records is only implemented for "
+                         "simple cases where all slices has nonnegative `start`s and "
+                         "`stop`s and the `step` is 1. Therefore, the `trjs` records "
+                         "are discarded due to inconsistency.")
+                    new_trjs_dict = {}
+                new_range = [ceil(max(start - offset, 0) / stride),
+                                       ceil(max(stop - offset, 0) / stride),
+                                       1]
+                if (new_range[1] - new_range[0]) > 0:
+                    # non-empty slice
+                    new_trjs_dict[slice_name] = new_range
+            if len(new_trjs_dict) == 0:
+                other_quantities.pop("trjs")
+            else:
+                other_quantities["trjs"] = Quantity(json.dumps(new_trjs_dict))
         try:
             new_ensemble = cls(
                 name,

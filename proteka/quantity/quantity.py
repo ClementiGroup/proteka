@@ -192,14 +192,21 @@ class Quantity(MetaArray, BaseQuantity):
         self.metadata["unit"] = new_unit
 
     @staticmethod
-    def from_hdf5(h5dt, suppress_unit_warn=False):
+    def from_hdf5(h5dt, offset=None, stride=None, suppress_unit_warn=False):
         """Create an instance from the content of HDF5 dataset `h5dt`. If no `unit` is
-        present in the HDF5 attributes, then assumed as "dimensionless" with warning.
+        present in the HDF5 attributes, then assumed as "dimensionless" with warning. 
+        For non-scalar dataset, `offset` and `stride` can be set, such that the slice 
+        `h5dt[offset::stride]` will be read to the memory. For scalar dataset, `offset` 
+        and `stride` will be simply ignored.
 
         Parameters
         ----------
         h5dt : h5py.Dataset
             A HDF5 Dataset.
+        offset : None | int, optional
+            The offset for loading from the HDF5 file. Default is `None`.
+        stride : None | int, optional
+            The stride for loading from the HDF5 file. Default is `None`.
         suppress_unit_warn : bool, optional
             Whether to allow silently setting unit to "dimensionless", by default False
 
@@ -208,7 +215,7 @@ class Quantity(MetaArray, BaseQuantity):
         Quantity
             The quantity implied by the content in the input HDF5 Dataset.
         """
-        meta_array = MetaArray.from_hdf5(h5dt)
+        meta_array = MetaArray.from_hdf5(h5dt, offset=offset, stride=stride)
         if "unit" not in meta_array.metadata:
             if not suppress_unit_warn:
                 warn(
