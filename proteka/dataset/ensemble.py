@@ -3,6 +3,7 @@ a certain thermodynamic state. The samples usually correspond to a
 Boltzmann distribution.
 """
 from types import MappingProxyType
+from typing import Optional, List
 from warnings import warn
 import json
 import numpy as np
@@ -863,10 +864,10 @@ class Ensemble(HDF5Group):
     def from_hdf5(
         cls,
         h5grp,
-        unit_system: str="nm-g/mol-ps-kJ/mol",
-        offset: Optional[int]=None,
-        stride: Optional[int]=None,
-        no_offset_stride_quantities: Optional[[List[str]]=None,
+        unit_system: str = "nm-g/mol-ps-kJ/mol",
+        offset: Optional[int] = None,
+        stride: Optional[int] = None,
+        no_offset_stride_quantities: Optional[List[str]] = None,
     ):
         """Create an instance from the content of HDF5 Group `h5grp` (h5py.Group).
         When given `unit_system` differs from the stored record, units will be converted
@@ -908,9 +909,9 @@ class Ensemble(HDF5Group):
         """
         hdf5grp = HDF5Group.from_hdf5(
             h5grp,
-            offset: Optional[int]=offset,
-            stride: Optional[int]=stride,
-            no_offset_stride_quantities: Optional[List[str]]=no_offset_stride_quantities,
+            offset=offset,
+            stride=stride,
+            no_offset_stride_quantities=no_offset_stride_quantities,
         )
         dataset_unit_system_str = str(
             UnitSystem.parse_from_str(hdf5grp.metadata["unit_system"])

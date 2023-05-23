@@ -1,4 +1,5 @@
 from warnings import warn
+from typing import Optional
 import numpy as np
 from .unit import format_unit, is_unit_convertible, unit_conv
 from .meta_array import MetaArray
@@ -192,7 +193,12 @@ class Quantity(MetaArray, BaseQuantity):
         self.metadata["unit"] = new_unit
 
     @staticmethod
-    def from_hdf5(h5dt, offset: Optional[int]=None, stride: Optional[int]=None, suppress_unit_warn=False):
+    def from_hdf5(
+        h5dt,
+        offset: Optional[int] = None,
+        stride: Optional[int] = None,
+        suppress_unit_warn=False,
+    ):
         """Create an instance from the content of HDF5 dataset `h5dt`. If no `unit` is
         present in the HDF5 attributes, then assumed as "dimensionless" with warning.
         For non-scalar dataset, `offset` and `stride` can be set, such that the slice
