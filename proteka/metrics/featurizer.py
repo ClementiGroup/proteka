@@ -151,7 +151,7 @@ class TICATransform(Transform):
         return cls.from_dict(json.loads(string))
 
     @staticmethod
-    def from_hdf5(self, h5file):
+    def from_hdf5(self, h5file: str) -> Transform:
         """
         Instantiate Transformer from a hdf5 file
         """
