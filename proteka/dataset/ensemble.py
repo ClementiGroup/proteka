@@ -948,7 +948,7 @@ class Ensemble(HDF5Group):
                 other_quantities[k] = v
         # adapt the `trjs` records to the striding
         # Only implemented for simple cases where the `start` and `stop` are both
-        # nonnegative and `step` = 1
+        # nonnegative and `step` = 1 for slice `[start:stop:step]`
         if "trjs" in other_quantities and (
             offset is not None or stride is not None
         ):
@@ -972,8 +972,9 @@ class Ensemble(HDF5Group):
                     warn(
                         "Auto adjusting of the `trjs` records is only implemented for "
                         "simple cases where all slices has nonnegative `start`s and "
-                        "`stop`s and the `step` is 1. Therefore, the `trjs` records "
-                        "are discarded due to inconsistency."
+                        "`stop`s and the `step` is 1. (as for a slice operation "
+                        "`[start:stop:step]`) Therefore, the `trjs` records are "
+                        "discarded due to inconsistency."
                     )
                     new_trjs_dict = {}
                 new_range = [
