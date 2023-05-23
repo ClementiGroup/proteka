@@ -7,6 +7,7 @@ from proteka.dataset import Ensemble
 from proteka.quantity import Quantity
 from proteka.metrics import Featurizer
 from proteka.metrics.utils import (
+    get_general_distances,
     generate_grid_polymer,
     get_6_bead_frame,
     get_CLN_trajectory,
@@ -121,28 +122,28 @@ def test_general_distances(get_CLN_frame):
     traj = ens.get_all_in_one_mdtraj_trj()
     manual_distances = md.compute_distances(traj, pruned_pairs)
 
-    distances = Featurizer.get_general_distances(ens, ("CB", "CB"), 2)
+    distances = get_general_distances(ens, ("CB", "CB"), 2)
     np.testing.assert_array_equal(manual_distances, distances)
 
 
 def test_general_clashes_atom_input_raises(get_CLN_frame):
-    """Tests raises for improper atom_type inputs for Featurizer.get_general_distances"""
+    """Tests raises for improper atom_type inputs for get_general_distances"""
     with pytest.raises(ValueError):
-        distances = Featurizer.get_general_distances(
+        distances = get_general_distances(
             get_CLN_frame,
             [("CA", "O", "C")],
             res_offset=2,
         )
 
     with pytest.raises(ValueError):
-        distances = Featurizer.get_general_distances(
+        distances = get_general_distances(
             get_CLN_frame,
             ["CA", "CB"],
             res_offset=2,
         )
 
     with pytest.raises(RuntimeError):
-        distances = Featurizer.get_general_distances(
+        distances = get_general_distances(
             get_CLN_frame,
             ("silly atom", "O"),
             res_offset=2,

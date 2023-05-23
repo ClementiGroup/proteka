@@ -1,7 +1,8 @@
 import numpy as np
 import mdtraj as md
 from ..dataset import Ensemble
-from typing import Union, Tuple
+from typing import Union, Tuple, Optional
+from itertools import combinations
 
 __all__ = [
     "generate_grid_polymer",
@@ -84,6 +85,80 @@ def get_6_bead_frame():
         residue = topology.add_residue("ALA", chain)
         topology.add_atom("CA", md.element.carbon, residue)
     return md.Trajectory(xyz, topology)
+
+
+def get_general_distances(
+    ensemble: Ensemble,
+    atom_names: Tuple[str],
+    res_offset: int = 1,
+    stride: Optional[int] = None,
+) -> np.ndarray:
+    """Compute all distances between two all atom of two specified names. If atom names are different,
+    (e.g. ("N", "O")), only name1-name2 distances will be computed, and not name1-name1 nor name2-name2.
+    If atom names are the same (e.g. ("CB", "CB")), name1-name2 distances will be computed.
+
+    Parameters
+    ----------
+    ensemble:
+        `Ensemble` from which distances should be computed
+    atom_names:
+        Tuple of strings specifying for which two atom names distances should be
+        computed. Uses MDTraj atom type names (e.g., "CA" or "CB").
+    res_offset:
+        `int` that determines the minimum residue separation for inclusion in distance
+        calculations; only those atoms separated by more than this number of residues
+        will be included in the calculation.
+    stride:
+        If specified, this stride is applied to the trajectory before the distance
+        calculations
+
+    Returns
+    -------
+    distances:
+        `np.ndarray` of distances for the requested atom type pairs
+    """
+
+    if not isinstance(atom_names, tuple):
+        raise ValueError("atom_name_pairs must be a list of tuples of strings")
+    if len(atom_names) != 2:
+        raise ValueError(
+            f"Only 2 atom types may be specified but {atom_names} was supplied"
+        )
+
+    atom_name_1, atom_name_2 = atom_names[0], atom_names[1]
+    if len(ensemble.top.select(f"name {atom_name_1}")) == 0:
+        raise RuntimeError(
+            f"atom type {atom_name_1} not found in ensemble topology"
+        )
+    if len(ensemble.top.select(f"name {atom_name_2}")) == 0:
+        raise RuntimeError(
+            f"atom type {atom_name_2} not found in ensemble topology"
+        )
+
+    all_atoms = list(ensemble.top.atoms)
+    atom_indices = ensemble.top.select(
+        f"name {atom_name_1} or name {atom_name_2}"
+    )
+    all_pairs = list(combinations(atom_indices, 2))
+
+    pruned_pairs = []
+    # res exclusion filtering
+    for pair in all_pairs:
+        a1, a2 = all_atoms[pair[0]], all_atoms[pair[1]]
+        if np.abs(a1.residue.index - a2.residue.index) > res_offset:
+            # Eliminate extra same name pairs for case of two different atom types
+            if atom_name_1 != atom_name_2:
+                if a1.name != a2.name:
+                    pruned_pairs.append((pair[0], pair[1]))
+            else:
+                pruned_pairs.append((pair[0], pair[1]))
+
+    traj = ensemble.get_all_in_one_mdtraj_trj()
+    if stride != None:
+        traj.xyz = traj.xyz[::stride]
+    distances = md.compute_distances(traj, pruned_pairs)
+
+    return distances
 
 
 def get_CLN_trajectory(single_frame=False) -> md.Trajectory:

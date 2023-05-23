@@ -5,7 +5,6 @@ from collections.abc import Iterable
 import numpy as np
 import mdtraj as md
 from typing import Union, Dict, Optional, List, Tuple
-from itertools import combinations
 
 from .featurizer import Featurizer
 from ..dataset import Ensemble
@@ -16,6 +15,7 @@ from .divergence import (
     vector_js_divergence,
 )
 from .utils import (
+    get_general_distances,
     histogram_features,
     histogram_vector_features,
     histogram_features2d,
@@ -84,23 +84,23 @@ class StructuralIntegrityMetrics(IMetrics):
     @staticmethod
     def general_clashes(
         ensemble: Ensemble,
-        atom_type_pairs: List[Tuple[str, str]],
+        atom_name_pairs: List[Tuple[str, str]],
         thresholds: List[float],
         res_offset: int = 1,
         stride: Optional[int] = None,
     ) -> Dict[str, int]:
-        """ "Compute clashes between atoms of types `atom_type_1/2` according
+        """ "Compute clashes between atoms of types `atom_name_1/2` according
         to the supplied `distance` threshold.
 
         Parameters
         ----------
         ensemble:
             `Ensemble` over which clashes should be detected
-        atom_type_pairs:
+        atom_name_pairs:
             List of `str` tuples that denote the first atom type pairs according to
             the MDTraj selection language
         thresholds:
-            List of clash thresholds for each type pair in atom_type_pairs
+            List of clash thresholds for each type pair in atom_name_pairs
         res_offset:
             `int` that determines the minimum residue separation for inclusion in distance
             calculations; only those atoms separated by more than this number of residues
@@ -117,25 +117,25 @@ class StructuralIntegrityMetrics(IMetrics):
         """
 
         clash_dictionary = {}
-        if not isinstance(atom_type_pairs, list):
+        if not isinstance(atom_name_pairs, list):
             raise ValueError(
-                "atom_type_pairs must be a list of tuples of strings"
+                "atom_name_pairs must be a list of tuples of strings"
             )
         if not isinstance(thresholds, list):
             raise ValueError("thresholds must be a list of floats")
-        if len(atom_type_pairs) != len(thresholds):
+        if len(atom_name_pairs) != len(thresholds):
             raise RuntimeError(
-                f"atom_type_pairs and thresholds are {len(atom_type_pairs)} and {len(thresholds)} long, respectively, but they should be the same length"
+                f"atom_name_pairs and thresholds are {len(atom_name_pairs)} and {len(thresholds)} long, respectively, but they should be the same length"
             )
 
-        for atom_types, threshold in zip(atom_type_pairs, thresholds):
-            atom_type_1, atom_type_2 = atom_types[0], atom_types[1]
-            distances = Featurizer.get_general_distances(
-                ensemble, atom_types, res_offset, stride
+        for atom_names, threshold in zip(atom_name_pairs, thresholds):
+            atom_name_1, atom_name_2 = atom_names[0], atom_names[1]
+            distances = get_general_distances(
+                ensemble, atom_names, res_offset, stride
             )
             clashes = np.where(distances < threshold)[0]
             clash_dictionary[
-                f"{atom_type_1}-{atom_type_2} clashes"
+                f"{atom_name_1}-{atom_name_2} clashes"
             ] = clashes.size
         return clash_dictionary
 
