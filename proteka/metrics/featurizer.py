@@ -144,7 +144,7 @@ class TICATransform(Transform):
         )
 
     @classmethod
-    def from_json(cls, string) -> Transform:
+    def from_json(cls, input_string: str) -> Transform:
         """
         Instantiate Transformer from a json string
         """
