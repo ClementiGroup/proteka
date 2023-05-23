@@ -107,7 +107,6 @@ def test_ca_distances(single_frame):
     assert np.all(np.isclose(distances, reference_distances))
 
 
-
 def test_general_distances(get_CLN_frame):
     """Runs general distance test on CB-CB pairs more than 2 res apart"""
     ens = get_CLN_frame
@@ -149,7 +148,7 @@ def test_general_clashes_atom_input_raises(get_CLN_frame):
             res_offset=2,
         )
 
-        
+
 def test_tica(grid_polymer):
     """Test that tics are correctly calculated"""
     features = {
