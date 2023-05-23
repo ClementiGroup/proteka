@@ -404,18 +404,19 @@ class EnsembleQualityMetrics(IMetrics):
             target_feat = Featurizer.get_feature(target, feature)
             reference_feat = Featurizer.get_feature(reference, feature)
 
+        reference_weights = (
+            reference.weights if hasattr(reference, "weights") else None
+        )
+        target_weights = target.weights if hasattr(target, "weights") else None
+
         if feature in EnsembleQualityMetrics.scalar_features:
             metric_computer = EnsembleQualityMetrics.scalar_metrics[metric]
             hist_target, hist_ref = histogram_features(
                 target_feat,
                 reference_feat,
                 bins=bins,
-                reference_weights=reference.weights
-                if hasattr(reference, "weights")
-                else None,
-                target_weights=target.weights
-                if hasattr(target, "weights")
-                else None,
+                target_weights=target_weights,
+                reference_weights=reference_weights,
             )
         elif feature in EnsembleQualityMetrics.vector_features:
             metric_computer = EnsembleQualityMetrics.vector_metrics[metric]
@@ -423,12 +424,8 @@ class EnsembleQualityMetrics(IMetrics):
                 target_feat,
                 reference_feat,
                 bins=bins,
-                reference_weights=reference.weights
-                if hasattr(reference, "weights")
-                else None,
-                target_weights=target.weights
-                if hasattr(target, "weights")
-                else None,
+                target_weights=target_weights,
+                reference_weights=reference_weights,
             )
         elif feature in EnsembleQualityMetrics.features_2d:
             metric_computer = EnsembleQualityMetrics.metrics_2d[metric]
@@ -436,12 +433,8 @@ class EnsembleQualityMetrics(IMetrics):
                 target_feat,
                 reference_feat,
                 bins=bins,
-                reference_weights=reference.weights
-                if hasattr(reference, "weights")
-                else None,
-                target_weights=target.weights
-                if hasattr(target, "weights")
-                else None,
+                target_weights=target_weights,
+                reference_weights=reference_weights,
             )
             hist_target = hist_target.flatten()
             hist_ref = hist_ref.flatten()
