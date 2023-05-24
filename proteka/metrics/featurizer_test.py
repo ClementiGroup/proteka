@@ -3,7 +3,7 @@ import mdtraj as md
 import pytest
 from itertools import combinations
 import deeptime as dt
-
+from collections import OrderedDict
 from proteka.dataset import Ensemble
 from proteka.quantity import Quantity
 from proteka.metrics import Featurizer, TICATransform
@@ -106,13 +106,30 @@ def test_ca_distances(single_frame):
     assert np.all(np.isclose(distances, reference_distances))
 
 
-def test_tica(grid_polymer):
-    """Test that tics are correctly calculated"""
+def test_tica_order(grid_polymer):
+    """Tests OrderedDict raise for input features"""
     features = {
         "ca_distances": {"offset": 1},
         "ca_angles": {},
         "ca_dihedrals": {},
     }
+    dim = 3
+    lagtime = 1
+    with pytest.raises(ValueError):
+        transform = TICATransform(
+            features, estimation_params={"lagtime": lagtime, "dim": dim}
+        )
+
+
+def test_tica(grid_polymer):
+    """Test that tics are correctly calculated"""
+    features = OrderedDict(
+        [
+            ("ca_distances", {"offset": 1}),
+            ("ca_angles", {}),
+            ("ca_dihedrals", {}),
+        ]
+    )
     dim = 3
     lagtime = 1
     # Get TICA from the proteka featurizer

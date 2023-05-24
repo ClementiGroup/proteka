@@ -2,6 +2,7 @@
     """
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
+from collections import OrderedDict
 import json
 import warnings
 import numpy as np
@@ -47,7 +48,7 @@ class TICATransform(Transform):
 
     def __init__(
         self,
-        features: Dict,
+        features: OrderedDict,
         bias: Optional[np.ndarray] = None,
         transform_matrix: Optional[np.ndarray] = None,
         estimation_params: Optional[Dict] = None,
@@ -56,11 +57,13 @@ class TICATransform(Transform):
 
         Parameters
         ----------
-        features : Dictionary
-            Dictionary of features to be used for TICA.
+        features : OrderedDict
+            OrderedDict of features to be used for TICA.
             Each key is a string representing feature name and each value
             is a dictionary of parameters used to compute corresponding feature
-            (see Featurizer.get_feature for details)
+            (see Featurizer.get_feature for details). The order of features input
+            for TICA model parametrization/transforming follows the same order in
+            the supplied OrderedDict.
         bias : np.ndarray, Optional
             Bias used to compute the TICA transformation. If not provided, it will be infrred from data
             during the transformation.
@@ -72,7 +75,12 @@ class TICATransform(Transform):
             If bias and transform_matrix are provided, estimation_params are ignored
 
         """
-        self.features = features
+        if not isinstance(features, OrderedDict):
+            raise ValueError(
+                "Input features must be an OrderedDict to preserve TICA feature order"
+            )
+        else:
+            self.features = features
         self.bias = bias
         self.transform_matrix = transform_matrix
         self.estimation_params = estimation_params
