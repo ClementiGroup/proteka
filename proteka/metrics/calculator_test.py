@@ -3,7 +3,9 @@
 import numpy as np
 import mdtraj as md
 import pytest
-
+import tempfile
+import os.path as osp
+from ruamel.yaml import YAML
 from proteka.dataset import Ensemble
 from proteka.quantity import Quantity
 from proteka.metrics import Featurizer
@@ -42,32 +44,34 @@ def test_ca_clashes(single_frame):
 def test_basic_metric_run(get_two_ensembles):
     target_ensemble, ref_ensemble = get_two_ensembles
 
-    feat = Featurizer()
-    feat.add_rg(target_ensemble)
-    feat.add_rg(ref_ensemble)
-
     eqm = EnsembleQualityMetrics()
-    results = eqm(target_ensemble, ref_ensemble, "rg", "all")
+    results = eqm(target_ensemble, ref_ensemble)
+    assert (
+        len(results) == 3
+    )  # default computation is rg, ca_distances, and dssp
 
 
-def test_valid_metrics_raises():
-    with pytest.raises(ValueError):
-        EnsembleQualityMetrics._check_metrics(["some_silly_metric"])
+def test_calculator_config_bin_conversion():
+    # Tests to make sure non-int binopts are converted correctly
+    # for EnsembleQualityMetrics instanced from configs
+    metrics = {
+        "ensemble_quality_metrics": {
+            "rg": {
+                "feature_params": {"ca_only": True},
+                "metric_params": {
+                    "js_div": {"bins": {"start": 0, "stop": 100, "num": 101}}
+                },
+            }
+        }
+    }
+    expected_bins = np.linspace(0, 100, 101)
 
-
-def test_feature_intersection(get_two_ensembles):
-    target_ensemble, ref_ensemble = get_two_ensembles
-
-    feat = Featurizer()
-
-    for ens in [target_ensemble, ref_ensemble]:
-        feat.add_rg(ens)
-    # extra feature in cg ens
-    feat.add_end2end_distance(target_ensemble)
-
-    with pytest.warns(UserWarning):
-        checked_feats = EnsembleQualityMetrics._check_features(
-            target_ensemble, ref_ensemble, ["rg", "end2end_distance"]
+    with tempfile.TemporaryDirectory() as tmp:
+        yaml = YAML()
+        yaml.dump(metrics, open(osp.join(tmp, "test.yaml"), "w"))
+        eqm = EnsembleQualityMetrics.from_config(osp.join(tmp, "test.yaml"))
+        np.testing.assert_array_equal(
+            eqm.metrics["rg"]["metric_params"]["js_div"]["bins"], expected_bins
         )
 
 

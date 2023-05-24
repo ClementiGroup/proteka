@@ -5,6 +5,7 @@ from abc import ABCMeta, abstractmethod
 from collections.abc import Iterable
 import numpy as np
 import mdtraj as md
+from ruamel.yaml import YAML
 from mdtraj.core.element import Element
 from typing import Union, Dict, Optional, List, Tuple
 from .featurizer import Featurizer, TICATransform
@@ -31,6 +32,8 @@ from .utils import (
 )
 
 __all__ = ["StructuralIntegrityMetrics", "EnsembleQualityMetrics"]
+
+yaml = YAML()
 
 
 class IMetrics(metaclass=ABCMeta):
@@ -221,15 +224,7 @@ class EnsembleQualityMetrics(IMetrics):
     """Metrics to compare a target ensemble to the reference ensemble"""
 
     metric_types = set(
-        [
-            "kl_div",
-            "js_div",
-            "mse",
-            "mse_dist",
-            "mse_ldist",
-            "fraction_smaller"
-            # "wasserstein"
-        ]
+        ["kl_div", "js_div", "mse", "mse_dist", "mse_ldist", "fraction_smaller"]
     )
     scalar_metrics = {
         "kl_div": kl_divergence,
@@ -237,8 +232,7 @@ class EnsembleQualityMetrics(IMetrics):
         "mse": mse,
         "mse_dist": mse_dist,
         "mse_ldist": mse_log,
-        "fraction_smaller": fraction_smaller
-        # "wasserstein": wasserstein,
+        "fraction_smaller": fraction_smaller,
     }
     vector_metrics = {
         "kl_div": vector_kl_divergence,
@@ -276,156 +270,94 @@ class EnsembleQualityMetrics(IMetrics):
 
     def __init__(
         self,
-        metrics_params={
-            "tica_kl_div": {"lagtime": 10},
-            "tica_js_div": {"lagtime": 10},
+        metrics={
+            "rg": {
+                "feature_params": {"ca_only": True},
+                "metric_params": {"js_div": {"bins": 100}},
+            },
+            "ca_distances": {
+                "feature_params": None,
+                "metric_params": {"js_div": {"bins": 100}},
+            },
+            "dssp": {
+                "feature_params": {"digitize": True},
+                "metric_params": {
+                    "mse_ldist": {"bins": np.array([0, 1, 2, 3, 4])}
+                },
+            },
         },
     ):
         super().__init__()
-        self.metrics_params = metrics_params
-        self.metrics_dict = {}
+        self.metrics = metrics
+        self.metrics_results = {}
 
     def __call__(
         self,
         target: Ensemble,
         reference: Ensemble,
-        features: Union[Iterable[str], str],
-        metrics: Union[Iterable[str], str] = "all",
     ):
         """Calls the `compute` method and reports the results
         as a dictionary of metric_name: metric_value pairs
         See compute() for more details.
         """
-        self.compute(target, reference, features, metrics)
+        self.compute(target, reference)
         return self.report()
 
-    @staticmethod
-    def _feature_contraction(
-        all_target_feats: List[str],
-        all_ref_feats: List[str],
-        features: List[str],
-    ) -> Iterable[str]:
-        """Contracts two feature sets to their intesection"""
-        all_target_feats, all_ref_feats, features = (
-            set(all_target_feats),
-            set(all_ref_feats),
-            set(features),
-        )
-        warnings.warn(
-            f"target Ensemble has {all_target_feats} as registered quantities, but"
-            f" reference ensemble has {all_ref_feats} as registered quantities,"
-            f" and {features} are the requested features. The smallest"
-            f" mutual subset of features will have their metrics computed"
-        )
-        features = list(
-            features.intersection(all_target_feats).intersection(all_ref_feats)
-        )
-        return features
+    @classmethod
+    def from_config(cls, config_file: str):
+        """Instances an EnsembleQualityMetrics
+        from a config file. The config should have the example following structure:
 
-    @staticmethod
-    def _check_features(
-        target: Ensemble,
-        reference: Ensemble,
-        features: Union[Iterable[str], str] = "all",
-    ) -> List[str]:
-        """Checks feature inputs for `compute()`
+            ensemble_quality_metrics:
+              rmsd:
+                feauture_params:
+                  ref_structure: path_to_struct.pdb
+                  atom_selection: "name CA"
+                metric_params:
+                  js_div:
+                    bins: 100
+                  mse_ldist:
+                    bins:
+                      start: 0
+                      stop: 100
+                      num: 1000
+                ...
+
+        For specific metrics, bins can be either an integer or a dictionary
+        of key value pairs corresponding to kwargs of `np.linspace` to instance
+        equal-width bins over a specific range of values.
 
         Parameters
         ----------
-        metrics:
-            specified metric(s) for computation.
-
-        Returns
-        -------
-        metrics:
-            List of string(s) specifying the vetted features(s)
-            for which metrics should be computed downstream
+        config_file:
+            YAML file specifying feature and config options
         """
 
-        # Feature checks
-        all_target_feats = target.list_quantities()
-        all_ref_feats = reference.list_quantities()
+        config = yaml.load(open(config_file, "r"))
+        eqm_config = config["ensemble_quality_metrics"]
 
-        if isinstance(features, str) and features != "all":
-            # Case where single feature is specified
-            if (
-                features not in all_target_feats
-                and features not in all_ref_feats
-            ):
-                raise ValueError(
-                    f"feature {feature} is not registered in target nor reference ensemble."
-                )
-            else:
-                features = [features]
-        elif features == "all" or isinstance(features, Iterable):
-            # Cases where "all" is chosen and target and ref have different feature sets
-            if features == "all":
-                # if "all" take all reference features
-                features = list(all_target_feats)
-            if not all(
-                [
-                    (f in all_target_feats and f in all_ref_feats)
-                    for f in features
-                ]
-            ):
-                features = EnsembleQualityMetrics._feature_contraction(
-                    all_target_feats, all_ref_feats, features
-                )
+        for feature in eqm_config.keys():
+            feature_dict = eqm_config[feature]
+            for metric in feature_dict["metric_params"].keys():
+                if "bins" in list(feature_dict["metric_params"][metric].keys()):
+                    binopts = feature_dict["metric_params"][metric]["bins"]
 
-        # Unavailable feature filter
-        skip_idx = []
-        for idx, feature in enumerate(features):
-            if feature in EnsembleQualityMetrics.excluded_quantities:
-                warnings.warn(
-                    f"feature {feature} is not available for metric comparison, and it will be skipped."
-                )
-                skip_idx.append(idx)
-        features = [f for idx, f in enumerate(features) if idx not in skip_idx]
-        return features
+                if isinstance(binopts, int) or binopts == None:
+                    continue
+                elif isinstance(binopts, Dict):
+                    # Reinstance bins with np.linspace
+                    eqm_config[feature]["metric_params"][metric][
+                        "bins"
+                    ] = np.linspace(**binopts)
+                else:
+                    raise ValueError(f"Unknown bin options {binopts}")
 
-    @staticmethod
-    def _check_metrics(
-        metrics: Union[Iterable[str], str] = "all",
-    ) -> Iterable[str]:
-        """Checks to make sure requested metrics are valid
-
-        Parameters
-        ----------
-        metrics:
-            specified metric(s) for computation.
-
-        Returns
-        -------
-        metrics:
-            List of string(s) specifying the vetted metric(s)
-            that should be computed downstream
-        """
-        valid_metrics = EnsembleQualityMetrics.metric_types
-        if metrics == "all":
-            metrics = valid_metrics
-        elif isinstance(metrics, str):
-            metrics = [metrics]
-        elif isinstance(metrics, Iterable) and all(
-            [isinstance(met, str) for met in metrics]
-        ):
-            pass
-        else:
-            raise ValueError(
-                f"metrics {metrics} not in '['all', str, Iterable[str]']'"
-            )
-
-        if not all([m in valid_metrics for m in metrics]):
-            raise ValueError(
-                f"Requested metrics '{metrics}' not compatible with valid metrics '{valid_metrics}'"
-            )
-        return metrics
+        return cls(eqm_config)
 
     def compute(
         self,
         target: Ensemble,
         reference: Ensemble,
-        features: Union[Iterable[str], str] = "all",
-        metrics: Union[Iterable[str], str] = "all",
     ):
         """
         Compute the metrics that compare the target ensemble to the reference over
@@ -438,20 +370,16 @@ class EnsembleQualityMetrics(IMetrics):
             The target ensemble
         reference: Ensemble
             The reference ensemble, against which the target ensemble is compared
-        features: Iterable of strings or str
-            List of features from which the chosen metrics will be computed. If "all", every
-            feature in the reference Ensemble will be grabbed
-        metrics: Iterable of strings or str
-            The metrics to compute. If "all" is passed, all available metrics will be computed
         """
-        features = EnsembleQualityMetrics._check_features(
-            target, reference, features
-        )
-        metrics = EnsembleQualityMetrics._check_metrics(metrics)
-        for feature in features:
-            for metric in metrics:
-                param_key = f"{feature}_{metric}"
-                params = self.metrics_params.get(param_key)
+        for feature in self.metrics.keys():
+            # compute feature in target/ref ensemble if needed
+            feature_params = self.metrics[feature]["feature_params"]
+            if feature_params == None:
+                feature_params = {}
+            Featurizer.get_feature(target, feature, **feature_params)
+            Featurizer.get_feature(reference, feature, **feature_params)
+            for metric in self.metrics[feature]["metric_params"].keys():
+                params = self.metrics[feature]["metric_params"][metric]
                 if params is None:
                     params = {}
                 result = EnsembleQualityMetrics.compute_metric(
@@ -502,13 +430,6 @@ class EnsembleQualityMetrics(IMetrics):
         if metric not in EnsembleQualityMetrics.metric_types:
             raise ValueError(f"Metric '{metric}' not defined.")
 
-        if metric == "fraction_smaller" and feature != "rmsd":
-            return {f"{feature}, {metric}": None}
-
-        if feature == "tica":
-            target_feat, reference_feat = get_tica_features(
-                target, reference, **kwargs
-            )
         else:
             target_feat = Featurizer.get_feature(target, feature)
             reference_feat = Featurizer.get_feature(reference, feature)
@@ -556,9 +477,5 @@ class EnsembleQualityMetrics(IMetrics):
             for k, v in kwargs.items()
             if not k in ["bins", "reference_weights"]
         }
-        if metric in ["mse", "fraction_smaller"]:
-            # mse should be computed over the exact values, not over the prob distribution
-            result = metric_computer(target_feat, reference_feat, **metric_args)
-        else:
-            result = metric_computer(hist_target, hist_ref, **metric_args)
+        result = metric_computer(hist_target, hist_ref, **metric_args)
         return {f"{feature}, {metric}": result}
