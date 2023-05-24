@@ -3,7 +3,6 @@ import mdtraj as md
 import pytest
 from itertools import combinations
 import deeptime as dt
-from collections import OrderedDict
 from proteka.dataset import Ensemble
 from proteka.quantity import Quantity
 from proteka.metrics import Featurizer, TICATransform
