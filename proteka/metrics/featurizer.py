@@ -282,31 +282,51 @@ class Featurizer:
         )
         ensemble.set_quantity("ca_bonds", quantity)
 
-    def add_ca_distances(self, ensemble: Ensemble, offset: int = 1):
+    def add_ca_distances(
+        self, ensemble: Ensemble, offset: int = 1, subset_selection: str = None
+    ):
         """Get distances between CA atoms.
 
         Parameters:
+        ensemble : Ensemble
+            Ensemble object
         offset: int, optional
             Distances between CA atoms in residues i and j are included if
             | i -j | >  offset. The default value is 1, which means that
             all nonbonded Calpha-Calpha distances are included. If offset is 0,
             then all the distances are included.
+        subset_selection: str, optional
+            A string that is used to select a subset of CA atoms, according to mdtraj
+            selection language, e.g. "chainid 0 and resid 0 to 10". If `subset_selection` is None,
+            then all CA atoms are used.
 
         """
         trajectory = ensemble.get_all_in_one_mdtraj_trj()
-        ca_atoms = trajectory.top.select("name CA")
+        if subset_selection is not None:
+            selection = "name CA and " + subset_selection
+        else:
+            selection = "name CA"
+        ca_atoms = trajectory.top.select(selection)
+        ca_residues = [trajectory.top.atom(i).residue.resSeq for i in ca_atoms]
         self.validate_c_alpha(ensemble)
-
-        # Get indices of pairs of atoms
-        ind1, ind2 = np.triu_indices(len(ca_atoms), offset + 1)
-        ca_pairs = np.array([ca_atoms[ind1], ca_atoms[ind2]]).T
+        ca_pairs = [
+            [ca_atoms[i], ca_atoms[j]]
+            for i in range(len(ca_atoms))
+            for j in range(i + 1, len(ca_atoms))
+            if abs(ca_residues[i] - ca_residues[j]) > offset
+        ]
+        # Compute distances
         ca_distances = md.compute_distances(
             trajectory, ca_pairs, periodic=False
         )
         quantity = Quantity(
             ca_distances,
             "nanometers",
-            metadata={"feature": "ca_distances", "offset": offset},
+            metadata={
+                "feature": "ca_distances",
+                "offset": offset,
+                "subset_selection": subset_selection,
+            },
         )
         ensemble.set_quantity("ca_distances", quantity)
 
