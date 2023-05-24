@@ -3,7 +3,6 @@ import mdtraj as md
 import pytest
 from itertools import combinations
 import deeptime as dt
-
 from proteka.dataset import Ensemble
 from proteka.quantity import Quantity
 from proteka.metrics import Featurizer, TICATransform
@@ -165,13 +164,34 @@ def test_general_clashes_atom_input_raises(get_CLN_frame):
         )
 
 
-def test_tica(grid_polymer):
-    """Test that tics are correctly calculated"""
+def test_tica_order(grid_polymer):
+    """Tests raises for input features"""
     features = {
         "ca_distances": {"offset": 1},
         "ca_angles": {},
         "ca_dihedrals": {},
     }
+    dim = 3
+    lagtime = 1
+    with pytest.raises(ValueError):
+        transform = TICATransform(
+            features, estimation_params={"lagtime": lagtime, "dim": dim}
+        )
+    with pytest.raises(ValueError):
+        transform = TICATransform(
+            [("A", {}), ("Silly", {}), ("Mistake", "Oops", {})],
+            estimation_params={"lagtime": lagtime, "dim": dim},
+        )
+
+
+def test_tica(grid_polymer):
+    """Test that tics are correctly calculated"""
+    features = [
+        ("ca_distances", {"offset": 1}),
+        ("ca_angles", {}),
+        ("ca_dihedrals", {}),
+    ]
+
     dim = 3
     lagtime = 1
     # Get TICA from the proteka featurizer
@@ -183,7 +203,7 @@ def test_tica(grid_polymer):
     )
     # Get TICA from deeptime
     input_features = []
-    for feature, params in features.items():
+    for feature, params in features:
         input_features.append(
             Featurizer.get_feature(grid_polymer, feature, **params)
         )
