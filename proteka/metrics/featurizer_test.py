@@ -203,11 +203,9 @@ def test_tica(grid_polymer):
     )
     # Get TICA from deeptime
     input_features = []
-    for feature_tuple in features:
+    for feature, params in features:
         input_features.append(
-            Featurizer.get_feature(
-                grid_polymer, feature_tuple[0], **feature_tuple[1]
-            )
+            Featurizer.get_feature(grid_polymer, feature, **params)
         )
     input_features = np.concatenate(input_features, axis=1)
     print(input_features.shape)
