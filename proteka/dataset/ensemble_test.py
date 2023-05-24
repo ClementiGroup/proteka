@@ -3,6 +3,7 @@ import h5py
 from pathlib import Path
 from proteka import Ensemble, UnitSystem, Quantity
 from proteka.quantity.quantity_shapes import PerFrameQuantity
+from proteka.dataset.ensemble import HDF5Group
 import pytest
 import numpy as np
 
@@ -181,3 +182,50 @@ def test_ensemble_serialize_trjs(example_ensemble, tmpdir):
     assert list(trjs_dict) == list(ensemble2.trjs)
     for trj_name, trj_slice in trjs_dict.items():
         assert ensemble2.trjs[trj_name] == trj_slice
+
+
+def test_HDF5Group_load_skip(example_ensemble, tmpdir):
+    """Test skipping a dataset when loading from h5 file."""
+    ensemble = example_ensemble
+    ensemble.forces = np.random.rand(10, ensemble.n_atoms, 3)
+    ensemble.custom_field = np.random.rand(5, ensemble.n_atoms, 3)
+    with h5py.File(tmpdir / "test.h5", "w") as f:
+        ensemble.write_to_hdf5(f, name="example_ensemble")
+    with h5py.File(tmpdir / "test.h5", "r") as f:
+        group = f["example_ensemble"]
+        hdf_load = HDF5Group.from_hdf5(group, skip=["forces"])
+    assert "custom_field" in hdf_load
+    assert "forces" not in hdf_load
+
+
+def test_ensemble_from_h5_offset_stride(example_ensemble, tmpdir):
+    """Test loading ensembles from h5 file with offset and stride."""
+    offset = 2
+    stride = 3
+    ensemble = example_ensemble
+    ensemble.forces = np.random.rand(10, ensemble.n_atoms, 3)
+    ensemble.custom_field = np.random.rand(5, ensemble.n_atoms, 3)
+    trjs_dict = {"part1": slice(0, 5, 1), "part2": slice(5, 10, 1)}
+    example_ensemble.register_trjs(trjs_dict)
+    with h5py.File(tmpdir / "test.h5", "w") as f:
+        ensemble.write_to_hdf5(f, name="example_ensemble")
+
+    with h5py.File(tmpdir / "test.h5", "r") as f:
+        group = f["example_ensemble"]
+        ensemble2 = Ensemble.from_hdf5(
+            group,
+            offset=offset,
+            stride=stride,
+            no_offset_stride_quantities=["custom_field"],
+        )
+    from math import ceil
+
+    assert ensemble2.n_frames == ceil((10 - offset) / stride)
+    assert np.allclose(ensemble2.coords, ensemble.coords[offset::stride])
+    assert np.allclose(ensemble2.forces, ensemble.forces[offset::stride])
+    assert np.allclose(ensemble2.custom_field, ensemble.custom_field)
+    assert ensemble2.top == ensemble.top
+    assert ensemble2.name == ensemble.name
+    assert ensemble2["custom_field"].unit == "dimensionless"
+    assert ensemble2.trjs["part1"] == slice(0, 1, 1)
+    assert ensemble2.trjs["part2"] == slice(1, 3, 1)
