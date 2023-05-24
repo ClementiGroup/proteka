@@ -107,7 +107,7 @@ def test_ca_distances(single_frame):
 
 
 def test_tica_order(grid_polymer):
-    """Tests OrderedDict raise for input features"""
+    """Tests raises for input features"""
     features = {
         "ca_distances": {"offset": 1},
         "ca_angles": {},
@@ -119,17 +119,21 @@ def test_tica_order(grid_polymer):
         transform = TICATransform(
             features, estimation_params={"lagtime": lagtime, "dim": dim}
         )
+    with pytest.raises(ValueError):
+        transform = TICATransform(
+            [("A", {}), ("Silly", {}), ("Mistake", "Oops", {})],
+            estimation_params={"lagtime": lagtime, "dim": dim},
+        )
 
 
 def test_tica(grid_polymer):
     """Test that tics are correctly calculated"""
-    features = OrderedDict(
-        [
-            ("ca_distances", {"offset": 1}),
-            ("ca_angles", {}),
-            ("ca_dihedrals", {}),
-        ]
-    )
+    features = [
+        ("ca_distances", {"offset": 1}),
+        ("ca_angles", {}),
+        ("ca_dihedrals", {}),
+    ]
+
     dim = 3
     lagtime = 1
     # Get TICA from the proteka featurizer
@@ -141,9 +145,11 @@ def test_tica(grid_polymer):
     )
     # Get TICA from deeptime
     input_features = []
-    for feature, params in features.items():
+    for feature_tuple in features:
         input_features.append(
-            Featurizer.get_feature(grid_polymer, feature, **params)
+            Featurizer.get_feature(
+                grid_polymer, feature_tuple[0], **feature_tuple[1]
+            )
         )
     input_features = np.concatenate(input_features, axis=1)
     print(input_features.shape)
