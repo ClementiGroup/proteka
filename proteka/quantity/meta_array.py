@@ -1,6 +1,8 @@
 import numpy as np
 import h5py
 from warnings import warn
+from numbers import Integral
+from typing import Optional
 
 __all__ = ["MetaArray"]
 
@@ -83,13 +85,22 @@ class MetaArray:
         return f'<MetaArray: shape {self._value.shape}, type "{self._value.dtype}">'
 
     @staticmethod
-    def from_hdf5(h5dt):
-        """Create an instance from the content of HDF5 dataset `h5dt`.
+    def from_hdf5(
+        h5dt, offset: Optional[int] = None, stride: Optional[int] = None
+    ):
+        """Create an instance from the content of HDF5 dataset `h5dt`. For a non-scalar
+        dataset, offset and stride can be set to read in the slice
+        `h5dt[offset::stride]`. For scalar dataset, `offset`
+        and `stride` will be simply ignored.
 
         Parameters
         ----------
         h5dt : h5py.Dataset
             A HDF5 Dataset.
+        offset : None | int, optional
+            The offset for loading from the HDF5 file. Default is `None`.
+        stride : None | int, optional
+            The stride for loading from the HDF5 file. Default is `None`.
 
         Returns
         -------
@@ -105,7 +116,20 @@ class MetaArray:
             raise ValueError(
                 f"Input {h5dt}'s type is {type(h5dt)}, expecting a h5py.Dataset."
             )
-        dt = MetaArray(h5dt[...])
+        if not isinstance(offset, Integral) and offset is not None:
+            raise ValueError(
+                f"Input `offset`'s type is {type(offset)}, expecting an `int` or `None`."
+            )
+        if not isinstance(stride, Integral) and stride is not None:
+            raise ValueError(
+                f"Input `stride`'s type is {type(stride)}, expecting an `int` or `None`."
+            )
+        if h5dt.ndim == 0:
+            # scalar dataset, neither offset nor stride will take effect
+            dt = MetaArray(h5dt[...])
+        else:
+            # non-scalar dataset
+            dt = MetaArray(h5dt[offset::stride])
         for k, v in h5dt.attrs.items():
             dt.metadata[k] = v
         return dt
