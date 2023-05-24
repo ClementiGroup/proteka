@@ -298,7 +298,7 @@ class Featurizer:
         subset_selection: str, optional
             A string that is used to select a subset of CA atoms, according to mdtraj
             selection language, e.g. "chainid 0 and resid 0 to 10". If `subset_selection` is None,
-            then all CA atoms are used.
+            then all CA atoms compatible with the specified offset are used.
 
         """
         trajectory = ensemble.get_all_in_one_mdtraj_trj()
