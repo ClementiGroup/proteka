@@ -10,7 +10,7 @@ from typing import Dict, Optional
 from ..dataset import Ensemble
 from ..quantity import Quantity
 from typing import Callable, Dict, List, Optional, Tuple
-
+from itertools import combinations
 
 __all__ = ["Featurizer", "Transform", "TICATransform"]
 
@@ -307,14 +307,22 @@ class Featurizer:
         else:
             selection = "name CA"
         ca_atoms = trajectory.top.select(selection)
-        ca_residues = [trajectory.top.atom(i).residue.resSeq for i in ca_atoms]
         self.validate_c_alpha(ensemble)
-        ca_pairs = [
-            [ca_atoms[i], ca_atoms[j]]
-            for i in range(len(ca_atoms))
-            for j in range(i + 1, len(ca_atoms))
-            if abs(ca_residues[i] - ca_residues[j]) > offset
-        ]
+        # get all the pairs
+        ca_pairs_all = list(combinations(ca_atoms, 2))
+        print(ca_pairs_all)
+        # select pairs compatible with offset
+        ca_pairs = list(
+            filter(
+                lambda x: abs(
+                    trajectory.top.atom(x[0]).residue.resSeq
+                    - trajectory.top.atom(x[1]).residue.resSeq
+                )
+                > offset,
+                ca_pairs_all,
+            )
+        )
+        print(ca_pairs)
         # Compute distances
         ca_distances = md.compute_distances(
             trajectory, ca_pairs, periodic=False
