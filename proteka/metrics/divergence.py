@@ -194,20 +194,20 @@ def js_divergence(
 
 def mse(target: np.ndarray, reference: np.ndarray, offset: float = 0) -> float:
     r"""
-     Compute Mean Squared Error between specified data sets.
+    Compute Mean Squared Error between specified data sets.
 
-     Parameters
-     ----------
+    Parameters
+    ----------
 
-     target, reference : np.ndarray
-        Target and reference data arrays.
-        Should have the same shape
+    target, reference : np.ndarray
+       Target and reference data arrays.
+       Should have the same shape
 
-     offset : float
-        offset to add to the reference array. 0 by default
+    offset : float
+       offset to add to the reference array. 0 by default
 
-     Returns : float
-     -------
+    Returns : float
+    -------
     Mean Squared Error of the target from the reference
 
     """
@@ -232,11 +232,11 @@ def optimal_offset(target: np.ndarray, reference: np.ndarray) -> float:
     .. math \lambda = -\frac{1}{N} \sum_{i=1}^N (p_i -  q_i)
 
     Parameters
-     ----------
+    ----------
 
-     target, reference : np.ndarray
-        Target and reference probability distributions (histograms).
-        Should have the same shape
+    target, reference : np.ndarray
+       Target and reference probability distributions (histograms).
+       Should have the same shape
 
     Returns : floats
     """
@@ -252,34 +252,31 @@ def mse_dist(
     target: np.ndarray, reference: np.ndarray, use_optimal_offset: bool = False
 ) -> float:
     r"""
-     Compute Mean Squared Error between the log  specified data sets.
+    Compute Mean Squared Error between the log  specified data sets.
 
      .. math :: MSE = \frac{1}{N} \sum_{i=1}^N (log(p_i) - log(q_i))^2
 
-     Here p corresponds to the reference (True) distribution, q corresponds to the target distribution.
+    Here p corresponds to the reference (True) distribution, q corresponds to the target distribution.
 
+    Parameters
+    -----------
+    target, reference : np.ndarray
+       Target and reference probability distributions (histograms).
+       Should have the same shape
 
-     Parameters
-     -----------
+    threshold : float, 1e-8
+       Bin is not included in the summation if its value is less than the threshold
+       and intersect_only is `True`
+    replace_value:
+       if the bin has a normalized count lower than the `threshold`, and `intersect_only`
+       is `False`, then the bin gets replaced with this value instead
+    intersect_only:
+       if `True`, distributions will only be compared over their consistent support overlaps
+       (eg, only the mutual set of populated bins will be included in the computation)
 
-     target, reference : np.ndarray
-        Target and reference probability distributions (histograms).
-        Should have the same shape
-
-     threshold : float, 1e-8
-        Bin is not included in the summation if its value is less than the threshold
-        and intersect_only is `True`
-     replace_value:
-        if the bin has a normalized count lower than the `threshold`, and `intersect_only`
-        is `False`, then the bin gets replaced with this value instead
-     intersect_only:
-        if `True`, distributions will only be compared over their consistent support overlaps
-        (eg, only the mutual set of populated bins will be included in the computation)
-
-     Returns : float
-     ------
+    Returns : float
+    ------
     Mean Squared Error of the target from the reference
-
     """
     assert (
         target.shape == reference.shape
@@ -314,35 +311,35 @@ def mse_log(
     use_optimal_offset: bool = True,
 ) -> float:
     r"""
-     Compute Mean Squared Error between the log  specified data sets.
+    Compute Mean Squared Error between the log  specified data sets.
 
      .. math :: MSE = \frac{1}{N} \sum_{i=1}^N (log(p_i) - log(q_i))^2
 
-     Here p corresponds to the reference (True) distribution, q corresponds to the target distribution.
+    Here p corresponds to the reference (True) distribution, q corresponds to the target distribution.
 
 
-     Parameters
-     ----------
+    Parameters
+    ----------
 
-     target, reference : np.ndarray
-        Target and reference probability distributions (histograms).
-        Should have the same shape
+    target, reference : np.ndarray
+       Target and reference probability distributions (histograms).
+       Should have the same shape
 
-     threshold : float, 1e-8
-        Bin is not included in the summation if its value is less than the threshold
-        and intersect_only is `True`
-     replace_value:
-        if the bin has a normalized count lower than the `threshold`, and `intersect_only`
-        is `False`, then the bin gets replaced with this value instead
-     intersect_only:
-        if `True`, distributions will only be compared over their consistent support overlaps
-        (eg, only the mutual set of populated bins will be included in the computation)
+    threshold : float, 1e-8
+       Bin is not included in the summation if its value is less than the threshold
+       and intersect_only is `True`
+    replace_value:
+       if the bin has a normalized count lower than the `threshold`, and `intersect_only`
+       is `False`, then the bin gets replaced with this value instead
+    intersect_only:
+       if `True`, distributions will only be compared over their consistent support overlaps
+       (eg, only the mutual set of populated bins will be included in the computation)
 
-     Returns : float
-     -------
+    Returns : float
+    -------
     Mean Squared Error of the target from the reference
-
     """
+
     assert (
         target.shape == reference.shape
     ), f"Dimension mismatch: target: {target.shape} reference: {reference.shape}"
@@ -413,7 +410,6 @@ def fraction_smaller(
     """
     Parameters
     ----------
-
     target, reference : np.ndarray
         Target and reference data arrays.
         Should have the same shape. Reference is only used if scaling is required
@@ -450,24 +446,22 @@ def wasserstein(
 
     Parameters
     -----------
-
     target, reference : np.typing.ArrayLike
-                Target and reference probability distributions (histograms).
-                Should have the same shape
-
-     threshold : float, 1e-8
-        Bin is not included in the summation if its value is less than the threshold
-        and intersect_only is `True`
-     replace_value:
-        if the bin has a normalized count lower than the `threshold`, and `intersect_only`
-        is `False`, then the bin gets replaced with this value instead
-     intersect_only:
-        if `True`, distributions will only be compared over their consistent support overlaps
-        (eg, only the mutual set of populated bins will be included in the computation)
+        Target and reference probability distributions (histograms).
+        Should have the same shape
+    threshold : float, 1e-8
+       Bin is not included in the summation if its value is less than the threshold
+       and intersect_only is `True`
+    replace_value:
+       if the bin has a normalized count lower than the `threshold`, and `intersect_only`
+       is `False`, then the bin gets replaced with this value instead
+    intersect_only:
+       if `True`, distributions will only be compared over their consistent support overlaps
+       (eg, only the mutual set of populated bins will be included in the computation)
 
     Returns : float
     ------
-        JS divergence of the target from the reference
+       JS divergence of the target from the reference
     """
 
     target_normalized = target / np.sum(target)
@@ -513,20 +507,18 @@ def vector_kl_divergence(
 
     Parameters
     ----------
-
     target, reference : np.typing.ArrayLike
-                Target and reference probability distributions (histograms).
-                Should have the same shape
-
-     threshold : float, 1e-8
-        Bin is not included in the summation if its value is less than the threshold
-        and intersect_only is `True`
-     replace_value:
-        if the bin has a normalized count lower than the `threshold`, and `intersect_only`
-        is `False`, then the bin gets replaced with this value instead
-     intersect_only:
-        if `True`, distributions will only be compared over their consistent support overlaps
-        (eg, only the mutual set of populated bins will be included in the computation)
+       Target and reference probability distributions (histograms).
+       Should have the same shape
+    threshold : float, 1e-8
+       Bin is not included in the summation if its value is less than the threshold
+       and intersect_only is `True`
+    replace_value:
+       if the bin has a normalized count lower than the `threshold`, and `intersect_only`
+       is `False`, then the bin gets replaced with this value instead
+    intersect_only:
+       if `True`, distributions will only be compared over their consistent support overlaps
+       (eg, only the mutual set of populated bins will be included in the computation)
 
     Returns : np.ndarray
     -------
@@ -561,23 +553,24 @@ def vector_js_divergence(
     ----------
 
     target, reference : np.typing.ArrayLike
-                Target and reference probability distributions (histograms).
-                Should have the same shape
+       Target and reference probability distributions (histograms).
+       Should have the same shape
 
-     threshold : float, 1e-8
-        Bin is not included in the summation if its value is less than the threshold
-        and intersect_only is `True`
-     replace_value:
-        if the bin has a normalized count lower than the `threshold`, and `intersect_only`
-        is `False`, then the bin gets replaced with this value instead
-     intersect_only:
-        if `True`, distributions will only be compared over their consistent support overlaps
-        (eg, only the mutual set of populated bins will be included in the computation)
+    threshold : float, 1e-8
+       Bin is not included in the summation if its value is less than the threshold
+       and intersect_only is `True`
+    replace_value:
+       if the bin has a normalized count lower than the `threshold`, and `intersect_only`
+       is `False`, then the bin gets replaced with this value instead
+    intersect_only:
+       if `True`, distributions will only be compared over their consistent support overlaps
+       (eg, only the mutual set of populated bins will be included in the computation)
 
     Returns : np.ndarray
     -------
-        Vector JS divergence of the target from the reference
+       Vector JS divergence of the target from the reference
     """
+
     assert target.shape == reference.shape
     assert len(target.shape) > 1
     num_feat = target.shape[-1]
@@ -598,23 +591,23 @@ def vector_mse(
     reference: np.ndarray,
 ) -> float:
     r"""
-     Compute Vector Mean Squared Error between specified data sets.
+    Compute Vector Mean Squared Error between specified data sets.
 
-     Parameters
-     -----------
+    Parameters
+    -----------
 
-     target, reference : np.ndarray
-        Target and reference data arrays.
-        Should have the same shape
-     threshold : float, 1e-8
-        Bin is not included in the summation if its value is less than the threshold
-        and intersect_only is `True`
+    target, reference : np.ndarray
+       Target and reference data arrays.
+       Should have the same shape
+    threshold : float, 1e-8
+       Bin is not included in the summation if its value is less than the threshold
+       and intersect_only is `True`
 
-     Returns : float
-     ------
+    Returns : float
+    ------
     Mean Squared Error of the target from the reference
-
     """
+
     assert (
         target.shape == reference.shape
     ), f"Dimension mismatch: target: {target.shape} reference: {reference.shape}"
@@ -627,25 +620,25 @@ def vector_mse_dist(
     reference: np.ndarray,
 ) -> float:
     r"""
-     Compute Mean Squared Error between the log  specified data sets.
+    Compute vector Mean Squared Error between histograms of the specified data sets.
 
-     .. math :: MSE = \frac{1}{N} \sum_{i=1}^N (log(p_i) - log(q_i))^2
+    .. math :: MSE = \frac{1}{N} \sum_{i=1}^N (log(p_i) - log(q_i))^2
 
-     Here p corresponds to the reference (True) distribution, q corresponds to the target distribution.
+    Here p corresponds to the reference (True) distribution, q corresponds to the target distribution.
 
 
-     Parameters
-     -----------
+    Parameters
+    -----------
 
-     target, reference : np.ndarray
-        Target and reference probability distributions (histograms).
-        Should have the same shape
+    target, reference : np.ndarray
+       Target and reference probability distributions (histograms).
+       Should have the same shape
 
-     Returns : float
-     ------
+    Returns : float
+    ------
     Mean Squared Error of the target from the reference
-
     """
+
     assert (
         target.shape == reference.shape
     ), f"Dimension mismatch: target: {target.shape} reference: {reference.shape}"
@@ -666,35 +659,32 @@ def vector_mse_log(
     intersect_only: bool = False,
 ) -> float:
     r"""
-     Compute Mean Squared Error between the log  specified data sets.
+    Compute vector Mean Squared Error between the log of distributions of specified data sets.
 
      .. math :: MSE = \frac{1}{N} \sum_{i=1}^N (log(p_i) - log(q_i))^2
 
-     Here p corresponds to the reference (True) distribution, q corresponds to the target distribution.
+    Here p corresponds to the reference (True) distribution, q corresponds to the target distribution.
 
+    Parameters
+    -----------
+    target, reference : np.ndarray
+       Target and reference probability distributions (histograms).
+       Should have the same shape
+    threshold : float, 1e-8
+       Bin is not included in the summation if its value is less than the threshold
+       and intersect_only is `True`
+    replace_value:
+       if the bin has a normalized count lower than the `threshold`, and `intersect_only`
+       is `False`, then the bin gets replaced with this value instead
+    intersect_only:
+       if `True`, distributions will only be compared over their consistent support overlaps
+       (eg, only the mutual set of populated bins will be included in the computation)
 
-     Parameters
-     -----------
-
-     target, reference : np.ndarray
-        Target and reference probability distributions (histograms).
-        Should have the same shape
-
-     threshold : float, 1e-8
-        Bin is not included in the summation if its value is less than the threshold
-        and intersect_only is `True`
-     replace_value:
-        if the bin has a normalized count lower than the `threshold`, and `intersect_only`
-        is `False`, then the bin gets replaced with this value instead
-     intersect_only:
-        if `True`, distributions will only be compared over their consistent support overlaps
-        (eg, only the mutual set of populated bins will be included in the computation)
-
-     Returns : float
-     ------
+    Returns : float
+    ------
     Mean Squared Error of the target from the reference
-
     """
+
     assert (
         target.shape == reference.shape
     ), f"Dimension mismatch: target: {target.shape} reference: {reference.shape}"

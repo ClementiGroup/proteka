@@ -5,7 +5,7 @@ from abc import ABCMeta, abstractmethod
 from collections.abc import Iterable
 import numpy as np
 from typing import Union, Dict, List
-from .featurizer import Featurizer
+from .featurizer import Featurizer, TICATransform
 from ..dataset import Ensemble
 from typing import Union, Dict
 from .divergence import (
@@ -25,7 +25,6 @@ from .utils import (
     histogram_features,
     histogram_vector_features,
     histogram_features2d,
-    get_tica_features,
 )
 
 __all__ = ["StructuralIntegrityMetrics", "EnsembleQualityMetrics"]

@@ -91,6 +91,7 @@ def test_kl_divergence_normalized():
             target_histogram1 * scaling,
             reference_histogram1 * scaling,
             intersect_only=True,
+            threshold=1e-8,
         ),
         reference_kld1,
     )
@@ -150,11 +151,11 @@ def test_js_divergence():
     """
     Test basic functionality
     """
-
     assert np.isclose(
         js_divergence(
             target_histogram1,
             reference_histogram1,
+            threshold=1e-8,
         ),
         reference_jsd1,
     )
