@@ -107,6 +107,22 @@ def test_ca_distances(single_frame):
     assert np.all(np.isclose(distances, reference_distances))
 
 
+def test_ca_distances_offset(single_frame):
+    distances = Featurizer.get_feature(single_frame, "ca_distances", offset=2)
+    reference_distances = md.compute_distances(
+        get_6_bead_frame(), [[0, 3], [0, 4], [0, 5], [1, 4], [1, 5], [2, 5]]
+    )
+    assert np.all(np.isclose(distances, reference_distances))
+
+
+def test_ca_distances_custom_selection(single_frame):
+    
+    distances = Featurizer.get_feature(
+        single_frame, "ca_distances", subset_selection="resid 0 to 2", offset=1
+    )
+    reference_distances = md.compute_distances(get_6_bead_frame(), [[0, 2]])
+    assert np.all(np.isclose(distances, reference_distances))
+
 def test_general_distances(get_CLN_frame):
     """Runs general distance test on CB-CB pairs more than 2 res apart"""
     ens = get_CLN_frame
