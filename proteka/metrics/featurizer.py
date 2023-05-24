@@ -98,8 +98,7 @@ class TICATransform(Transform):
         from deeptime.decomposition import TICA
 
         features = []
-        for feature_tuple in self.features:
-            feature, params = feature_tuple[0], feature_tuple[1]
+        for feature, params in self.features:
             features.append(Featurizer.get_feature(ensemble, feature, **params))
         features = np.concatenate(features, axis=1)
         estimator = TICA(**self.estimation_params)
