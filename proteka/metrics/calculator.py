@@ -100,8 +100,8 @@ class StructuralIntegrityMetrics(IMetrics):
         https://www.cgl.usf.edu/chimera/docs/ContributedSoftware/findclash/findclash.html
 
         with VDW radii in nm taken from `mdtraj.core.element.Element`. If the pair
-        is composed of hydrogen bonding atom species (e.g., ("N", "O", "S")), then
-        an additional default allowance of 0.6 nm is permitted.
+        is composed of atom species that can potentially form hydrogen bonds
+        (e.g., ("N", "O", "S")), then an additional default allowance of 0.07 nm is permitted.
 
         Parameters
         ----------
@@ -160,14 +160,11 @@ class StructuralIntegrityMetrics(IMetrics):
                 # Handle hydrogen bonding allowances
                 # between donors and acceptors with
                 # different names
-                if (
-                    all(
-                        [
-                            p in StructuralIntegrityMetrics.acceptors_or_donors
-                            for p in pair
-                        ]
-                    )
-                    and pair[0] != pair[1]
+                if all(
+                    [
+                        p in StructuralIntegrityMetrics.acceptors_or_donors
+                        for p in pair
+                    ]
                 ):
                     threshold = threshold - allowance
                 thresholds.append(threshold)

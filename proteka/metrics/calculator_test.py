@@ -59,7 +59,7 @@ def test_general_default_clashes(cln_single_frame):
         ],
         res_offset=8,
     )
-    assert clashes["N-N clashes"] == 1
+    assert clashes["N-N clashes"] == 0
     assert clashes["N-CA clashes"] == 2
     assert clashes["N-CB clashes"] == 0
     assert clashes["N-C clashes"] == 2
@@ -77,7 +77,7 @@ def test_general_default_clashes(cln_single_frame):
     assert clashes["C-C clashes"] == 1
     assert clashes["C-O clashes"] == 2
 
-    assert clashes["O-O clashes"] == 1
+    assert clashes["O-O clashes"] == 0
 
 
 def test_general_clashes(cln_single_frame):
