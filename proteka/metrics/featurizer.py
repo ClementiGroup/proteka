@@ -10,7 +10,7 @@ from typing import Dict, Optional
 from ..dataset import Ensemble
 from ..quantity import Quantity
 from typing import Callable, Dict, List, Optional, Tuple
-
+from itertools import combinations
 
 __all__ = ["Featurizer", "Transform", "TICATransform"]
 
@@ -282,31 +282,59 @@ class Featurizer:
         )
         ensemble.set_quantity("ca_bonds", quantity)
 
-    def add_ca_distances(self, ensemble: Ensemble, offset: int = 1):
+    def add_ca_distances(
+        self, ensemble: Ensemble, offset: int = 1, subset_selection: str = None
+    ):
         """Get distances between CA atoms.
 
         Parameters:
+        ensemble : Ensemble
+            Ensemble object
         offset: int, optional
             Distances between CA atoms in residues i and j are included if
             | i -j | >  offset. The default value is 1, which means that
             all nonbonded Calpha-Calpha distances are included. If offset is 0,
             then all the distances are included.
+        subset_selection: str, optional
+            A string that is used to select a subset of CA atoms, according to mdtraj
+            selection language, e.g. "chainid 0 and resid 0 to 10". If `subset_selection` is None,
+            then all CA atoms compatible with the specified offset are used.
 
         """
         trajectory = ensemble.get_all_in_one_mdtraj_trj()
-        ca_atoms = trajectory.top.select("name CA")
+        if subset_selection is not None:
+            selection = "name CA and " + subset_selection
+        else:
+            selection = "name CA"
+        ca_atoms = trajectory.top.select(selection)
         self.validate_c_alpha(ensemble)
-
-        # Get indices of pairs of atoms
-        ind1, ind2 = np.triu_indices(len(ca_atoms), offset + 1)
-        ca_pairs = np.array([ca_atoms[ind1], ca_atoms[ind2]]).T
+        # get all the pairs
+        ca_pairs_all = list(combinations(ca_atoms, 2))
+        print(ca_pairs_all)
+        # select pairs compatible with offset
+        ca_pairs = list(
+            filter(
+                lambda x: abs(
+                    trajectory.top.atom(x[0]).residue.resSeq
+                    - trajectory.top.atom(x[1]).residue.resSeq
+                )
+                > offset,
+                ca_pairs_all,
+            )
+        )
+        print(ca_pairs)
+        # Compute distances
         ca_distances = md.compute_distances(
             trajectory, ca_pairs, periodic=False
         )
         quantity = Quantity(
             ca_distances,
             "nanometers",
-            metadata={"feature": "ca_distances", "offset": offset},
+            metadata={
+                "feature": "ca_distances",
+                "offset": offset,
+                "subset_selection": subset_selection,
+            },
         )
         ensemble.set_quantity("ca_distances", quantity)
 
