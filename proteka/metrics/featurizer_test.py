@@ -126,7 +126,7 @@ def test_general_distances(get_CLN_frame):
 
 
 def test_general_clashes_atom_input_raises(get_CLN_frame):
-    """Tests raises for improper atom_type inputs for get_general_distances"""
+    """Tests raises for improper atom_name inputs for get_general_distances"""
     with pytest.raises(ValueError):
         distances = get_general_distances(
             get_CLN_frame,
