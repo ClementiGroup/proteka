@@ -3,7 +3,9 @@
 from abc import ABCMeta, abstractmethod
 from collections.abc import Iterable
 import numpy as np
-from typing import Union, Dict
+import mdtraj as md
+from mdtraj.core.element import Element
+from typing import Union, Dict, Optional, List, Tuple
 
 from .featurizer import Featurizer, TICATransform
 from ..dataset import Ensemble
@@ -14,6 +16,7 @@ from .divergence import (
     vector_js_divergence,
 )
 from .utils import (
+    get_general_distances,
     histogram_features,
     histogram_vector_features,
     histogram_features2d,
@@ -43,6 +46,8 @@ class IMetrics(metaclass=ABCMeta):
 
 class StructuralIntegrityMetrics(IMetrics):
     """Class takes a dataset and checks if for chemical integrity"""
+
+    acceptors_or_donors = ["N", "O", "S"]
 
     def __init__(self):
         super().__init__()
@@ -77,7 +82,112 @@ class StructuralIntegrityMetrics(IMetrics):
         # Only consider distances between nonconsecutive CA atoms, hence the offset=1
         distances = Featurizer.get_feature(ensemble, "ca_distances", offset=1)
         clashes = np.where(distances < 0.4)[0]
-        return {"N clashes": clashes.size}
+        return {"CA-CA clashes": clashes.size}
+
+    @staticmethod
+    def general_clashes(
+        ensemble: Ensemble,
+        atom_name_pairs: List[Tuple[str, str]],
+        thresholds: Optional[List[float]] = None,
+        res_offset: int = 1,
+        stride: Optional[int] = None,
+        allowance: float = 0.07,
+    ) -> Dict[str, int]:
+        """ "Compute clashes between atoms of types `atom_name_1/2` according
+        to user-supplied thresholds or according to the method of allowance-modified
+        VDW radii overlap described here:
+
+        https://www.cgl.usf.edu/chimera/docs/ContributedSoftware/findclash/findclash.html
+
+        with VDW radii in nm taken from `mdtraj.core.element.Element`. If the pair
+        is composed of atom species that can potentially form hydrogen bonds
+        (e.g., ("N", "O", "S")), then an additional default allowance of 0.07 nm is permitted.
+
+        Parameters
+        ----------
+        ensemble:
+            `Ensemble` over which clashes should be detected
+        atom_name_pairs:
+            List of `str` tuples that denote the first atom type pairs according to
+            the MDTraj selection language
+        thresholds:
+            List of clash thresholds for each type pair in atom_name_pairs. If `None`,
+            the clash thresholds are calculated according to:
+
+                thresh = r_vdw_i + r_vdw_j - allowance
+
+            for atoms i,j.
+        allowance:
+            Additional distance tolerance for atoms involved in hydrogen bonding. Only
+            used if thresholds is `None`. Set to 0.07 nm by default
+        res_offset:
+            `int` that determines the minimum residue separation for inclusion in distance
+            calculations; two atoms that belong to residues i and j are included in the
+            calculations if `|i-j| > res_offset`.
+        stride:
+            If specified, this stride is applied to the trajectory before the distance
+            calculations
+
+        Returns
+        -------
+        Dict[str, int]:
+            Dictionary with keys `{name1}_{name2}_clashes` and values reporting
+            the number of clashes found for those name pairs
+        """
+        if not isinstance(atom_name_pairs, list):
+            raise ValueError(
+                "atom_name_pairs must be a list of tuples of strings"
+            )
+
+        # populate default thresholds
+        if thresholds == None:
+            thresholds = []
+            atoms = np.array(list(ensemble.top.atoms))
+            for pair in atom_name_pairs:
+                assert len(pair) == 2
+                # Take elements from first occurrence in topology - selection language gaurantees that they
+                # all should be the same (unless you have made a very nonstandard topology)
+                idx1, idx2 = (
+                    ensemble.top.select(f"name {pair[0]}")[0],
+                    ensemble.top.select(f"name {pair[1]}")[0],
+                )
+                vdw_r1, vdw_r2 = (
+                    atoms[idx1].element.radius,
+                    atoms[idx2].element.radius,
+                )
+                threshold = vdw_r1 + vdw_r2
+
+                # Handle hydrogen bonding allowances
+                # between donors and acceptors with
+                # different names
+                if all(
+                    [
+                        p in StructuralIntegrityMetrics.acceptors_or_donors
+                        for p in pair
+                    ]
+                ):
+                    threshold = threshold - allowance
+                thresholds.append(threshold)
+
+        if not isinstance(thresholds, list):
+            raise ValueError("thresholds must be a list of floats")
+        if len(atom_name_pairs) != len(thresholds):
+            raise RuntimeError(
+                f"atom_name_pairs and thresholds are {len(atom_name_pairs)} and {len(thresholds)} long, respectively, but they should be the same length"
+            )
+
+        clash_dictionary = {}
+
+        for atom_names, threshold in zip(atom_name_pairs, thresholds):
+            atom_name_1, atom_name_2 = atom_names[0], atom_names[1]
+            distances = get_general_distances(
+                ensemble, atom_names, res_offset, stride
+            )
+            clashes = np.where(distances < threshold)[0]
+            clash_dictionary[
+                f"{atom_name_1}-{atom_name_2} clashes"
+            ] = clashes.size
+        return clash_dictionary
 
     @staticmethod
     def ca_pseudobonds(ensemble: Ensemble) -> Dict[str, float]:
