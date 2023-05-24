@@ -8,6 +8,7 @@ from proteka.dataset import Ensemble
 from proteka.quantity import Quantity
 from proteka.metrics import Featurizer, TICATransform
 from proteka.metrics.utils import (
+    get_general_distances,
     generate_grid_polymer,
     get_6_bead_frame,
     get_CLN_trajectory,
@@ -104,6 +105,48 @@ def test_ca_distances(single_frame):
         get_6_bead_frame(), combinations(range(6), 2)
     )
     assert np.all(np.isclose(distances, reference_distances))
+
+
+def test_general_distances(get_CLN_frame):
+    """Runs general distance test on CB-CB pairs more than 2 res apart"""
+    ens = get_CLN_frame
+    cb_idx = ens.top.select("name CB")
+    atoms = list(ens.top.atoms)
+    cb_pairs = list(combinations(cb_idx, 2))
+    pruned_pairs = []
+    for pair in cb_pairs:
+        a1, a2 = atoms[pair[0]], atoms[pair[1]]
+        if np.abs(a1.residue.index - a2.residue.index) > 2:
+            pruned_pairs.append((pair[0], pair[1]))
+    traj = ens.get_all_in_one_mdtraj_trj()
+    manual_distances = md.compute_distances(traj, pruned_pairs)
+
+    distances = get_general_distances(ens, ("CB", "CB"), 2)
+    np.testing.assert_array_equal(manual_distances, distances)
+
+
+def test_general_clashes_atom_input_raises(get_CLN_frame):
+    """Tests raises for improper atom_name inputs for get_general_distances"""
+    with pytest.raises(ValueError):
+        distances = get_general_distances(
+            get_CLN_frame,
+            [("CA", "O", "C")],
+            res_offset=2,
+        )
+
+    with pytest.raises(ValueError):
+        distances = get_general_distances(
+            get_CLN_frame,
+            ["CA", "CB"],
+            res_offset=2,
+        )
+
+    with pytest.raises(RuntimeError):
+        distances = get_general_distances(
+            get_CLN_frame,
+            ("silly atom", "O"),
+            res_offset=2,
+        )
 
 
 def test_tica(grid_polymer):
