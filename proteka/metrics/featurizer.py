@@ -640,9 +640,27 @@ class Featurizer:
         feat_kwargs: Optional[Dict] = None,
     ):
         """Generates feautures according to a user defined transform, `feat_func`, with args
-        `feat_args`, and kwargs `feat_kwargs` saved as a Quantity with name `name`
+        `feat_args`, and kwargs `feat_kwargs` saved as a Quantity with name `name`.
+
+        WARNING: This method adds temporary, non-serializable features. They will NOT be included
+        in serialized versions of the ensemble.
+
+        Parameters
+        ----------
+        ensemble:
+            Ensemble to which the feature should be computed for and added to
+        name:
+            String representing the name of the feature
+        feat_func:
+            Callable representing the function that generates the feature
+        feat_args:
+            List of arguments to `feat_func`
+        feat_kwargs:
+            Dictionary of keyword arguements to `feat_func`
         """
 
+        if feat_kwargs == None:
+            feat_kwargs = {}
         feature = feat_func(*feat_args, **feat_kwargs)
 
         quantity = Quantity(
