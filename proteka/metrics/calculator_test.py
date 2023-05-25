@@ -66,19 +66,25 @@ def test_structural_metric_run(get_two_ensembles):
 
 def test_ensemble_metric_run(get_two_ensembles):
     target_ensemble, ref_ensemble = get_two_ensembles
+    metrics = {
+        "features": {
+            "rg": {
+                "feature_params": {"atom_selection": "name CA"},
+                "metric_params": {"js_div": {"bins": np.linspace(0, 100, 101)}},
+            }
+        }
+    }
 
-    eqm = EnsembleQualityMetrics()
+    eqm = EnsembleQualityMetrics(metrics)
     results = eqm(target_ensemble, ref_ensemble)
-    assert (
-        len(results) == 3
-    )  # default computation is rg, ca_distances, and dssp
+    assert len(results) == 1
 
 
 def test_calculator_config_bin_conversion():
     # Tests to make sure non-int binopts are converted correctly
     # for EnsembleQualityMetrics instanced from configs
     metrics = {
-        "ensemble_quality_metrics": {
+        "EnsembleQualityMetrics": {
             "features": {
                 "rg": {
                     "feature_params": {"atom_selection": "name CA"},
@@ -111,7 +117,7 @@ def test_structural_calculator_config_bin_conversion():
         root_dir, "examples", "example_dataset_files", "cln_folded.pdb"
     )
     metrics = {
-        "structural_quality_metrics": {
+        "StructuralQualityMetrics": {
             "ref_structure": cln_path,
             "features": {
                 "rmsd": {

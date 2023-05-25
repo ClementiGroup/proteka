@@ -234,7 +234,7 @@ class StructuralQualityMetrics(IMetrics):
         "fraction_smaller": fraction_smaller,
     }
 
-    def __init__(self, metrics: Optional[Dict] = None):
+    def __init__(self, metrics: Dict):
         assert metrics["ref_structure"].n_frames == 1
         self.metrics = metrics
         self.results = {}
@@ -262,7 +262,7 @@ class StructuralQualityMetrics(IMetrics):
         """
 
         config = yaml.load(open(config_file, "r"))
-        sqm_config = config["structural_quality_metrics"]
+        sqm_config = config["StructuralQualityMetrics"]
         # load reference structure
         ref_structure_path = sqm_config["ref_structure"]
         sqm_config["ref_structure"] = md.load(ref_structure_path)
@@ -370,7 +370,31 @@ class StructuralQualityMetrics(IMetrics):
 
 
 class EnsembleQualityMetrics(IMetrics):
-    """Metrics to compare a target ensemble to the reference ensemble"""
+    """Metrics to compare a target ensemble to the reference ensemble.
+    Input metric configs must be a dictionary of the following form:
+
+         {
+            "features": {
+                "rg": {
+                    "feature_params": {"atom_selection": "name CA"},
+                    "metric_params": {"js_div": {"bins": 100}},
+                },
+                "ca_distances": {
+                    "feature_params": None,
+                    "metric_params": {"js_div": {"bins": 100}},
+                },
+                "dssp": {
+                    "feature_params": {"digitize": True},
+                    "metric_params": {
+                        "mse_ldist": {"bins": np.array([0, 1, 2, 3, 4])}
+                    },
+                },
+            }
+        },
+
+    Specifying computation and metric parameters for each feature/metric
+    for comparisons between target and reference ensembles.
+    """
 
     metric_types = set(
         [
@@ -428,27 +452,7 @@ class EnsembleQualityMetrics(IMetrics):
     vector_features = set(["local_contact_number", "dssp"])
     features_2d = set(["tic1_tic2"])
 
-    def __init__(
-        self,
-        metrics={
-            "features": {
-                "rg": {
-                    "feature_params": {"atom_selection": "name CA"},
-                    "metric_params": {"js_div": {"bins": 100}},
-                },
-                "ca_distances": {
-                    "feature_params": None,
-                    "metric_params": {"js_div": {"bins": 100}},
-                },
-                "dssp": {
-                    "feature_params": {"digitize": True},
-                    "metric_params": {
-                        "mse_ldist": {"bins": np.array([0, 1, 2, 3, 4])}
-                    },
-                },
-            }
-        },
-    ):
+    def __init__(self, metrics: Dict):
         super().__init__()
         self.metrics = metrics
         self.metrics_results = {}
@@ -497,7 +501,7 @@ class EnsembleQualityMetrics(IMetrics):
         """
 
         config = yaml.load(open(config_file, "r"))
-        eqm_config = config["ensemble_quality_metrics"]
+        eqm_config = config["EnsembleQualityMetrics"]
 
         for feature in eqm_config["features"].keys():
             feature_dict = eqm_config["features"][feature]
