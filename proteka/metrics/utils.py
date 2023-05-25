@@ -1,15 +1,15 @@
 import numpy as np
 import mdtraj as md
-from .featurizer import Featurizer
 from ..dataset import Ensemble
-from deeptime.decomposition import TICA
-from typing import Union, Tuple
+from typing import Union, Tuple, Optional
+from itertools import combinations
 
 __all__ = [
     "generate_grid_polymer",
     "get_6_bead_frame",
     "histogram_features",
     "histogram_features2d",
+    "histogram_vector_features",
 ]
 
 
@@ -88,24 +88,140 @@ def get_6_bead_frame():
     return md.Trajectory(xyz, topology)
 
 
-def get_CA_CLN_trajectory() -> md.Trajectory:
-    """Get a random 10 CA atom CG model of CLN025 (nanometers)"""
+def get_general_distances(
+    ensemble: Ensemble,
+    atom_names: Tuple[str],
+    res_offset: int = 1,
+    stride: Optional[int] = None,
+) -> np.ndarray:
+    """Compute all distances between two all atom of two specified names. If atom names are different,
+    (e.g. ("N", "O")), only name1-name2 distances will be computed, and not name1-name1 nor name2-name2.
+    If atom names are the same (e.g. ("CB", "CB")), name1-name2 distances will be computed.
+
+    Parameters
+    ----------
+    ensemble:
+        `Ensemble` from which distances should be computed
+    atom_names:
+        Tuple of strings specifying for which two atom names distances should be
+        computed. Uses MDTraj atom type names (e.g., "CA" or "CB").
+    res_offset:
+                `int` that determines the minimum residue separation for inclusion in distance
+                calculations; two atoms that belong to residues i and j are included in the
+                calculations if |i-j| > res_offset
+    stride:
+        If specified, this stride is applied to the trajectory before the distance
+        calculations
+
+    Returns
+    -------
+    distances:
+        `np.ndarray` of distances for the requested atom type pairs
+    """
+
+    if not isinstance(atom_names, tuple):
+        raise ValueError("atom_name_pairs must be a list of tuples of strings")
+    if len(atom_names) != 2:
+        raise ValueError(
+            f"Only 2 atom types may be specified but {atom_names} was supplied"
+        )
+
+    atom_name_1, atom_name_2 = atom_names[0], atom_names[1]
+    if len(ensemble.top.select(f"name {atom_name_1}")) == 0:
+        raise RuntimeError(
+            f"atom type {atom_name_1} not found in ensemble topology"
+        )
+    if len(ensemble.top.select(f"name {atom_name_2}")) == 0:
+        raise RuntimeError(
+            f"atom type {atom_name_2} not found in ensemble topology"
+        )
+
+    all_atoms = list(ensemble.top.atoms)
+    atom_indices = ensemble.top.select(
+        f"name {atom_name_1} or name {atom_name_2}"
+    )
+    all_pairs = list(combinations(atom_indices, 2))
+
+    pruned_pairs = []
+    # res exclusion filtering
+    for pair in all_pairs:
+        a1, a2 = all_atoms[pair[0]], all_atoms[pair[1]]
+        if np.abs(a1.residue.index - a2.residue.index) > res_offset:
+            # Eliminate extra same name pairs for case of two different atom types
+            if atom_name_1 != atom_name_2:
+                if a1.name != a2.name:
+                    pruned_pairs.append((pair[0], pair[1]))
+            else:
+                pruned_pairs.append((pair[0], pair[1]))
+
+    traj = ensemble.get_all_in_one_mdtraj_trj()
+    if stride != None:
+        traj.xyz = traj.xyz[::stride]
+    distances = md.compute_distances(traj, pruned_pairs)
+
+    return distances
+
+
+def get_CLN_trajectory(single_frame=False) -> md.Trajectory:
+    """Get a random 49 atom CG backbonde + CB model of CLN025 (nanometers),
+    with 100 noise-perturbed frames.
+    """
     nframes = 100
     coords = np.array(
         [
-            [-14.7873, 5.3816147, 10.396086],
-            [-14.83472, 5.7334213, 10.234516],
-            [-14.715938, 5.8174625, 9.869332],
-            [-14.32896, 5.874776, 9.817286],
-            [-14.300314, 6.2079357, 9.648945],
-            [-14.044353, 6.4852165, 9.61912],
-            [-14.304504, 6.743461, 9.737951],
-            [-14.563983, 6.61594, 9.988833],
-            [-14.679219, 6.666923, 10.3409775],
-            [-14.751309, 6.301983, 10.4160034],
+            [-15.65, 3.208, 5.655],
+            [-15.765, 3.16, 5.722],
+            [-15.894, 3.197, 5.652],
+            [-15.749, 3.013, 5.703],
+            [-15.664, 2.956, 5.645],
+            [-15.839, 2.945, 5.765],
+            [-15.849, 2.797, 5.773],
+            [-15.81, 2.751, 5.909],
+            [-15.988, 2.741, 5.736],
+            [-16.093, 2.762, 5.796],
+            [-15.998, 2.663, 5.625],
+            [-16.127, 2.634, 5.57],
+            [-16.111, 2.605, 5.42],
+            [-16.18, 2.509, 5.646],
+            [-16.116, 2.404, 5.655],
+            [-16.304, 2.514, 5.71],
+            [-16.362, 2.401, 5.791],
+            [-16.473, 2.473, 5.875],
+            [-16.409, 2.282, 5.701],
+            [-16.42, 2.177, 5.763],
+            [-16.443, 2.294, 5.567],
+            [-16.49, 2.186, 5.487],
+            [-16.6, 2.245, 5.386],
+            [-16.37, 2.126, 5.419],
+            [-16.352, 2.004, 5.424],
+            [-16.269, 2.202, 5.366],
+            [-16.15, 2.139, 5.292],
+            [-16.1, 2.227, 5.174],
+            [-16.034, 2.12, 5.382],
+            [-15.956, 2.028, 5.357],
+            [-16.015, 2.201, 5.492],
+            [-15.893, 2.203, 5.57],
+            [-15.77, 2.267, 5.51],
+            [-15.659, 2.238, 5.549],
+            [-15.795, 2.353, 5.408],
+            [-15.691, 2.422, 5.321],
+            [-15.738, 2.434, 5.182],
+            [-15.654, 2.553, 5.38],
+            [-15.74, 2.632, 5.426],
+            [-15.52, 2.596, 5.394],
+            [-15.484, 2.729, 5.439],
+            [-15.33, 2.729, 5.491],
+            [-15.511, 2.835, 5.332],
+            [-15.456, 2.822, 5.223],
+            [-15.597, 2.932, 5.351],
+            [-15.625, 3.026, 5.246],
+            [-15.763, 3.007, 5.175],
+            [-15.601, 3.176, 5.289],
+            [-15.675, 3.226, 5.364],
         ]
     )
-    noised_coords = coords + 0.01 * np.random.randn(nframes, 10, 3)
+    if single_frame == False:
+        coords = coords + 0.01 * np.random.randn(nframes, 49, 3)
     topology = md.Topology()
     chain = topology.add_chain()
     resnames = [
@@ -122,22 +238,28 @@ def get_CA_CLN_trajectory() -> md.Trajectory:
     ]
     for r in resnames:
         residue = topology.add_residue(r, chain)
+        topology.add_atom("N", md.element.nitrogen, residue)
         topology.add_atom("CA", md.element.carbon, residue)
-    return md.Trajectory(noised_coords, topology)
+        if r != "GLY":
+            topology.add_atom("CB", md.element.carbon, residue)
+        topology.add_atom("C", md.element.carbon, residue)
+        topology.add_atom("O", md.element.oxygen, residue)
+    return md.Trajectory(coords, topology)
 
 
 def histogram_features(
     target: np.ndarray,
     reference: np.ndarray,
-    reference_weights: np.ndarray = None,
     target_weights: np.ndarray = None,
+    reference_weights: np.ndarray = None,
     bins: Union[int, np.ndarray] = 100,
+    open_edges: bool = False,
 ):
     """Take a two arrays, and compute vector histograms of target
     and reference. Histogram of the target is computed over the range,
     defined by reference. The function returns the histograms of the target and
     reference. Marginal histograms
-    will be returned by accumulating indepentdly over the last array axis.
+    will be returned by accumulating independently over the last array axis.
 
     Parameters
     ----------
@@ -148,11 +270,19 @@ def histogram_features(
     bins : int or np.ndarray, optional
         Number of bins to use, by default 100 over the support specified
         by the reference. If np.ndarray, those bins will be used instead
+    open_edges : bool, optional
+        If True, the leftmost edge of the first bin for the target array
+        is assigned to -inf, and the rightmost edge of the last bin for the
+        target array is assigned to +inf. If False, the first bin includes
+        the left edge and the last bin includes the right edge. Default is False.
     """
 
     hist_reference, bin_edges = np.histogram(
         reference, bins=bins, weights=reference_weights
     )
+    if open_edges:
+        bin_edges[0] = -np.inf
+        bin_edges[-1] = np.inf
     hist_target, _ = np.histogram(
         target, bins=bin_edges, weights=target_weights
     )
@@ -165,11 +295,12 @@ def histogram_vector_features(
     target_weights: np.ndarray = None,
     reference_weights: np.ndarray = None,
     bins: Union[int, np.ndarray] = 100,
+    open_edges: bool = False,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Take a two multi-feature arrays, and compute vector histograms of target
     and reference. Histogram of the target is computed over the range,
     defined by reference. The function returns the histograms of the target and
-    reference. Marginal histograms will be returned by accumulating indepentdly
+    reference. Marginal histograms will be returned by accumulating independently
     over the last array axis.
 
     Parameters
@@ -181,6 +312,11 @@ def histogram_vector_features(
     bins : int or np.ndarray, optional
         Number of bins to use, by default 100 over the support specified
         by the reference. If np.ndarray, those bins will be used instead
+    open_edges: bool = False,
+        If True, the leftmost edge of the first bin for the target array
+        is assigned to -inf, and the rightmost edge of the last bin for the
+        target array is assigned to +inf. If False, the first bin includes
+        the left edge and the last bin includes the right edge. Default is False.
     """
 
     assert target.shape[-1] == reference.shape[-1]
@@ -198,6 +334,7 @@ def histogram_vector_features(
             target_weights=target_weights,
             reference_weights=reference_weights,
             bins=bins,
+            open_edges=open_edges,
         )
 
     return hist_target, hist_reference
@@ -209,6 +346,7 @@ def histogram_features2d(
     target_weights: np.ndarray = None,
     reference_weights: np.ndarray = None,
     bins: int = 100,
+    open_edges: bool = False,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Take a two 2 feature arrays, and compute 2D histograms of target
     and reference. Histogram of the target is computed over the range,
@@ -225,11 +363,24 @@ def histogram_features2d(
     bins : int or np.ndarray, optional
         Number of bins to use, by default 100 over the support specified
         by the reference. If np.ndarray, those bins will be used instead
+    open_edges: bool = False,
+        If True, the leftmost edge of the first bin for the target array
+        is assigned to -inf, and the rightmost edge of the last bin for the
+        target array is assigned to +inf. If False, the first bin includes
+        the left edge and the last bin includes the right edge. Default is False.
     """
+    assert target.shape[1] == 2, "Target should be 2d with shape (n, 2)"
+    assert reference.shape[1] == 2, "Reference should be 2d with shape (n, 2)"
 
     hist_reference, xedges, yedges = np.histogram2d(
         reference[:, 0], reference[:, 1], bins=bins, weights=reference_weights
     )
+    if open_edges:
+        xedges[0] = -np.inf
+        xedges[-1] = np.inf
+        yedges[0] = -np.inf
+        yedges[-1] = np.inf
+
     hist_target, _, _ = np.histogram2d(
         target[:, 0],
         target[:, 1],
@@ -237,39 +388,3 @@ def histogram_features2d(
         weights=target_weights,
     )
     return hist_target, hist_reference
-
-
-def get_tica_features(
-    target: Ensemble, reference: Ensemble, **kwargs
-) -> Tuple[np.array, np.array]:
-    """Perform TICA on the reference ensemble and use it to transform target ensemble.
-    returns the first 2 TICA components both for the target and the reference ensemble
-
-    Parameters
-    ----------
-    target : Ensemble
-        target ensemble
-    reference : Ensemble
-        reference ensemble, will be used for TICA model fitting
-
-    Returns
-    -------
-    tica_target: np.array
-        2-dimensional array containing the first 2 tica features for the target ensemble
-    tica_reference: np.array
-        2-dimensional array containing the first 2 tica features for the reference ensemble
-    """
-
-    # Fit TICA model on the reference ensemble
-    estimator = TICA(dim=2, **kwargs)
-    # will fit on the CA distances of the reference ensemble.
-    ca_reference = Featurizer.get_feature(reference, "ca_distances")
-    estimator.fit(ca_reference)
-    model = estimator.fetch_model()
-    # Transform the reference ensemble
-    tica_reference = model.transform(ca_reference)
-    # Transform the target ensemble
-    ca_target = Featurizer.get_feature(target, "ca_distances")
-    tica_target = model.transform(ca_target)
-
-    return tica_target, tica_reference

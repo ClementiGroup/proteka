@@ -1,18 +1,182 @@
 """Featurizer takes a proteka.dataset.Ensemble and and extract features from it
     """
+from abc import ABC, abstractmethod
 from collections.abc import Iterable
+import json
+import warnings
 import numpy as np
 import mdtraj as md
+from typing import Dict, Optional, List, Tuple
 from ..dataset import Ensemble
 from ..quantity import Quantity
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, List, Optional, Tuple
+from itertools import combinations
 
-__all__ = ["Featurizer"]
+__all__ = ["Featurizer", "Transform", "TICATransform"]
+
+
+class Transform(ABC):
+    """Abstract transformer class that defines a transformation of the
+    data. The class should be serializable, so it can be stored in Ensemble
+    """
+
+    @abstractmethod
+    def transform(self, Ensemble):
+        """Transform ensemble into a new set of features.
+        The result should be returned as a numpy array
+        """
+
+    @abstractmethod
+    def to_json(self):
+        """
+        Serialize object as a json string
+        """
+
+    @abstractmethod
+    def from_json(self, string):
+        """
+        Instantiate Transformer from a json string
+        """
+
+
+class TICATransform(Transform):
+
+    """Get TICA transform of the data.
+    A feature vector X is transformed as
+    (X - bias)@transform_matrix
+    """
+
+    def __init__(
+        self,
+        features: List[Tuple],
+        bias: Optional[np.ndarray] = None,
+        transform_matrix: Optional[np.ndarray] = None,
+        estimation_params: Optional[Dict] = None,
+    ):
+        """
+
+        Parameters
+        ----------
+        features : List[Dict]
+            List of features to be used for TICA.
+            Each element is a Tuple whose first element is a string representing feature
+            name and whose second element is a dictionary of parameters used to compute corresponding feature
+            (see Featurizer.get_feature for details). The order of features input
+            for TICA model parametrization/transforming follows the same order in
+            the supplied List.
+        bias : np.ndarray, Optional
+            Bias used to compute the TICA transformation. If not provided, it will be infrred from data
+            during the transformation.
+        transform_matrix : np.ndarray, Optional
+            Transformation matrix used to compute the TICA transformation.
+            If not provided, it will be inferred from data.
+        estimation_params: Optional[Dict]
+            Parameters used to estimate TICA model. See `deeptime.decomposition.TICA` for details
+            If bias and transform_matrix are provided, estimation_params are ignored
+
+        """
+        if not isinstance(features, List):
+            raise ValueError(
+                "Input features must be an List to preserve TICA feature order"
+            )
+        if not all([isinstance(f, Tuple) for f in features]) or not all(
+            [len(f) == 2 for f in features]
+        ):
+            raise ValueError(
+                f"All elements in `features` must be length-2 Tuples, but {features} was received"
+            )
+        else:
+            self.features = features
+        self.bias = bias
+        self.transform_matrix = transform_matrix
+        self.estimation_params = estimation_params
+
+    def fit_from_data(self, ensemble: Ensemble):
+        """
+        Fit TICA model from data, using Deeptime library
+        """
+        from deeptime.decomposition import TICA
+
+        features = []
+        for feature, params in self.features:
+            features.append(Featurizer.get_feature(ensemble, feature, **params))
+        features = np.concatenate(features, axis=1)
+        estimator = TICA(**self.estimation_params)
+        # Loop over trajectories in ensemble, get corresponding slice and perform
+        # partial fit
+        for slice in ensemble.trajectory_indices.values():
+            estimator.partial_fit(features[slice])
+        model = estimator.fetch_model()
+
+        # Set values that are required for further transformation
+        self.bias = model.instantaneous_obs.obs1.mean
+        self.transform_matrix = model.instantaneous_obs.obs1.sqrt_inv_cov
+
+    def transform(self, ensemble: Ensemble) -> np.ndarray:
+        """
+        Extract TICA features from ensemble
+        """
+        if self.transform_matrix is None or self.bias is None:
+            self.fit_from_data(ensemble)
+        elif self.estimation_params is not None:
+            warnings.warn(
+                "Transform matrix and bias are provided, ignoring estimation_params"
+            )
+        features = []
+        for feature_tuple in self.features:
+            feature, params = feature_tuple[0], feature_tuple[1]
+            features.append(Featurizer.get_feature(ensemble, feature, **params))
+        features = np.concatenate(features, axis=1)
+        return (features - self.bias) @ self.transform_matrix
+
+    def to_dict(self, arrays2list: bool = True) -> Dict:
+        """Generate dictionary from the class instance"""
+        if arrays2list:
+            bias = self.bias.tolist()
+            transform_matrix = self.transform_matrix.tolist()
+        else:
+            bias = self.bias
+            transform_matrix = self.transform_matrix
+        return {
+            "features": self.features,
+            "bias": bias,
+            "transform_matrix": transform_matrix,
+            "estimation_params": self.estimation_params,
+        }
+
+    def to_json(self):
+        """Serialize transformer to json string"""
+        return json.dumps(self.to_dict(arrays2list=True))
+
+    @classmethod
+    def from_dict(cls, input_dict: Dict) -> Transform:
+        """Instantiate transformer from a dictionary"""
+        return cls(
+            features=input_dict["features"],
+            bias=np.array(input_dict["bias"]),
+            transform_matrix=np.array(input_dict["transform_matrix"]),
+            estimation_params=input_dict["estimation_params"],
+        )
+
+    @classmethod
+    def from_json(cls, input_string: str) -> Transform:
+        """
+        Instantiate Transformer from a json string
+        """
+        return cls.from_dict(json.loads(string))
+
+    @staticmethod
+    def from_hdf5(self, h5file: str) -> Transform:
+        """
+        Instantiate Transformer from a hdf5 file
+        """
+        raise NotImplementedError
 
 
 class Featurizer:
-    """Extract features from an Ensemble entity and
-    return them as Quantity objects"""
+    """Class for computing features from Ensembles.
+    The class has no state, all the details of featurization
+    should be passed directly to"""
 
     simple_dssp_lookup = {
         "NA": 0,
@@ -33,28 +197,29 @@ class Featurizer:
         " ": 8,
     }
 
-    def __init__(self, ensemble: Ensemble):
-        self.ensemble = ensemble
+    def __init__(self):
+        pass
 
-    def validate_c_alpha(self) -> bool:
+    @staticmethod
+    def validate_c_alpha(ensemble: Ensemble) -> bool:
         """Check if C-alpha-based metrics can be computed"""
-        ca_atoms = self.ensemble.top.select("name CA")
+        ca_atoms = ensemble.top.select("name CA")
         # Should have at least 2 CA atoms in total to compute CA-based statistics
         assert len(ca_atoms) > 1, "Number of CA atoms is less than 2"
 
         # Should have one CA atom per each residue
         assert (
-            len(ca_atoms) == self.ensemble.top.n_residues
+            len(ca_atoms) == ensemble.top.n_residues
         ), "Number of CA atoms does not match the number of residues"
 
         # Should have only one chain
-        if self.ensemble.top.n_chains > 1:
+        if ensemble.top.n_chains > 1:
             raise NotImplementedError(
                 "More than one chain is not supported yet"
             )
 
         # Should have no breaks in chain (i.e. no missing residues):
-        for chain in self.ensemble.top.chains:
+        for chain in ensemble.top.chains:
             assert (
                 chain.n_residues
                 == chain.residue(chain.n_residues - 1).resSeq
@@ -103,10 +268,13 @@ class Featurizer:
                 consecutives.append(atom_list)
         return consecutives
 
-    def add(self, feature: str, **kwargs):
+    def add(self, ensemble: Ensemble, feature: str, *args, **kwargs):
         """Add a new feature to the Ensemble object"""
+        print(feature)
+        print(args)
+        print(kwargs)
         if hasattr(self, "add_" + feature):
-            getattr(self, "add_" + feature)(**kwargs)
+            getattr(self, "add_" + feature)(ensemble, *args, **kwargs)
         else:
             allowed_features = [
                 attr for attr in dir(self) if attr.startswith("add_")
@@ -114,105 +282,129 @@ class Featurizer:
             raise ValueError(
                 f"Feature {feature} is not supported. Supported features are: {allowed_features}"
             )
-        return
 
-    def add_ca_bonds(self):
+    def add_ca_bonds(self, ensemble: Ensemble):
         """
-        Returns a Quantity object that contains length of pseudobonds
+        Create a Quantity object that contains length of pseudobonds
         between consecutive CA atoms.
         """
-        trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
-        self.validate_c_alpha()
+        trajectory = ensemble.get_all_in_one_mdtraj_trj()
+        self.validate_c_alpha(ensemble)
 
         # Get the pairs of consecutive CA atoms
-        ca_pairs = self._get_consecutive_ca(self.ensemble.top, order=2)
+        ca_pairs = self._get_consecutive_ca(ensemble.top, order=2)
         ca_bonds = md.compute_distances(trajectory, ca_pairs, periodic=False)
         quantity = Quantity(
             ca_bonds, "nanometers", metadata={"feature": "ca_bonds"}
         )
-        self.ensemble.set_quantity("ca_bonds", quantity)
-        return
+        ensemble.set_quantity("ca_bonds", quantity)
 
-    def add_ca_distances(self, offset: int = 1):
+    def add_ca_distances(
+        self, ensemble: Ensemble, offset: int = 1, subset_selection: str = None
+    ):
         """Get distances between CA atoms.
 
         Parameters:
+        ensemble : Ensemble
+            Ensemble object
         offset: int, optional
             Distances between CA atoms in residues i and j are included if
             | i -j | >  offset. The default value is 1, which means that
             all nonbonded Calpha-Calpha distances are included. If offset is 0,
             then all the distances are included.
+        subset_selection: str, optional
+            A string that is used to select a subset of CA atoms, according to mdtraj
+            selection language, e.g. "chainid 0 and resid 0 to 10". If `subset_selection` is None,
+            then all CA atoms compatible with the specified offset are used.
 
         """
-        trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
-        ca_atoms = trajectory.top.select("name CA")
-        self.validate_c_alpha()
-
-        # Get indices of pairs of atoms
-        ind1, ind2 = np.triu_indices(len(ca_atoms), offset + 1)
-        ca_pairs = np.array([ca_atoms[ind1], ca_atoms[ind2]]).T
+        trajectory = ensemble.get_all_in_one_mdtraj_trj()
+        if subset_selection is not None:
+            selection = "name CA and " + subset_selection
+        else:
+            selection = "name CA"
+        ca_atoms = trajectory.top.select(selection)
+        self.validate_c_alpha(ensemble)
+        # get all the pairs
+        ca_pairs_all = list(combinations(ca_atoms, 2))
+        print(ca_pairs_all)
+        # select pairs compatible with offset
+        ca_pairs = list(
+            filter(
+                lambda x: abs(
+                    trajectory.top.atom(x[0]).residue.resSeq
+                    - trajectory.top.atom(x[1]).residue.resSeq
+                )
+                > offset,
+                ca_pairs_all,
+            )
+        )
+        print(ca_pairs)
+        # Compute distances
         ca_distances = md.compute_distances(
             trajectory, ca_pairs, periodic=False
         )
         quantity = Quantity(
             ca_distances,
             "nanometers",
-            metadata={"feature": "ca_distances", "offset": offset},
+            metadata={
+                "feature": "ca_distances",
+                "offset": offset,
+                "subset_selection": subset_selection,
+            },
         )
-        self.ensemble.set_quantity("ca_distances", quantity)
+        ensemble.set_quantity("ca_distances", quantity)
 
-    def add_ca_angles(self):
+    def add_ca_angles(self, ensemble: Ensemble):
         """Get angles between consecutive CA atoms"""
-        trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
-        self.validate_c_alpha()
+        trajectory = ensemble.get_all_in_one_mdtraj_trj()
+        self.validate_c_alpha(ensemble)
 
         # Get the triplets of consecutive CA atoms
-        ca_triplets = self._get_consecutive_ca(self.ensemble.top, order=3)
+        ca_triplets = self._get_consecutive_ca(ensemble.top, order=3)
         ca_angles = md.compute_angles(trajectory, ca_triplets, periodic=False)
         quantity = Quantity(
             ca_angles,
             "radians",
             metadata={"feature": "ca_angles"},
         )
-        self.ensemble.set_quantity("ca_angles", quantity)
-        return
+        ensemble.set_quantity("ca_angles", quantity)
 
-    def add_ca_dihedrals(self):
+    def add_ca_dihedrals(self, ensemble: Ensemble):
         """Get dihedral angles between consecutive CA atoms"""
-        self.validate_c_alpha()
-        trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
+        self.validate_c_alpha(ensemble)
+        trajectory = ensemble.get_all_in_one_mdtraj_trj()
         # Get the quadruplets of consecutive CA atoms
-        ca_quadruplets = self._get_consecutive_ca(self.ensemble.top, order=4)
+        ca_quadruplets = self._get_consecutive_ca(ensemble.top, order=4)
         ca_dihedrals = md.compute_dihedrals(
             trajectory, ca_quadruplets, periodic=False
         )
         quantity = Quantity(
             ca_dihedrals, "radians", metadata={"feature": "ca_dihedrals"}
         )
-        self.ensemble.set_quantity("ca_dihedrals", quantity)
-        return
+        ensemble.set_quantity("ca_dihedrals", quantity)
 
-    def add_phi(self):
+    def add_phi(self, ensemble: Ensemble):
         """Get protein backbone phi torsions"""
-        trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
+        trajectory = ensemble.get_all_in_one_mdtraj_trj()
         _, phi = md.compute_phi(trajectory)
         quantity = Quantity(phi, "radians", metadata={"feature": "phi"})
-        self.ensemble.set_quantity("phi", quantity)
-        return
+        ensemble.set_quantity("phi", quantity)
 
-    def add_psi(self):
+    def add_psi(self, ensemble: Ensemble):
         """Get protein backbone psi torsions"""
-        trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
+        trajectory = ensemble.get_all_in_one_mdtraj_trj()
         _, psi = md.compute_psi(trajectory)
         quantity = Quantity(psi, "radians", metadata={"feature": "psi"})
-        self.ensemble.set_quantity("psi", quantity)
-        return
+        ensemble.set_quantity("psi", quantity)
 
     def add_rmsd(
         self,
+        ensemble: Ensemble,
         reference_structure: md.Trajectory,
-        rmsd_kwargs: Optional[Dict] = None,
-    ) -> Quantity:
+        atom_selection: Optional[str] = None,
+        **kwargs,
+    ):
         """Get RMSD of a subset of atoms
         reference: Reference mdtraj.Trajectory object
         Wrapper of mdtraj.rmsd
@@ -220,42 +412,64 @@ class Featurizer:
         Parameters
         ----------
         reference_structure:
-            MDTraj single-frame Trajectory which serves as the
-            reference structure for RMSD calculations.
-        rmsd_kwargs:
-            Dictionary of kwarg options for `mdtraj.rmsd()`. See
-            help(mdtraj.rmsd) for more information.
+            Reference structure from which RMSD calculations are made
+        atom_selection:
+            MDTraj atom selection phrase to specify which atoms should contribute
+            to the RMSD calculation for both the target AND the reference structure.
+            This option can be used to ensure that consitent atom sets are used for
+            targets and references at different resolutions.
+        kwargs:
+            kwarg options for `mdtraj.rmsd()`,
+            for example `{"frame": 0, "atom_indices": np.arange(10), "parallel": True,
+            "precentered": False, "ref_atom_indices": np.arange(10,20)}`. See
+            help(mdtraj.rmsd) for more information. Note that if `atom_selection` is
+            specified, kwargs cannot contain atom_indices or ref_atom_indices entries
+            or a TypeError will be raised by mdtraj.rmsd.
         """
-        if rmsd_kwargs == None:
-            rmsd_kwargs = {}
-        assert all(
-            [
-                k in ["atom_indices", "frame", "parallel", "precentered"]
-                for k in rmsd_kwargs.keys()
-            ]
-        )
-        trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
-        rmsd = md.rmsd(trajectory, reference_structure, **rmsd_kwargs)
-        quantity = Quantity(rmsd, "nanometers", metadata={"feature": "rmsd"})
-        self.ensemble.set_quantity("rmsd", quantity)
-        return
 
-    def add_rg(self):
+        trajectory = ensemble.get_all_in_one_mdtraj_trj()
+
+        if atom_selection != None:
+            target_inds = trajectory.topology.select(atom_selection)
+            ref_inds = reference_structure.topology.select(atom_selection)
+            assert len(target_inds) == len(ref_inds)
+
+            # If atom_indices/ref_atom_indices is accidently repeated in
+            # **kwargs, it will be caught by a SyntaxError :)
+            rmsd = md.rmsd(
+                trajectory,
+                reference_structure,
+                atom_indices=target_inds,
+                ref_atom_indices=ref_inds,
+                **kwargs,
+            )
+        else:
+            rmsd = md.rmsd(
+                trajectory,
+                **kwargs,
+            )
+
+        quantity = Quantity(rmsd, "nanometers", metadata={"feature": "rmsd"})
+        ensemble.set_quantity("rmsd", quantity)
+
+    def add_rg(self, ensemble: Ensemble, ca_only=False):
         """Get radius of gyration for each structure in an ensemble"""
-        trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
+        trajectory = ensemble.get_all_in_one_mdtraj_trj()
+        if ca_only == True:
+            trajectory = trajectory.atom_slice(
+                trajectory.topology.select("name CA")
+            )
         rg = md.compute_rg(trajectory)
         quantity = Quantity(rg, "nanometers", metadata={"feature": "rg"})
-        self.ensemble.set_quantity("rg", quantity)
-        return
+        ensemble.set_quantity("rg", quantity)
 
-    def add_end2end_distance(self):
+    def add_end2end_distance(self, ensemble: Ensemble):
         """Get distance between CA atoms of the first and last residue in the protein
         for each structure in the ensemble
         """
-        self.validate_c_alpha()
-        trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
+        self.validate_c_alpha(ensemble)
+        trajectory = ensemble.get_all_in_one_mdtraj_trj()
         ca_atoms = trajectory.top.select("name CA")
-
         # Get the pair of the first and last CA atoms
         ca_pair = [[ca_atoms[0], ca_atoms[-1]]]
         distance = md.compute_distances(trajectory, ca_pair, periodic=False)
@@ -266,17 +480,25 @@ class Featurizer:
             "nanometers",
             metadata={"feature": "end2end_distance"},
         )
-        self.ensemble.set_quantity("end2end_distance", quantity)
-        return
+        ensemble.set_quantity("end2end_distance", quantity)
+
+    def add_tica(self, ensemble: Ensemble, transform: TICATransform):
+        tica_coordinates = transform.transform(ensemble)
+        quantity = Quantity(
+            tica_coordinates,
+            "mixed",
+            metadata={"feature": "tica", "transform": transform},
+        )
+        ensemble.set_quantity("tica", quantity)
 
     def add_dssp(
         self,
+        ensemble: Ensemble,
         simplified: bool = True,
         digitize: bool = False,
-        residue_idx: Optional[np.ndarray] = None,
     ):
         """Adds DSSP secondary codes to each amino acid. Requires high backbone resolution
-        (eg, N, C, O) in topoology. DSSP codes are categorically digitized according to the
+        (eg, N, C, O) in topology. DSSP codes are categorically digitized according to the
         following schemes if specified:
 
             Simplified:
@@ -302,16 +524,10 @@ class Featurizer:
             If True, only simplified DSSP codes are reported. See help(mdtraj.compute_dssp)
         digitize:
             If True, the DSSP codes with be digitized according to the mappings above
-        residue_idx:
-            If not None, this array specifies which residues (with zero-based indexing)
-            should be included for DSSP computation
         """
 
-        trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
+        trajectory = ensemble.get_all_in_one_mdtraj_trj()
         dssp_codes = md.compute_dssp(trajectory, simplified=simplified)
-
-        if residue_idx != None:
-            dssp_codes = dssp_codes[:, residue_idx]
 
         if digitize:
             # use np.unique array reconstruction, with an intermediate lookup transform
@@ -331,11 +547,12 @@ class Featurizer:
             None,
             metadata={"feature": "dssp"},
         )
-        self.ensemble.set_quantity("dssp", quantity)
+        ensemble.set_quantity("dssp", quantity)
         return
 
     def add_local_contact_number(
         self,
+        ensemble: Ensemble,
         atom_type: str = "CA",
         min_res_dist: int = 3,
         cut: float = 1,
@@ -347,10 +564,12 @@ class Featurizer:
 
         Parameter
         ---------
+        Ensemble:
+            Ensemble for which local contact numbers should be computed
         atom_type:
             Either "CA" or "CB". Determines the heavy atoms used to determine
-            contacts. If "CB" is used, contacts for GLY residues will be computed using
-            GLY CA atoms.
+            contacts. If "CB" is used, all contacts for involving GLY will be
+            computed using GLY CA
         min_res_dist:
             Specifies the minumum residue separation to be considered as part
             set of non-bonded distances for contact calculations.
@@ -369,14 +588,16 @@ class Featurizer:
             )
 
         # prepare atom/residue index arrays
-        trajectory = self.ensemble.get_all_in_one_mdtraj_trj()
+        trajectory = ensemble.get_all_in_one_mdtraj_trj()
         atoms = np.array(list(trajectory.topology.atoms))
         residues = np.array(list(trajectory.topology.residues))
         if atom_type == "CA":
             atom_inds = trajectory.topology.select("name {}".format(atom_type))
         if atom_type == "CB":
             atom_inds = trajectory.topology.select(
-                "name {} or (name CA and resname GLY)".format(atom_type)
+                "name {} or (name CA and resname GLY) or (name CA and resname IGL)".format(
+                    atom_type
+                )
             )
         assert all(np.diff(atom_inds) > 0)
 
@@ -411,11 +632,12 @@ class Featurizer:
             None,
             metadata={"feature": "local_contact_number"},
         )
-        self.ensemble.set_quantity("local_contact_number", quantity)
+        ensemble.set_quantity("local_contact_number", quantity)
         return
 
     def add_general_feature(
         self,
+        ensemble: Ensemble,
         name: str,
         feat_func: Callable,
         feat_args: List,
@@ -432,12 +654,11 @@ class Featurizer:
             name,
             metadata={"feature": name},
         )
-        self.ensemble.set_quantity(name, quantity)
-        return
+        ensemble.set_quantity(name, quantity)
 
     @staticmethod
     def get_feature(
-        ensemble: Ensemble, feature: str, recompute=False, **kwargs
+        ensemble: Ensemble, feature: str, *args, recompute=False, **kwargs
     ):
         """Get feature from an Ensemble object. If it is not there,
         compute it and store it in the Ensemble object
@@ -448,9 +669,15 @@ class Featurizer:
             Target : str
             feature name
         """
-        if hasattr(ensemble, feature) and (not recompute):
-            return getattr(ensemble, feature)
+        if not hasattr(ensemble, feature):
+            recompute = True
         else:
-            featurizer = Featurizer(ensemble)
-            featurizer.add(feature, **kwargs)
-            return getattr(ensemble, feature)
+            # Need to check, that current feature has the same
+            # parameters as the requested one
+            for key, value in kwargs.items():
+                if not ensemble[feature].metadata.get(key) == value:
+                    recompute = True
+        if recompute:
+            featurizer = Featurizer()
+            featurizer.add(ensemble, feature, *args, **kwargs)
+        return getattr(ensemble, feature)
