@@ -81,7 +81,7 @@ def test_calculator_config_bin_conversion():
         "ensemble_quality_metrics": {
             "features": {
                 "rg": {
-                    "feature_params": {"ca_only": True},
+                    "feature_params": {"atom_selection": "name CA"},
                     "metric_params": {
                         "js_div": {
                             "bins": {"start": 0, "stop": 100, "num": 101}

@@ -21,8 +21,8 @@ from .divergence import (
     js_divergence,
     vector_kl_divergence,
     vector_js_divergence,
-    vector_mse,
     vector_mse_log,
+    vector_mse,
     vector_wasserstein,
 )
 from .utils import (
@@ -244,7 +244,7 @@ class StructuralQualityMetrics(IMetrics):
         """Instances an StructuralQualityMetrics
         from a config file. The config should have the example following structure:
 
-            structural_quality_metrics:
+            StructuralQualityMetrics:
               ref_structure: "my_structure.pdb"
               features:
                 rmsd:
@@ -433,7 +433,7 @@ class EnsembleQualityMetrics(IMetrics):
         metrics={
             "features": {
                 "rg": {
-                    "feature_params": {"ca_only": True},
+                    "feature_params": {"atom_selection": "name CA"},
                     "metric_params": {"js_div": {"bins": 100}},
                 },
                 "ca_distances": {
@@ -470,19 +470,20 @@ class EnsembleQualityMetrics(IMetrics):
         """instances an EnsembleQualityMetrics
         from a config file. the config should have the example following structure:
 
-            ensemble_quality_metrics:
-              rmsd:
-                feauture_params:
-                  ref_structure: path_to_struct.pdb
-                  atom_selection: "name ca"
-                metric_params:
-                  js_div:
-                    bins: 100
-                  mse_ldist:
-                    bins:
-                      start: 0
-                      stop: 100
-                      num: 1000
+            EnsembleQualityMetrics:
+              features:
+                rmsd:
+                  feauture_params:
+                    ref_structure: path_to_struct.pdb
+                    atom_selection: "name ca"
+                  metric_params:
+                    js_div:
+                      bins: 100
+                    mse_ldist:
+                      bins:
+                        start: 0
+                        stop: 100
+                        num: 1000
                 ...
 
         for specific metrics, bins can be either an integer or a dictionary

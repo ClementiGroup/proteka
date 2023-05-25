@@ -647,15 +647,15 @@ class Featurizer:
         ensemble.set_quantity("local_contact_number", quantity)
         return
 
-    def add_general_feature(
+    def add_temporary_feature(
         self,
         ensemble: Ensemble,
         name: str,
         feat_func: Callable,
-        feat_args: List,
-        feat_kwargs: Optional[Dict] = None,
+        *args,
+        **kwargs,
     ):
-        """Generates feautures according to a user defined transform, `feat_func`, with args
+        """Generates temporary feautures according to a user defined transform, `feat_func`, with args
         `feat_args`, and kwargs `feat_kwargs` saved as a Quantity with name `name`.
 
         WARNING: This method adds temporary, non-serializable features. They will NOT be included
@@ -669,15 +669,9 @@ class Featurizer:
             String representing the name of the feature
         feat_func:
             Callable representing the function that generates the feature
-        feat_args:
-            List of arguments to `feat_func`
-        feat_kwargs:
-            Dictionary of keyword arguements to `feat_func`
         """
 
-        if feat_kwargs == None:
-            feat_kwargs = {}
-        feature = feat_func(*feat_args, **feat_kwargs)
+        feature = feat_func(*args, **kwargs)
 
         quantity = Quantity(
             feature,
