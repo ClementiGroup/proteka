@@ -4,6 +4,7 @@ import numpy as np
 import mdtraj as md
 import pytest
 import tempfile
+from pathlib import Path
 import os.path as osp
 from ruamel.yaml import YAML
 from proteka.dataset import Ensemble
@@ -88,16 +89,7 @@ def test_calculator_config_bin_conversion():
                     },
                 }
             }
-        },
-        "structural_quality_metrics": {
-            "ref_structure": "/import/a12/users/nickc/workspace_old/mlcg_cln/reference_folded.pdb",
-            "features": {
-                "rmsd": {
-                    "feature_params": {"atom_selection": "name CA"},
-                    "metric_params": {"fraction_smaller": {"threshold": 0.25}},
-                }
-            },
-        },
+        }
     }
     expected_bins = np.linspace(0, 100, 101)
 
@@ -111,32 +103,32 @@ def test_calculator_config_bin_conversion():
         )
 
 
-def test_ensemble_calculator_config_bin_conversion():
+def test_structural_calculator_config_bin_conversion():
     # Tests to make sure non-int binopts are converted correctly
     # for EnsembleQualityMetrics instanced from configs
+    root_dir= Path(__file__).parent.parent.parent
+    cln_path = osp.join(root_dir,"examples","example_dataset_files","cln_folded.pdb")
     metrics = {
-        "ensemble_quality_metrics": {
+        "structural_quality_metrics": {
+            "ref_structure": cln_path,
             "features": {
-                "rg": {
-                    "feature_params": {"ca_only": True},
-                    "metric_params": {
-                        "js_div": {
-                            "bins": {"start": 0, "stop": 100, "num": 101}
-                        }
-                    },
+                "rmsd": {
+                    "feature_params": {"atom_selection": "name CA"},
+                    "metric_params": {"fraction_smaller": {"threshold": 0.25}},
                 }
-            }
+            },
         }
     }
-    expected_bins = np.linspace(0, 100, 101)
+
+    expected_thres = 0.25
 
     with tempfile.TemporaryDirectory() as tmp:
         yaml = YAML()
         yaml.dump(metrics, open(osp.join(tmp, "test.yaml"), "w"))
-        eqm = EnsembleQualityMetrics.from_config(osp.join(tmp, "test.yaml"))
+        eqm = StructuralQualityMetrics.from_config(osp.join(tmp, "test.yaml"))
         np.testing.assert_array_equal(
-            eqm.metrics["features"]["rg"]["metric_params"]["js_div"]["bins"],
-            expected_bins,
+            eqm.metrics["features"]["rmsd"]["metric_params"]["fraction_smaller"]["threshold"],
+            expected_thres ,
         )
 
 
