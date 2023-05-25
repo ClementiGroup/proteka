@@ -72,37 +72,40 @@ ref_vector_js = np.array([reference_jsd1, reference_jsd2])
 # for auniform and a gaussian distribution
 
 n_samples = 1000000
-a,b = 1,2.5
-c,d = 0,6
-reference_data_3 = (b-a)*np.random.rand(n_samples) + a
-target_data_3 = (d-c)*np.random.rand(n_samples) + c
+a, b = 1, 2.5
+c, d = 0, 6
+reference_data_3 = (b - a) * np.random.rand(n_samples) + a
+target_data_3 = (d - c) * np.random.rand(n_samples) + c
 nbins = 201
-bins = np.linspace(c,d,nbins)
+bins = np.linspace(c, d, nbins)
 
-reference_histogram3 = np.histogram(reference_data_3,bins=bins)[0]/n_samples
-target_histogram3 = np.histogram(target_data_3,bins=bins)[0]/n_samples
+reference_histogram3 = np.histogram(reference_data_3, bins=bins)[0] / n_samples
+target_histogram3 = np.histogram(target_data_3, bins=bins)[0] / n_samples
 # see https://en.wikipedia.org/wiki/Kullback%E2%80%93Leibler_divergence#Uniform_distributions
-reference_kld3 = np.log((d-c)/(b-a))
+reference_kld3 = np.log((d - c) / (b - a))
 
 
 sigma1 = 1.5
 mu1 = 3
 sigma2 = 2
 mu2 = 0.5
-reference_data_4 = np.random.normal(mu1,sigma1,n_samples)
-target_data_4 = np.random.normal(mu2,sigma2,n_samples)
+reference_data_4 = np.random.normal(mu1, sigma1, n_samples)
+target_data_4 = np.random.normal(mu2, sigma2, n_samples)
 
-a = np.minimum(reference_data_4.min(),target_data_4.min())
-b = np.maximum(reference_data_4.max(),target_data_4.max())
+a = np.minimum(reference_data_4.min(), target_data_4.min())
+b = np.maximum(reference_data_4.max(), target_data_4.max())
 
-bins = np.linspace(a,b,501)
+bins = np.linspace(a, b, 501)
 
-reference_histogram4 = np.histogram(reference_data_4,bins=bins)[0]/n_samples
-target_histogram4 = np.histogram(target_data_4,bins=bins)[0]/n_samples
+reference_histogram4 = np.histogram(reference_data_4, bins=bins)[0] / n_samples
+target_histogram4 = np.histogram(target_data_4, bins=bins)[0] / n_samples
 
 # see https://en.wikipedia.org/wiki/Kullback%E2%80%93Leibler_divergence#Multivariate_normal_distributions
-reference_kld4 = np.log(sigma2/sigma1) + (sigma1**2 + (mu2-mu1)**2)/(2*sigma2**2) - 0.5
-
+reference_kld4 = (
+    np.log(sigma2 / sigma1)
+    + (sigma1**2 + (mu2 - mu1) ** 2) / (2 * sigma2**2)
+    - 0.5
+)
 
 
 def test_kl_divergence():
@@ -116,24 +119,30 @@ def test_kl_divergence():
         reference_kld1,
     )
 
+
 def test_kl_divergence_3():
     """
     Test basic functionality
     """
     print(reference_kld3)
     proteka_kl = kl_divergence(
-            target_histogram3, reference_histogram3, intersect_only=False
+        target_histogram3, reference_histogram3, intersect_only=False
     )
-    assert np.isclose(proteka_kl,reference_kld3,rtol=5e-2)
+    assert np.isclose(proteka_kl, reference_kld3, rtol=5e-2)
+
 
 def test_kl_divergence_4():
     """
     Test basic functionality
     """
     proteka_kl = kl_divergence(
-            target_histogram4,reference_histogram4,intersect_only=True,threshold=1e-8,replace_value=1e-12
+        target_histogram4,
+        reference_histogram4,
+        intersect_only=True,
+        threshold=1e-8,
+        replace_value=1e-12,
     )
-    assert np.isclose(proteka_kl,reference_kld4,rtol=1e-1)
+    assert np.isclose(proteka_kl, reference_kld4, rtol=1e-1)
 
 
 def test_kl_divergence2d():
