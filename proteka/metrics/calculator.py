@@ -31,7 +31,11 @@ from .utils import (
     histogram_features2d,
 )
 
-__all__ = ["StructuralIntegrityMetrics", "EnsembleQualityMetrics"]
+__all__ = [
+    "StructuralIntegrityMetrics",
+    "StructuralQualityMetrics",
+    "EnsembleQualityMetrics",
+]
 
 yaml = YAML()
 
@@ -223,8 +227,8 @@ class StructuralIntegrityMetrics(IMetrics):
 class StructuralQualityMetrics(IMetrics):
     """Metrics that compare an ensemble to a single structure"""
 
-    does_not_require_ref_struct = set(["rsmd, fraction_smaller"])
-    scalar_features = set(["rsmd"])
+    does_not_require_ref_struct = set(["rmsd, fraction_smaller"])
+    scalar_features = set(["rmsd"])
     scalar_metrics = {
         "fraction_smaller": fraction_smaller,
     }
@@ -274,7 +278,7 @@ class StructuralQualityMetrics(IMetrics):
         as a dictionary of metric_name: metric_value pairs
         see compute() for more details.
         """
-        self.compute(target, reference)
+        self.compute(target)
         return self.report()
 
     def compute(
@@ -282,8 +286,8 @@ class StructuralQualityMetrics(IMetrics):
         target: Ensemble,
     ):
         """
-        compute the metrics that compare the target ensemble to the reference over
-        the specified features. comute metrics are stored in the `EnsembleQualityMetrics.results`
+        compute the metrics that compare the target ensemble to the reference strucure over
+        the specified features. compute metrics are stored in the `StructuralQualityMetrics.results`
         attribute.
 
         parameters:
@@ -291,14 +295,14 @@ class StructuralQualityMetrics(IMetrics):
         target: Ensemble
             the target ensemble
         """
-        for feature in self.metrics.keys():
-            # compute feature in target/ref ensemble if needed
+        for feature in self.metrics["features"].keys():
+            # compute feature in target ensemble if needed
             feature_params = self.metrics["features"][feature]["feature_params"]
             if feature_params == None:
                 feature_params = {}
-            Featurizer.get_feature(
-                target, feature, self.metrics["ref_structure"], **feature_params
-            )
+            # additional args
+            args = [self.metrics["ref_structure"]]
+            Featurizer.get_feature(target, feature, *args, **feature_params)
             for metric in self.metrics["features"][feature][
                 "metric_params"
             ].keys():
@@ -308,7 +312,11 @@ class StructuralQualityMetrics(IMetrics):
                 if params is None:
                     params = {}
                 result = StructuralQualityMetrics.compute_metric(
-                    target, self.metrics["ref_structure"], feature, metric
+                    target,
+                    self.metrics["ref_structure"],
+                    feature,
+                    metric,
+                    **params,
                 )
                 self.results.update(result)
         return
@@ -319,6 +327,7 @@ class StructuralQualityMetrics(IMetrics):
         ref_structure: md.Trajectory,
         feature: str,
         metric: str = "fraction_smaller",
+        **kwargs,
     ) -> dict[str, float]:
         """computes metric for desired feature between two ensembles.
 
@@ -326,7 +335,7 @@ class StructuralQualityMetrics(IMetrics):
         ----------
         target:
             target ensemble
-        reference:
+        ref_structure:
             reference structure
         feature:
             string specifying the feature for which the desired metric should be computed
@@ -348,16 +357,16 @@ class StructuralQualityMetrics(IMetrics):
         """
 
         target_feat = Featurizer.get_feature(target, feature)
-        if target_feat in StructuralQualityMetrics.scalar_features:
+        if feature in StructuralQualityMetrics.scalar_features:
             metric_computer = StructuralQualityMetrics.scalar_metrics[metric]
 
         if (
             f"{feature}, {metric}"
             in StructuralQualityMetrics.does_not_require_ref_struct
         ):
-            result = metric_computer(target)
+            result = metric_computer(target_feat, **kwargs)
         else:
-            result = metric_computer(target, ref_structure)
+            result = metric_computer(target_feat, ref_structure, **kwargs)
         return {f"{feature}, {metric}": result}
 
 

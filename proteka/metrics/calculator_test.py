@@ -9,7 +9,11 @@ from ruamel.yaml import YAML
 from proteka.dataset import Ensemble
 from proteka.quantity import Quantity
 from proteka.metrics import Featurizer
-from proteka.metrics import StructuralIntegrityMetrics, EnsembleQualityMetrics
+from proteka.metrics import (
+    StructuralIntegrityMetrics,
+    StructuralQualityMetrics,
+    EnsembleQualityMetrics,
+)
 from proteka.metrics.utils import get_6_bead_frame, get_CLN_trajectory
 
 
@@ -41,7 +45,25 @@ def test_ca_clashes(single_frame):
     assert clashes["CA-CA clashes"] == 1
 
 
-def test_basic_metric_run(get_two_ensembles):
+def test_structural_metric_run(get_two_ensembles):
+    target_ensemble, _ = get_two_ensembles
+    ref_structure = target_ensemble.get_all_in_one_mdtraj_trj()[0]
+    metrics = {
+        "ref_structure": ref_structure,
+        "features": {
+            "rmsd": {
+                "feature_params": {"atom_selection": "name CA"},
+                "metric_params": {"fraction_smaller": {"threshold": 0.5}},
+            }
+        },
+    }
+
+    sqm = StructuralQualityMetrics(metrics)
+    results = sqm(target_ensemble)
+    assert len(results) == 1
+
+
+def test_ensemble_metric_run(get_two_ensembles):
     target_ensemble, ref_ensemble = get_two_ensembles
 
     eqm = EnsembleQualityMetrics()
@@ -52,6 +74,35 @@ def test_basic_metric_run(get_two_ensembles):
 
 
 def test_calculator_config_bin_conversion():
+    # Tests to make sure non-int binopts are converted correctly
+    # for EnsembleQualityMetrics instanced from configs
+    metrics = {
+        "ensemble_quality_metrics": {
+            "features": {
+                "rg": {
+                    "feature_params": {"ca_only": True},
+                    "metric_params": {
+                        "js_div": {
+                            "bins": {"start": 0, "stop": 100, "num": 101}
+                        }
+                    },
+                }
+            }
+        }
+    }
+    expected_bins = np.linspace(0, 100, 101)
+
+    with tempfile.TemporaryDirectory() as tmp:
+        yaml = YAML()
+        yaml.dump(metrics, open(osp.join(tmp, "test.yaml"), "w"))
+        eqm = EnsembleQualityMetrics.from_config(osp.join(tmp, "test.yaml"))
+        np.testing.assert_array_equal(
+            eqm.metrics["features"]["rg"]["metric_params"]["js_div"]["bins"],
+            expected_bins,
+        )
+
+
+def test_ensemble_calculator_config_bin_conversion():
     # Tests to make sure non-int binopts are converted correctly
     # for EnsembleQualityMetrics instanced from configs
     metrics = {

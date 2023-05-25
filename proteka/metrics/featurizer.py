@@ -268,10 +268,13 @@ class Featurizer:
                 consecutives.append(atom_list)
         return consecutives
 
-    def add(self, ensemble: Ensemble, feature: str, **kwargs):
+    def add(self, ensemble: Ensemble, feature: str, *args, **kwargs):
         """Add a new feature to the Ensemble object"""
+        print(feature)
+        print(args)
+        print(kwargs)
         if hasattr(self, "add_" + feature):
-            getattr(self, "add_" + feature)(ensemble, **kwargs)
+            getattr(self, "add_" + feature)(ensemble, *args, **kwargs)
         else:
             allowed_features = [
                 attr for attr in dir(self) if attr.startswith("add_")
@@ -655,7 +658,7 @@ class Featurizer:
 
     @staticmethod
     def get_feature(
-        ensemble: Ensemble, feature: str, recompute=False, **kwargs
+        ensemble: Ensemble, feature: str, *args, recompute=False, **kwargs
     ):
         """Get feature from an Ensemble object. If it is not there,
         compute it and store it in the Ensemble object
@@ -676,5 +679,5 @@ class Featurizer:
                     recompute = True
         if recompute:
             featurizer = Featurizer()
-            featurizer.add(ensemble, feature, **kwargs)
+            featurizer.add(ensemble, feature, *args, **kwargs)
         return getattr(ensemble, feature)
