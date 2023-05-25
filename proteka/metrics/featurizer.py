@@ -6,7 +6,7 @@ import json
 import warnings
 import numpy as np
 import mdtraj as md
-from typing import Dict, Optional
+from typing import Dict, Optional, List, Tuple
 from ..dataset import Ensemble
 from ..quantity import Quantity
 from typing import Callable, Dict, List, Optional, Tuple
@@ -48,7 +48,7 @@ class TICATransform(Transform):
 
     def __init__(
         self,
-        features: Dict,
+        features: List[Tuple],
         bias: Optional[np.ndarray] = None,
         transform_matrix: Optional[np.ndarray] = None,
         estimation_params: Optional[Dict] = None,
@@ -57,11 +57,13 @@ class TICATransform(Transform):
 
         Parameters
         ----------
-        features : Dictionary
-            Dictionary of features to be used for TICA.
-            Each key is a string representing feature name and each value
-            is a dictionary of parameters used to compute corresponding feature
-            (see Featurizer.get_feature for details)
+        features : List[Dict]
+            List of features to be used for TICA.
+            Each element is a Tuple whose first element is a string representing feature
+            name and whose second element is a dictionary of parameters used to compute corresponding feature
+            (see Featurizer.get_feature for details). The order of features input
+            for TICA model parametrization/transforming follows the same order in
+            the supplied List.
         bias : np.ndarray, Optional
             Bias used to compute the TICA transformation. If not provided, it will be infrred from data
             during the transformation.
@@ -73,7 +75,18 @@ class TICATransform(Transform):
             If bias and transform_matrix are provided, estimation_params are ignored
 
         """
-        self.features = features
+        if not isinstance(features, List):
+            raise ValueError(
+                "Input features must be an List to preserve TICA feature order"
+            )
+        if not all([isinstance(f, Tuple) for f in features]) or not all(
+            [len(f) == 2 for f in features]
+        ):
+            raise ValueError(
+                f"All elements in `features` must be length-2 Tuples, but {features} was received"
+            )
+        else:
+            self.features = features
         self.bias = bias
         self.transform_matrix = transform_matrix
         self.estimation_params = estimation_params
@@ -85,7 +98,7 @@ class TICATransform(Transform):
         from deeptime.decomposition import TICA
 
         features = []
-        for feature, params in self.features.items():
+        for feature, params in self.features:
             features.append(Featurizer.get_feature(ensemble, feature, **params))
         features = np.concatenate(features, axis=1)
         estimator = TICA(**self.estimation_params)
@@ -110,7 +123,8 @@ class TICATransform(Transform):
                 "Transform matrix and bias are provided, ignoring estimation_params"
             )
         features = []
-        for feature, params in self.features.items():
+        for feature_tuple in self.features:
+            feature, params = feature_tuple[0], feature_tuple[1]
             features.append(Featurizer.get_feature(ensemble, feature, **params))
         features = np.concatenate(features, axis=1)
         return (features - self.bias) @ self.transform_matrix
