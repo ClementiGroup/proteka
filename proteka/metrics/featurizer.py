@@ -448,14 +448,30 @@ class Featurizer:
         quantity = Quantity(rmsd, "nanometers", metadata={"feature": "rmsd"})
         ensemble.set_quantity("rmsd", quantity)
 
-    def add_rg(self, ensemble: Ensemble, ca_only=False):
-        """Get radius of gyration for each structure in an ensemble"""
+    def add_rg(
+        self, ensemble: Ensemble, atom_selection: Optional[str] = None, **kwargs
+    ):
+        """Get radius of gyration for each structure in an ensemble. Additional
+        kwargs are passed to `mdtraj.compute_rg` - see
+        https://mdtraj.org/1.9.4/api/generated/mdtraj.compute_rg.html for
+        more details.
+
+        Parameters
+        ----------
+        ensemble:
+            Ensemble for which the radius of gyration should be computed
+        atom_selection:
+            MDTraj atom selection string specifying certain subsets of atoms
+            to contribute to the radius of gyration calculation (eg, "name CA" for
+            only using carbon alpha atoms)
+        """
+
         trajectory = ensemble.get_all_in_one_mdtraj_trj()
-        if ca_only == True:
+        if atom_selection != None:
             trajectory = trajectory.atom_slice(
-                trajectory.topology.select("name CA")
+                trajectory.topology.select(atom_selection)
             )
-        rg = md.compute_rg(trajectory)
+        rg = md.compute_rg(trajectory, **kwargs)
         quantity = Quantity(rg, "nanometers", metadata={"feature": "rg"})
         ensemble.set_quantity("rg", quantity)
 
