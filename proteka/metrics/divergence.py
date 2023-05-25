@@ -484,8 +484,11 @@ def wasserstein(
 
     Returns : float
     ------
-        JS divergence of the target from the reference
+        Wasserstein distance of the target
     """
+    assert (
+        target.shape == reference.shape
+    ), f"Dimension mismatch: target: {target.shape} reference: {reference.shape}"
 
     target_normalized = target / np.sum(target)
     reference_normalized = reference / np.sum(reference)
@@ -504,9 +507,16 @@ def wasserstein(
                 )
             )
         )
-        was = wasserstein_distance(
-            reference_normalized[valid_bins], target_normalized[valid_bins]
+        n = len(valid_bins)
+        # Note that in scipy's implementation the first arguments (u_values, v_values) 
+        # for them should be the support, whlie the weights should be the actual probability 
+        # distribution
+        val = wasserstein_distance(np.arange(n),
+            np.arange(n),
+            reference_normalized[valid_bins], 
+            target_normalized[valid_bins]
         )
+    
     else:
         target_normalized = clean_distribution(
             target_normalized, threshold=threshold, value=replace_value
@@ -514,8 +524,16 @@ def wasserstein(
         reference_normalized = clean_distribution(
             reference_normalized, threshold=threshold, value=replace_value
         )
-        was = wasserstein_distance(reference_normalized, target_normalized)
-    return was
+        n = len(reference_normalized)
+        
+        # see the comment in the upper part for understanding this weird definition 
+        val = wasserstein_distance(np.arange(n),
+            np.arange(n),
+            reference_normalized, 
+            target_normalized
+        )
+
+    return val
 
 
 def vector_kl_divergence(
@@ -716,16 +734,64 @@ def vector_mse_log(
         target.shape == reference.shape
     ), f"Dimension mismatch: target: {target.shape} reference: {reference.shape}"
 
-    target_normalized = target / np.sum(target, axis=0)
-    reference_normalized = reference / np.sum(reference, axis=0)
 
     num_feat = target.shape[-1]
     val = np.zeros(num_feat)
     # slow implementation I know
     for i in range(num_feat):
         val[i] = mse_log(
-            target_normalized[:, i],
-            reference_normalized[:, i],
+            target[:, i],
+            reference[:, i],
+            threshold=threshold,
+            replace_value=replace_value,
+            intersect_only=intersect_only,
+        )
+
+    return val
+
+def vector_wasserstein(
+    target: np.ndarray,
+    reference: np.ndarray,
+    threshold: float = 1e-8,
+    replace_value: float = 1e-8,
+    intersect_only: bool = False,
+) -> float:
+    """
+    Compute Wasserstein distance between specified data sets.
+
+    Parameters
+    -----------
+
+    target, reference : np.typing.ArrayLike
+                Target and reference probability distributions (histograms).
+                Should have the same shape
+
+     threshold : float, 1e-8
+        Bin is not included in the summation if its value is less than the threshold
+        and intersect_only is `True`
+     replace_value:
+        if the bin has a normalized count lower than the `threshold`, and `intersect_only`
+        is `False`, then the bin gets replaced with this value instead
+     intersect_only:
+        if `True`, distributions will only be compared over their consistent support overlaps
+        (eg, only the mutual set of populated bins will be included in the computation)
+
+    Returns : float
+    ------
+        Wasserstein distance of the target
+    """
+    assert (
+        target.shape == reference.shape
+    ), f"Dimension mismatch: target: {target.shape} reference: {reference.shape}"
+
+
+    num_feat = target.shape[-1]
+    val = np.zeros(num_feat)
+    # slow implementation I know
+    for i in range(num_feat):
+        val[i] = wasserstein(
+            target[:, i],
+            reference[:, i],
             threshold=threshold,
             replace_value=replace_value,
             intersect_only=intersect_only,

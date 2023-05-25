@@ -20,6 +20,7 @@ from .divergence import (
     vector_js_divergence,
     vector_mse,
     vector_mse_log,
+    vector_wasserstein
 )
 from .utils import (
     histogram_features,
@@ -118,8 +119,8 @@ class EnsembleQualityMetrics(IMetrics):
             "mse",
             "mse_dist",
             "mse_ldist",
-            "fraction_smaller"
-            # "wasserstein"
+            "fraction_smaller",
+            "wasserstein"
         ]
     )
     scalar_metrics = {
@@ -128,8 +129,8 @@ class EnsembleQualityMetrics(IMetrics):
         "mse": mse,
         "mse_dist": mse_dist,
         "mse_ldist": mse_log,
-        "fraction_smaller": fraction_smaller
-        # "wasserstein": wasserstein,
+        "fraction_smaller": fraction_smaller,
+        "wasserstein": wasserstein
     }
     vector_metrics = {
         "kl_div": vector_kl_divergence,
@@ -137,6 +138,7 @@ class EnsembleQualityMetrics(IMetrics):
         "mse": vector_mse,
         "mse_dist": vector_mse,
         "mse_ldist": vector_mse_log,
+        "wasserstein": vector_wasserstein
     }
     metrics_2d = {
         "kl_div": kl_divergence,
@@ -145,6 +147,7 @@ class EnsembleQualityMetrics(IMetrics):
         "mse_dist": mse_dist,
         "mse_ldist": mse_log,
         "fraction_smaller": fraction_smaller,
+        "wasserstein": wasserstein
     }
 
     excluded_quantities = set(
