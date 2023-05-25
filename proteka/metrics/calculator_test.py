@@ -88,7 +88,16 @@ def test_calculator_config_bin_conversion():
                     },
                 }
             }
-        }
+        },
+        "structural_quality_metrics": {
+            "ref_structure": "/import/a12/users/nickc/workspace_old/mlcg_cln/reference_folded.pdb",
+            "features": {
+                "rmsd": {
+                    "feature_params": {"atom_selection": "name CA"},
+                    "metric_params": {"fraction_smaller": {"threshold": 0.25}},
+                }
+            },
+        },
     }
     expected_bins = np.linspace(0, 100, 101)
 

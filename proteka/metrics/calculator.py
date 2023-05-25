@@ -244,11 +244,11 @@ class StructuralQualityMetrics(IMetrics):
         """Instances an StructuralQualityMetrics
         from a config file. The config should have the example following structure:
 
-            structure_quality_metrics:
+            structural_quality_metrics:
               ref_structure: "my_structure.pdb"
               features:
                 rmsd:
-                  feauture_params:
+                  feature_params:
                     atom_selection: "name CA"
                   metric_params:
                     fraction_smaller:
@@ -264,10 +264,8 @@ class StructuralQualityMetrics(IMetrics):
         config = yaml.load(open(config_file, "r"))
         sqm_config = config["structural_quality_metrics"]
         # load reference structure
-        ref_structure_path = sqm["structural_quality_metrics"]["ref_structure"]
-        sqm["structural_quality_metrics"]["ref_structure"] = md.load(
-            ref_structure_path
-        )
+        ref_structure_path = sqm_config["ref_structure"]
+        sqm_config["ref_structure"] = md.load(ref_structure_path)
 
         return cls(sqm_config)
 

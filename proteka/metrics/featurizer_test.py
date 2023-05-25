@@ -293,6 +293,21 @@ def test_rmsd_syntax_raise(get_CLN_traj):
         )
 
 
+def test_rmsd(get_CLN_traj):
+    # Check to see if only one indexing choice can be used at a time
+    ens = get_CLN_traj.make_ens()
+    traj = ens.get_all_in_one_mdtraj_trj()
+    ref_structure = traj[0]
+
+    manual_rmsd = md.rmsd(traj, ref_structure)
+
+    feat = Featurizer()
+    feat.add_rmsd(ens, ref_structure)
+    rmsd = ens.get_quantity("rmsd").raw_value
+    # we need to add some tolerance to the test or it breaks
+    np.testing.assert_array_almost_equal_nulp(rmsd, manual_rmsd, nulp=1e3)
+
+
 def test_rmsd_atom_selection(get_CLN_traj):
     # Check to see if only one indexing choice can be used at a time
     ens = get_CLN_traj.make_ens()

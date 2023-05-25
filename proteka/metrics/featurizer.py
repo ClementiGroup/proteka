@@ -163,7 +163,7 @@ class TICATransform(Transform):
         """
         Instantiate Transformer from a json string
         """
-        return cls.from_dict(json.loads(string))
+        return cls.from_dict(json.loads(input_string))
 
     @staticmethod
     def from_hdf5(self, h5file: str) -> Transform:
@@ -446,6 +446,7 @@ class Featurizer:
         else:
             rmsd = md.rmsd(
                 trajectory,
+                reference_structure,
                 **kwargs,
             )
 
