@@ -29,6 +29,19 @@ def get_CLN_frame():
 
 
 @pytest.fixture
+def get_CLN_traj():
+    class ens_factory:
+        def make_ens(self, ca_only=False):
+            traj = get_CLN_trajectory()
+            if ca_only:
+                traj = traj.atom_slice(traj.topology.select("name CA"))
+            ensemble = Ensemble.from_mdtraj_trj("ref", traj)
+            return ensemble
+
+    return ens_factory()
+
+
+@pytest.fixture
 def grid_polymer():
     traj = generate_grid_polymer(n_frames=10, n_atoms=5)
     ensemble = Ensemble("CAgrid", traj.top, Quantity(traj.xyz, "nm"))
@@ -263,3 +276,42 @@ def test_dssp(get_CLN_frame):
     np.testing.assert_array_equal(
         full_dssp_digit.flatten(), ref_dssp_full_digit
     )
+
+
+def test_rmsd_syntax_raise(get_CLN_traj):
+    # Check to see if only one indexing choice can be used at a time
+    ens = get_CLN_traj.make_ens()
+    ref_structure = ens.get_all_in_one_mdtraj_trj()[0]
+    feat = Featurizer()
+    with pytest.raises(TypeError):
+        feat.add_rmsd(
+            ens,
+            ref_structure,
+            atom_selection="name CA",
+            atom_indices=np.arange(10),
+            ref_atom_indices=np.arange(10),
+        )
+
+
+def test_rmsd_atom_selection(get_CLN_traj):
+    # Check to see if only one indexing choice can be used at a time
+    ens = get_CLN_traj.make_ens()
+    ca_ens = get_CLN_traj.make_ens(ca_only=True)
+    ref_structure = ens.get_all_in_one_mdtraj_trj()[0]
+    ca_traj = ca_ens.get_all_in_one_mdtraj_trj()
+
+    manual_rmsd = md.rmsd(
+        ca_traj,
+        ref_structure,
+        atom_indices=ca_traj.topology.select("name CA"),
+        ref_atom_indices=ref_structure.topology.select("name CA"),
+    )
+
+    feat = Featurizer()
+    feat.add_rmsd(
+        ca_ens,
+        ref_structure,
+        atom_selection="name CA",
+    )
+    rmsd = ca_ens.get_quantity("rmsd").raw_value
+    np.testing.assert_array_equal(rmsd, manual_rmsd)

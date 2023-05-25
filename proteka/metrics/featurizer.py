@@ -421,7 +421,7 @@ class Featurizer:
             "precentered": False, "ref_atom_indices": np.arange(10,20)}`. See
             help(mdtraj.rmsd) for more information. Note that if `atom_selection` is
             specified, kwargs cannot contain atom_indices or ref_atom_indices entries
-            or a SyntaxError will be raised by mdtraj.rmsd.
+            or a TypeError will be raised by mdtraj.rmsd.
         """
 
         trajectory = ensemble.get_all_in_one_mdtraj_trj()
