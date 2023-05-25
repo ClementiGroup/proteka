@@ -653,6 +653,7 @@ class Featurizer:
         name: str,
         feat_func: Callable,
         *args,
+        units: Optional[str] = None,
         **kwargs,
     ):
         """Generates temporary feautures according to a user defined transform, `feat_func`, with args
@@ -669,13 +670,15 @@ class Featurizer:
             String representing the name of the feature
         feat_func:
             Callable representing the function that generates the feature
+        units:
+            If supplied, specifies the units of the feature
         """
 
         feature = feat_func(*args, **kwargs)
 
         quantity = Quantity(
             feature,
-            name,
+            units,
             metadata={"feature": name},
         )
         ensemble.set_quantity(name, quantity)
