@@ -106,8 +106,10 @@ def test_calculator_config_bin_conversion():
 def test_structural_calculator_config_bin_conversion():
     # Tests to make sure non-int binopts are converted correctly
     # for EnsembleQualityMetrics instanced from configs
-    root_dir= Path(__file__).parent.parent.parent
-    cln_path = osp.join(root_dir,"examples","example_dataset_files","cln_folded.pdb")
+    root_dir = Path(__file__).parent.parent.parent
+    cln_path = osp.join(
+        root_dir, "examples", "example_dataset_files", "cln_folded.pdb"
+    )
     metrics = {
         "structural_quality_metrics": {
             "ref_structure": cln_path,
@@ -127,8 +129,10 @@ def test_structural_calculator_config_bin_conversion():
         yaml.dump(metrics, open(osp.join(tmp, "test.yaml"), "w"))
         eqm = StructuralQualityMetrics.from_config(osp.join(tmp, "test.yaml"))
         np.testing.assert_array_equal(
-            eqm.metrics["features"]["rmsd"]["metric_params"]["fraction_smaller"]["threshold"],
-            expected_thres ,
+            eqm.metrics["features"]["rmsd"]["metric_params"][
+                "fraction_smaller"
+            ]["threshold"],
+            expected_thres,
         )
 
 

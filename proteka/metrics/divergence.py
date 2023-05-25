@@ -13,6 +13,7 @@ __all__ = [
     "vector_kl_divergence",
     "vector_js_divergence",
     "vector_mse",
+    "vector_wasserstein",
 ]
 
 
@@ -302,105 +303,6 @@ def mse_dist(
     return val
 
 
-def mse_log(
-    target: np.ndarray,
-    reference: np.ndarray,
-    threshold: float = 1e-8,
-    replace_value: float = 1e-10,
-    intersect_only: bool = False,
-    use_optimal_offset: bool = True,
-) -> float:
-    r"""
-    Compute Mean Squared Error between the log  specified data sets.
-
-     .. math :: MSE = \frac{1}{N} \sum_{i=1}^N (log(p_i) - log(q_i))^2
-
-    Here p corresponds to the reference (True) distribution, q corresponds to the target distribution.
-
-
-    Parameters
-    ----------
-
-    target, reference : np.ndarray
-       Target and reference probability distributions (histograms).
-       Should have the same shape
-
-    threshold : float, 1e-8
-       Bin is not included in the summation if its value is less than the threshold
-       and intersect_only is `True`
-    replace_value:
-       if the bin has a normalized count lower than the `threshold`, and `intersect_only`
-       is `False`, then the bin gets replaced with this value instead
-    intersect_only:
-       if `True`, distributions will only be compared over their consistent support overlaps
-       (eg, only the mutual set of populated bins will be included in the computation)
-
-    Returns : float
-    -------
-    Mean Squared Error of the target from the reference
-    """
-
-    assert (
-        target.shape == reference.shape
-    ), f"Dimension mismatch: target: {target.shape} reference: {reference.shape}"
-
-    target_normalized = target / np.sum(target)
-    reference_normalized = reference / np.sum(reference)
-
-    target_normalized = clean_distribution(target_normalized)
-    reference_normalized = clean_distribution(reference_normalized)
-
-    # reshape everything into a flattened array
-    target_normalized = np.squeeze(target_normalized)
-    reference_normalized = np.squeeze(reference_normalized)
-
-    target_normalized = target_normalized.flatten()
-    reference_normalized = reference_normalized.flatten()
-
-    if intersect_only == True:
-        target_valid_bins = clean_distribution(
-            target_normalized, threshold=threshold, intersect_only=True
-        )
-        reference_valid_bins = clean_distribution(
-            reference_normalized, threshold=threshold, intersect_only=True
-        )
-        valid_bins = np.array(
-            list(
-                set(target_valid_bins.tolist()).intersection(
-                    set(reference_valid_bins.tolist())
-                )
-            )
-        )
-        log_ref = np.log(reference_normalized[valid_bins])
-        log_tar = np.log(target_normalized[valid_bins])
-
-        if use_optimal_offset:
-            offset = optimal_offset(log_tar, log_ref)
-        else:
-            offset = 0
-
-        val = mse(log_tar, log_ref, offset)
-
-    else:
-        target_normalized = clean_distribution(
-            target_normalized, threshold=threshold, value=replace_value
-        )
-        reference_normalized = clean_distribution(
-            reference_normalized, threshold=threshold, value=replace_value
-        )
-        log_ref = np.log(reference_normalized)
-        log_tar = np.log(target_normalized)
-
-        if use_optimal_offset:
-            offset = optimal_offset(log_tar, log_ref)
-        else:
-            offset = 0
-
-        val = mse(log_tar, log_ref, offset)
-
-    return val
-
-
 def fraction_smaller(
     target: np.ndarray,
     threshold: float = 0.25,
@@ -588,35 +490,6 @@ def vector_js_divergence(
             replace_value=replace_value,
         )
     return jsd
-
-
-def vector_mse(
-    target: np.ndarray,
-    reference: np.ndarray,
-) -> float:
-    r"""
-    Compute Vector Mean Squared Error between specified data sets.
-
-    Parameters
-    -----------
-
-    target, reference : np.ndarray
-       Target and reference data arrays.
-       Should have the same shape
-    threshold : float, 1e-8
-       Bin is not included in the summation if its value is less than the threshold
-       and intersect_only is `True`
-
-    Returns : float
-    ------
-    Mean Squared Error of the target from the reference
-    """
-
-    assert (
-        target.shape == reference.shape
-    ), f"Dimension mismatch: target: {target.shape} reference: {reference.shape}"
-
-    return np.average((target - reference) ** 2, axis=0)
 
 
 def vector_mse_dist(
