@@ -220,19 +220,157 @@ class StructuralIntegrityMetrics(IMetrics):
         }
 
 
+class StructuralQualityMetrics(IMetrics):
+    """Metrics that compare an ensemble to a single structure"""
+
+    does_not_require_ref_struct = set(["rsmd, fraction_smaller"])
+    scalar_features = set(["rsmd"])
+    scalar_metrics = {
+        "fraction_smaller": fraction_smaller,
+    }
+
+    def __init__(self, metrics: Optional[Dict] = None):
+        assert metrics["ref_structure"].n_frames == 1
+        self.metrics = metrics
+        self.results = {}
+
+    @classmethod
+    def from_config(cls, config_file: str):
+        """Instances an StructuralQualityMetrics
+        from a config file. The config should have the example following structure:
+
+            structure_quality_metrics:
+              ref_structure: "my_structure.pdb"
+              features:
+                rmsd:
+                  feauture_params:
+                    atom_selection: "name CA"
+                  metric_params:
+                    fraction_smaller:
+                      threshold: 0.25
+                ...
+
+        Parameters
+        ----------
+        config_file:
+            YAML file specifying feature and config options
+        """
+
+        config = yaml.load(open(config_file, "r"))
+        sqm_config = config["structural_quality_metrics"]
+        # load reference structure
+        ref_structure_path = sqm["structural_quality_metrics"]["ref_structure"]
+        sqm["structural_quality_metrics"]["ref_structure"] = md.load(
+            ref_structure_path
+        )
+
+        return cls(sqm_config)
+
+    def __call__(
+        self,
+        target: Ensemble,
+    ):
+        """calls the `compute` method and reports the results
+        as a dictionary of metric_name: metric_value pairs
+        see compute() for more details.
+        """
+        self.compute(target, reference)
+        return self.report()
+
+    def compute(
+        self,
+        target: Ensemble,
+    ):
+        """
+        compute the metrics that compare the target ensemble to the reference over
+        the specified features. comute metrics are stored in the `EnsembleQualityMetrics.results`
+        attribute.
+
+        parameters:
+        -----------
+        target: Ensemble
+            the target ensemble
+        """
+        for feature in self.metrics.keys():
+            # compute feature in target/ref ensemble if needed
+            feature_params = self.metrics["features"][feature]["feature_params"]
+            if feature_params == None:
+                feature_params = {}
+            Featurizer.get_feature(
+                target, feature, self.metrics["ref_structure"], **feature_params
+            )
+            for metric in self.metrics["features"][feature][
+                "metric_params"
+            ].keys():
+                params = self.metrics["features"][feature]["metric_params"][
+                    metric
+                ]
+                if params is None:
+                    params = {}
+                result = StructuralQualityMetrics.compute_metric(
+                    target, self.metrics["ref_structure"], feature, metric
+                )
+                self.results.update(result)
+        return
+
+    @staticmethod
+    def compute_metric(
+        target: Ensemble,
+        ref_structure: md.Trajectory,
+        feature: str,
+        metric: str = "fraction_smaller",
+    ) -> dict[str, float]:
+        """computes metric for desired feature between two ensembles.
+
+        parameters
+        ----------
+        target:
+            target ensemble
+        reference:
+            reference structure
+        feature:
+            string specifying the feature for which the desired metric should be computed
+            over from the target to the reference structure.
+        metric:
+            string specifying the metric to compute for the desired feature between the
+            target and reference structure.
+        bins:
+            in the case that the metric is calculated over probability distributions,
+            this integer number of bins or `np.ndarray` of bins is used to compute
+            histograms for both the target and reference ensembles
+
+        returns
+        -------
+        result:
+            dict of the form {"{feature}, {metric}" : metric_result} for
+            the specified feature and metric between the target and
+            reference ensembles.
+        """
+
+        target_feat = Featurizer.get_feature(target, feature)
+        if target_feat in StructuralQualityMetrics.scalar_features:
+            metric_computer = StructuralQualityMetrics.scalar_metrics[metric]
+
+        if (
+            f"{feature}, {metric}"
+            in StructuralQualityMetrics.does_not_require_ref_struct
+        ):
+            result = metric_computer(target)
+        else:
+            result = metric_computer(target, ref_structure)
+        return {f"{feature}, {metric}": result}
+
+
 class EnsembleQualityMetrics(IMetrics):
     """Metrics to compare a target ensemble to the reference ensemble"""
 
-    metric_types = set(
-        ["kl_div", "js_div", "mse", "mse_dist", "mse_ldist", "fraction_smaller"]
-    )
+    metric_types = set(["kl_div", "js_div", "mse", "mse_dist", "mse_ldist"])
     scalar_metrics = {
         "kl_div": kl_divergence,
         "js_div": js_divergence,
         "mse": mse,
         "mse_dist": mse_dist,
         "mse_ldist": mse_log,
-        "fraction_smaller": fraction_smaller,
     }
     vector_metrics = {
         "kl_div": vector_kl_divergence,
@@ -247,7 +385,6 @@ class EnsembleQualityMetrics(IMetrics):
         "mse": mse,
         "mse_dist": mse_dist,
         "mse_ldist": mse_log,
-        "fraction_smaller": fraction_smaller,
     }
 
     excluded_quantities = set(
@@ -271,20 +408,22 @@ class EnsembleQualityMetrics(IMetrics):
     def __init__(
         self,
         metrics={
-            "rg": {
-                "feature_params": {"ca_only": True},
-                "metric_params": {"js_div": {"bins": 100}},
-            },
-            "ca_distances": {
-                "feature_params": None,
-                "metric_params": {"js_div": {"bins": 100}},
-            },
-            "dssp": {
-                "feature_params": {"digitize": True},
-                "metric_params": {
-                    "mse_ldist": {"bins": np.array([0, 1, 2, 3, 4])}
+            "features": {
+                "rg": {
+                    "feature_params": {"ca_only": True},
+                    "metric_params": {"js_div": {"bins": 100}},
                 },
-            },
+                "ca_distances": {
+                    "feature_params": None,
+                    "metric_params": {"js_div": {"bins": 100}},
+                },
+                "dssp": {
+                    "feature_params": {"digitize": True},
+                    "metric_params": {
+                        "mse_ldist": {"bins": np.array([0, 1, 2, 3, 4])}
+                    },
+                },
+            }
         },
     ):
         super().__init__()
@@ -296,23 +435,23 @@ class EnsembleQualityMetrics(IMetrics):
         target: Ensemble,
         reference: Ensemble,
     ):
-        """Calls the `compute` method and reports the results
+        """calls the `compute` method and reports the results
         as a dictionary of metric_name: metric_value pairs
-        See compute() for more details.
+        see compute() for more details.
         """
         self.compute(target, reference)
         return self.report()
 
     @classmethod
     def from_config(cls, config_file: str):
-        """Instances an EnsembleQualityMetrics
-        from a config file. The config should have the example following structure:
+        """instances an EnsembleQualityMetrics
+        from a config file. the config should have the example following structure:
 
             ensemble_quality_metrics:
               rmsd:
                 feauture_params:
                   ref_structure: path_to_struct.pdb
-                  atom_selection: "name CA"
+                  atom_selection: "name ca"
                 metric_params:
                   js_div:
                     bins: 100
@@ -323,34 +462,34 @@ class EnsembleQualityMetrics(IMetrics):
                       num: 1000
                 ...
 
-        For specific metrics, bins can be either an integer or a dictionary
+        for specific metrics, bins can be either an integer or a dictionary
         of key value pairs corresponding to kwargs of `np.linspace` to instance
         equal-width bins over a specific range of values.
 
-        Parameters
+        parameters
         ----------
         config_file:
-            YAML file specifying feature and config options
+            yaml file specifying feature and config options
         """
 
         config = yaml.load(open(config_file, "r"))
         eqm_config = config["ensemble_quality_metrics"]
 
-        for feature in eqm_config.keys():
-            feature_dict = eqm_config[feature]
+        for feature in eqm_config["features"].keys():
+            feature_dict = eqm_config["features"][feature]
             for metric in feature_dict["metric_params"].keys():
                 if "bins" in list(feature_dict["metric_params"][metric].keys()):
                     binopts = feature_dict["metric_params"][metric]["bins"]
 
                 if isinstance(binopts, int) or binopts == None:
                     continue
-                elif isinstance(binopts, Dict):
-                    # Reinstance bins with np.linspace
-                    eqm_config[feature]["metric_params"][metric][
+                elif isinstance(binopts, dict):
+                    # reinstance bins with np.linspace
+                    eqm_config["features"][feature]["metric_params"][metric][
                         "bins"
                     ] = np.linspace(**binopts)
                 else:
-                    raise ValueError(f"Unknown bin options {binopts}")
+                    raise ValueError(f"unknown bin options {binopts}")
 
         return cls(eqm_config)
 
@@ -360,26 +499,30 @@ class EnsembleQualityMetrics(IMetrics):
         reference: Ensemble,
     ):
         """
-        Compute the metrics that compare the target ensemble to the reference over
-        the specified features. Comute metrics are stored in the `EnsembleQualityMetrics.results`
+        compute the metrics that compare the target ensemble to the reference over
+        the specified features. comute metrics are stored in the `EnsembleQualityMetrics.results`
         attribute.
 
-        Parameters:
+        parameters:
         -----------
         target: Ensemble
-            The target ensemble
+            the target ensemble
         reference: Ensemble
-            The reference ensemble, against which the target ensemble is compared
+            the reference ensemble, against which the target ensemble is compared
         """
-        for feature in self.metrics.keys():
+        for feature in self.metrics["features"].keys():
             # compute feature in target/ref ensemble if needed
-            feature_params = self.metrics[feature]["feature_params"]
+            feature_params = self.metrics["features"][feature]["feature_params"]
             if feature_params == None:
                 feature_params = {}
             Featurizer.get_feature(target, feature, **feature_params)
             Featurizer.get_feature(reference, feature, **feature_params)
-            for metric in self.metrics[feature]["metric_params"].keys():
-                params = self.metrics[feature]["metric_params"][metric]
+            for metric in self.metrics["features"][feature][
+                "metric_params"
+            ].keys():
+                params = self.metrics["features"][feature]["metric_params"][
+                    metric
+                ]
                 if params is None:
                     params = {}
                 result = EnsembleQualityMetrics.compute_metric(
@@ -396,30 +539,30 @@ class EnsembleQualityMetrics(IMetrics):
         metric: str = "kl_div",
         bins: Union[int, np.ndarray] = 100,
         **kwargs,
-    ) -> Dict[str, float]:
-        """Computes metric for desired feature between two ensembles.
+    ) -> dict[str, float]:
+        """computes metric for desired feature between two ensembles.
 
-        Parameters
+        parameters
         ----------
         target:
-            Target ensemble
+            target ensemble
         reference:
-            Refernce ensemble
+            refernce ensemble
         feature:
             string specifying the feature for which the desired metric should be computed
-            over from the target to the reference ensemble. Valid features can be
+            over from the target to the reference ensemble. valid features can be
             scalars (eg, `EnsembleQualityMetrics.scalar_features`) or vector features
             (eg, `EnsembleQualityMetrics.vector_features`)
         metric:
             string specifying the metric to compute for the desire feature between the
-            target and reference ensembles. Valid metrics are contained in
+            target and reference ensembles. valid metrics are contained in
             `EnsembleQualityMetrics.metrics`
         bins:
-            In the case that the metric is calculated over probability distributions,
+            in the case that the metric is calculated over probability distributions,
             this integer number of bins or `np.ndarray` of bins is used to compute
             histograms for both the target and reference ensembles
 
-        Returns
+        returns
         -------
         result:
             dict of the form {"{feature}, {metric}" : metric_result} for
@@ -428,7 +571,7 @@ class EnsembleQualityMetrics(IMetrics):
         """
 
         if metric not in EnsembleQualityMetrics.metric_types:
-            raise ValueError(f"Metric '{metric}' not defined.")
+            raise ValueError(f"metric '{metric}' not defined.")
 
         else:
             target_feat = Featurizer.get_feature(target, feature)

@@ -382,7 +382,11 @@ class Featurizer:
         ensemble.set_quantity("psi", quantity)
 
     def add_rmsd(
-        self, ensemble: Ensemble, reference_structure: md.Trajectory, **kwargs
+        self,
+        ensemble: Ensemble,
+        reference_structure: md.Trajectory,
+        atom_selection: Optional[str] = None,
+        **kwargs,
     ):
         """Get RMSD of a subset of atoms
         reference: Reference mdtraj.Trajectory object
@@ -392,15 +396,42 @@ class Featurizer:
         ----------
         reference_structure:
             Reference structure from which RMSD calculations are made
+        atom_selection:
+            MDTraj atom selection phrase to specify which atoms should contribute
+            to the RMSD calculation for both the target AND the reference structure.
+            This option can be used to ensure that consitent atom sets are used for
+            targets and references at different resolutions.
         kwargs:
             kwarg options for `mdtraj.rmsd()`,
             for example `{"frame": 0, "atom_indices": np.arange(10), "parallel": True,
             "precentered": False, "ref_atom_indices": np.arange(10,20)}`. See
-            help(mdtraj.rmsd) for more information.
+            help(mdtraj.rmsd) for more information. Note that if `atom_selection` is
+            specified, kwargs cannot contain atom_indices or ref_atom_indices entries
+            or a SyntaxError will be raised by mdtraj.rmsd.
         """
 
         trajectory = ensemble.get_all_in_one_mdtraj_trj()
-        rmsd = md.rmsd(trajectory, reference_structure, **kwargs)
+
+        if atom_selection != None:
+            target_inds = trajectory.topology.select(atom_selection)
+            ref_inds = reference_structure.topology.select(atom_selection)
+            assert len(target_inds) == len(ref_inds)
+
+            # If atom_indices/ref_atom_indices is accidently repeated in
+            # **kwargs, it will be caught by a SyntaxError :)
+            rmsd = md.rmsd(
+                trajectory,
+                reference_structure,
+                atom_indices=target_inds,
+                ref_atom_indices=ref_inds,
+                **kwargs,
+            )
+        else:
+            rmsd = md.rmsd(
+                trajectory,
+                **kwargs,
+            )
+
         quantity = Quantity(rmsd, "nanometers", metadata={"feature": "rmsd"})
         ensemble.set_quantity("rmsd", quantity)
 

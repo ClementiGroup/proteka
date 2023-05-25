@@ -403,35 +403,22 @@ def mse_log(
 
 def fraction_smaller(
     target: np.ndarray,
-    reference: np.ndarray,
-    threshold: float = 1,
-    relative: bool = False,
+    threshold: float = 0.25,
 ) -> float:
-    """
+    """Computes the fraction of a data array smaller than a specfied threshold.
+
     Parameters
     ----------
-    target, reference : np.ndarray
-        Target and reference data arrays.
-        Should have the same shape. Reference is only used if scaling is required
+    target: np.ndarray
+        Target data array.
     threshold : float
-        value to which we will compare this feature
-    relative : bool
-        bool to defermine if the value should come normalized by the reference value
-        If false, then `reference` is not used
+        Value to which we will compare this feature.
+
     Returns : float
     """
 
     smaller = np.mean(target < threshold)
-    if relative:
-        smaller_ref = np.mean(reference < threshold)
-        if smaller_ref > 0:
-            return smaller / smaller_ref
-        else:
-            raise ValueError(
-                f"Reference has no value below selected threshold {threshold}"
-            )
-    else:
-        return smaller
+    return smaller
 
 
 def wasserstein(

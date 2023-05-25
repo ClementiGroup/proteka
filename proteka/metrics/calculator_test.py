@@ -56,11 +56,15 @@ def test_calculator_config_bin_conversion():
     # for EnsembleQualityMetrics instanced from configs
     metrics = {
         "ensemble_quality_metrics": {
-            "rg": {
-                "feature_params": {"ca_only": True},
-                "metric_params": {
-                    "js_div": {"bins": {"start": 0, "stop": 100, "num": 101}}
-                },
+            "features": {
+                "rg": {
+                    "feature_params": {"ca_only": True},
+                    "metric_params": {
+                        "js_div": {
+                            "bins": {"start": 0, "stop": 100, "num": 101}
+                        }
+                    },
+                }
             }
         }
     }
@@ -71,7 +75,8 @@ def test_calculator_config_bin_conversion():
         yaml.dump(metrics, open(osp.join(tmp, "test.yaml"), "w"))
         eqm = EnsembleQualityMetrics.from_config(osp.join(tmp, "test.yaml"))
         np.testing.assert_array_equal(
-            eqm.metrics["rg"]["metric_params"]["js_div"]["bins"], expected_bins
+            eqm.metrics["features"]["rg"]["metric_params"]["js_div"]["bins"],
+            expected_bins,
         )
 
 
