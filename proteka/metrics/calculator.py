@@ -189,7 +189,8 @@ class StructuralIntegrityMetrics(IMetrics):
             raise ValueError("thresholds must be a list of floats")
         if len(atom_name_pairs) != len(thresholds):
             raise RuntimeError(
-                f"atom_name_pairs and thresholds are {len(atom_name_pairs)} and {len(thresholds)} long, respectively, but they should be the same length"
+                f"atom_name_pairs and thresholds are {len(atom_name_pairs)} and {len(thresholds)} long, "
+                f"respectively, but they should be the same length"
             )
 
         clash_dictionary = {}
@@ -226,7 +227,22 @@ class StructuralIntegrityMetrics(IMetrics):
 
 
 class StructuralQualityMetrics(IMetrics):
-    """Metrics that compare an ensemble to a single structure"""
+    """Metrics that compare an ensemble to a single structure
+
+        {
+            "ref_structure": md.core.trajectory.Trajectory
+            "features": {
+                "rmsd": {
+                    "feature_params": {"atom_selection": "name CA"},
+                    "metric_params": {"fraction_smaller": 0.25},
+                },
+                ...
+            }
+        },
+
+    Specifying computation and metric parameters for each feature/metric
+    for comparisons between target and reference structure.
+    """
 
     does_not_require_ref_struct = set(["rmsd, fraction_smaller"])
     scalar_features = set(["rmsd"])
@@ -235,6 +251,9 @@ class StructuralQualityMetrics(IMetrics):
     }
 
     def __init__(self, metrics: Dict):
+        assert isinstance(
+            metrics["ref_structure"], md.core.trajectory.Trajectory
+        )
         assert metrics["ref_structure"].n_frames == 1
         self.metrics = metrics
         self.results = {}
@@ -424,6 +443,7 @@ class EnsembleQualityMetrics(IMetrics):
         "mse_ldist": vector_mse_log,
         "wasserstein": vector_wasserstein,
     }
+
     metrics_2d = {
         "kl_div": kl_divergence,
         "js_div": js_divergence,
