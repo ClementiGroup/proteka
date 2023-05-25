@@ -270,9 +270,6 @@ class Featurizer:
 
     def add(self, ensemble: Ensemble, feature: str, *args, **kwargs):
         """Add a new feature to the Ensemble object"""
-        print(feature)
-        print(args)
-        print(kwargs)
         if hasattr(self, "add_" + feature):
             getattr(self, "add_" + feature)(ensemble, *args, **kwargs)
         else:
@@ -327,7 +324,6 @@ class Featurizer:
         self.validate_c_alpha(ensemble)
         # get all the pairs
         ca_pairs_all = list(combinations(ca_atoms, 2))
-        print(ca_pairs_all)
         # select pairs compatible with offset
         ca_pairs = list(
             filter(
@@ -339,7 +335,6 @@ class Featurizer:
                 ca_pairs_all,
             )
         )
-        print(ca_pairs)
         # Compute distances
         ca_distances = md.compute_distances(
             trajectory, ca_pairs, periodic=False
