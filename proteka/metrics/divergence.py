@@ -472,15 +472,16 @@ def wasserstein(
             )
         )
         n = len(valid_bins)
-        # Note that in scipy's implementation the first arguments (u_values, v_values) 
-        # for them should be the support, whlie the weights should be the actual probability 
+        # Note that in scipy's implementation the first arguments (u_values, v_values)
+        # for them should be the support, whlie the weights should be the actual probability
         # distribution
-        val = wasserstein_distance(np.arange(n),
+        val = wasserstein_distance(
             np.arange(n),
-            reference_normalized[valid_bins], 
-            target_normalized[valid_bins]
+            np.arange(n),
+            reference_normalized[valid_bins],
+            target_normalized[valid_bins],
         )
-    
+
     else:
         target_normalized = clean_distribution(
             target_normalized, threshold=threshold, value=replace_value
@@ -489,12 +490,10 @@ def wasserstein(
             reference_normalized, threshold=threshold, value=replace_value
         )
         n = len(reference_normalized)
-        
-        # see the comment in the upper part for understanding this weird definition 
-        val = wasserstein_distance(np.arange(n),
-            np.arange(n),
-            reference_normalized, 
-            target_normalized
+
+        # see the comment in the upper part for understanding this weird definition
+        val = wasserstein_distance(
+            np.arange(n), np.arange(n), reference_normalized, target_normalized
         )
 
     return val
@@ -694,7 +693,6 @@ def vector_mse_log(
         target.shape == reference.shape
     ), f"Dimension mismatch: target: {target.shape} reference: {reference.shape}"
 
-
     num_feat = target.shape[-1]
     val = np.zeros(num_feat)
     # slow implementation I know
@@ -708,6 +706,7 @@ def vector_mse_log(
         )
 
     return val
+
 
 def vector_wasserstein(
     target: np.ndarray,
@@ -744,7 +743,6 @@ def vector_wasserstein(
     assert (
         target.shape == reference.shape
     ), f"Dimension mismatch: target: {target.shape} reference: {reference.shape}"
-
 
     num_feat = target.shape[-1]
     val = np.zeros(num_feat)
