@@ -305,7 +305,7 @@ def test_rmsd(get_CLN_traj):
     feat.add_rmsd(ens, ref_structure)
     rmsd = ens.get_quantity("rmsd").raw_value
     # we need to add some tolerance to the test or it breaks
-    np.testing.assert_array_almost_equal(rmsd, manual_rmsd, decimal=5)
+    np.testing.assert_array_almost_equal_nulp(rmsd, manual_rmsd, nulp=1e3)
 
 
 def test_rmsd_atom_selection(get_CLN_traj):

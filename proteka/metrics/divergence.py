@@ -54,7 +54,7 @@ def clean_distribution(
         replaced by `value`
     """
 
-    if intersect_only == True:
+    if intersect_only:
         valid_bins = np.argwhere(array > threshold).flatten()
         return valid_bins
     else:
@@ -115,7 +115,7 @@ def kl_divergence(
     target_normalized = target_normalized.flatten()
     reference_normalized = reference_normalized.flatten()
 
-    if intersect_only == True:
+    if intersect_only:
         target_valid_bins = clean_distribution(
             target_normalized, threshold=threshold, intersect_only=True
         )
@@ -364,7 +364,7 @@ def mse_log(
     target_normalized = target_normalized.flatten()
     reference_normalized = reference_normalized.flatten()
 
-    if intersect_only == True:
+    if intersect_only:
         target_valid_bins = clean_distribution(
             target_normalized, threshold=threshold, intersect_only=True
         )
@@ -464,7 +464,7 @@ def wasserstein(
     target_normalized = target / np.sum(target)
     reference_normalized = reference / np.sum(reference)
 
-    if intersect_only == True:
+    if intersect_only:
         target_valid_bins = clean_distribution(
             target_normalized, threshold=threshold, intersect_only=True
         )

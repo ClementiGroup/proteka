@@ -556,7 +556,7 @@ class Featurizer:
 
         quantity = Quantity(
             dssp_codes,
-            None,
+            "dimensionless",
             metadata={"feature": "dssp"},
         )
         ensemble.set_quantity("dssp", quantity)

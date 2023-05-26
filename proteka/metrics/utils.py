@@ -47,18 +47,16 @@ def get_6_bead_frame():
     """Generate a frame that contains
       6 beads with a predefined geometry.
       Distance between consecutive beads is 0.38 nm
-      
-      0            5   
-       \\          /   
-        1-0.2nm- 4   
+
+      0            5
+       \\          /
+        1-0.2nm- 4
        /          \\
       2___0.38 nm__3
-      
-      Atoms  1, 2, 3 and 4 are in plane, atoms 0 and 5 are out of plane, 90 degrees 
-      
-      
-      
+
+      Atoms  1, 2, 3 and 4 are in plane, atoms 0 and 5 are out of plane, 90 degrees
     """
+
     n_atoms = 6
     d = 0.3800e0
     d_clash = 0.2000e0
@@ -218,7 +216,8 @@ def get_CLN_trajectory(single_frame=False) -> md.Trajectory:
             [-15.763, 3.007, 5.175],
             [-15.601, 3.176, 5.289],
             [-15.675, 3.226, 5.364],
-        ]
+        ],
+        dtype="float64",
     )
     if single_frame == False:
         coords = coords + 0.01 * np.random.randn(nframes, 49, 3)
