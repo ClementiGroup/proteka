@@ -69,7 +69,7 @@ ref_vector_kl = np.array([reference_kld1, reference_kld2])
 ref_vector_js = np.array([reference_jsd1, reference_jsd2])
 
 # this is a test based on the explicit formulas for the kullback leibler divergence
-# for auniform and a gaussian distribution
+# for a uniform and a gaussian distribution
 
 n_samples = 1000000
 a, b = 1, 2.5
