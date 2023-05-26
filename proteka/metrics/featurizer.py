@@ -479,7 +479,9 @@ class Featurizer:
         quantity = Quantity(
             rg,
             "nanometers",
-            metadata={"feature": "rg", "atom_selection": atom_selection},
+            metadata={"feature": "rg", "atom_selection": atom_selection}.update(
+                kwargs
+            ),
         )
         ensemble.set_quantity("rg", quantity)
 
