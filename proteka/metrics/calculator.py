@@ -529,7 +529,7 @@ class EnsembleQualityMetrics(IMetrics):
                 if "bins" in list(feature_dict["metric_params"][metric].keys()):
                     binopts = feature_dict["metric_params"][metric]["bins"]
 
-                if isinstance(binopts, int) or binopts == None:
+                if isinstance(binopts, int) or binopts is None:
                     continue
                 elif isinstance(binopts, dict):
                     # reinstance bins with np.linspace
