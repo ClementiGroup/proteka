@@ -7,11 +7,18 @@ Module contains basic feature-agnostic metrics estimators
 """
 
 __all__ = [
-    "mse",
     "kl_divergence",
     "js_divergence",
+    "mse",
+    "mse_dist",
+    "mse_log",
+    "fraction_smaller",
+    "wasserstein",
     "vector_kl_divergence",
     "vector_js_divergence",
+    "vector_mse",
+    "vector_mse_dist",
+    "vector_mse_log",
     "vector_wasserstein",
 ]
 

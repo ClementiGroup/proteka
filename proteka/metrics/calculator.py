@@ -11,20 +11,7 @@ from typing import Union, Dict, Optional, List, Tuple
 from .featurizer import Featurizer, TICATransform
 from ..dataset import Ensemble
 from typing import Union, Dict
-from .divergence import (
-    mse,
-    mse_dist,
-    mse_log,
-    fraction_smaller,
-    wasserstein,
-    kl_divergence,
-    js_divergence,
-    vector_kl_divergence,
-    vector_js_divergence,
-    vector_mse_log,
-    vector_mse,
-    vector_wasserstein,
-)
+from .divergence import *
 from .utils import (
     get_general_distances,
     histogram_features,
