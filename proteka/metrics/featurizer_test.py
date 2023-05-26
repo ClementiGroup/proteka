@@ -294,7 +294,7 @@ def test_rmsd_syntax_raise(get_CLN_traj):
 
 
 def test_rmsd(get_CLN_traj):
-    # Check to see if only one indexing choice can be used at a time
+    # test rmsd calculation
     ens = get_CLN_traj.make_ens()
     traj = ens.get_all_in_one_mdtraj_trj()
     ref_structure = traj[0]
