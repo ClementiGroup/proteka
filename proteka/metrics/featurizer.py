@@ -424,7 +424,7 @@ class Featurizer:
 
         trajectory = ensemble.get_all_in_one_mdtraj_trj()
 
-        if atom_selection != None:
+        if atom_selection is not None:
             target_inds = trajectory.topology.select(atom_selection)
             ref_inds = reference_structure.topology.select(atom_selection)
             assert len(target_inds) == len(ref_inds)
