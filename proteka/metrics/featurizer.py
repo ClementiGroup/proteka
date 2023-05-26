@@ -445,7 +445,11 @@ class Featurizer:
                 **kwargs,
             )
 
-        quantity = Quantity(rmsd, "nanometers", metadata={"feature": "rmsd"})
+        quantity = Quantity(
+            rmsd,
+            "nanometers",
+            metadata={"feature": "rmsd", "atom_selection": atom_selection},
+        )
         ensemble.set_quantity("rmsd", quantity)
 
     def add_rg(
@@ -472,7 +476,11 @@ class Featurizer:
                 trajectory.topology.select(atom_selection)
             )
         rg = md.compute_rg(trajectory, **kwargs)
-        quantity = Quantity(rg, "nanometers", metadata={"feature": "rg"})
+        quantity = Quantity(
+            rg,
+            "nanometers",
+            metadata={"feature": "rg", "atom_selection": atom_selection},
+        )
         ensemble.set_quantity("rg", quantity)
 
     def add_end2end_distance(self, ensemble: Ensemble):
@@ -557,7 +565,11 @@ class Featurizer:
         quantity = Quantity(
             dssp_codes,
             "dimensionless",
-            metadata={"feature": "dssp"},
+            metadata={
+                "feature": "dssp",
+                "simpflified": simplified,
+                "digitize": digitize,
+            },
         )
         ensemble.set_quantity("dssp", quantity)
         return
@@ -642,7 +654,13 @@ class Featurizer:
         quantity = Quantity(
             contact_per_atom,
             None,
-            metadata={"feature": "local_contact_number"},
+            metadata={
+                "feature": "local_contact_number",
+                "atom_type": atom_type,
+                "min_res_dist": min_res_dist,
+                "cut": cut,
+                "beta": beta,
+            },
         )
         ensemble.set_quantity("local_contact_number", quantity)
         return
