@@ -156,7 +156,7 @@ class StructuralIntegrityMetrics(IMetrics):
             )
 
         # populate default thresholds
-        if thresholds == None:
+        if thresholds is None:
             thresholds = []
             atoms = np.array(list(ensemble.top.atoms))
             for pair in atom_name_pairs:
@@ -316,7 +316,7 @@ class StructuralQualityMetrics(IMetrics):
         for feature in self.metrics["features"].keys():
             # compute feature in target ensemble if needed
             feature_params = self.metrics["features"][feature]["feature_params"]
-            if feature_params == None:
+            if feature_params is None:
                 feature_params = {}
             # additional args
             args = [self.metrics["ref_structure"]]
@@ -561,7 +561,7 @@ class EnsembleQualityMetrics(IMetrics):
         for feature in self.metrics["features"].keys():
             # compute feature in target/ref ensemble if needed
             feature_params = self.metrics["features"][feature]["feature_params"]
-            if feature_params == None:
+            if feature_params is None:
                 feature_params = {}
             Featurizer.get_feature(target, feature, **feature_params)
             Featurizer.get_feature(reference, feature, **feature_params)
