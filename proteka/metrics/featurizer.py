@@ -704,6 +704,7 @@ class Featurizer:
             for key, value in kwargs.items():
                 if not ensemble[feature].metadata.get(key) == value:
                     recompute = True
+                    break
         if recompute:
             featurizer = Featurizer()
             featurizer.add(ensemble, feature, *args, **kwargs)
