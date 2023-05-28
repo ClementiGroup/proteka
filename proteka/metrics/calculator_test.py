@@ -48,9 +48,9 @@ def test_ca_clashes(single_frame):
 
 def test_structural_metric_run(get_two_ensembles):
     target_ensemble, _ = get_two_ensembles
-    ref_structure = target_ensemble.get_all_in_one_mdtraj_trj()[0]
+    reference_structure = target_ensemble.get_all_in_one_mdtraj_trj()[0]
     metrics = {
-        "ref_structure": ref_structure,
+        "reference_structure": reference_structure,
         "features": {
             "rmsd": {
                 "feature_params": {"atom_selection": "name CA"},
@@ -156,7 +156,7 @@ def test_structural_calculator_config_bin_conversion():
     )
     metrics = {
         "StructuralQualityMetrics": {
-            "ref_structure": cln_path,
+            "reference_structure": cln_path,
             "features": {
                 "rmsd": {
                     "feature_params": {"atom_selection": "name CA"},

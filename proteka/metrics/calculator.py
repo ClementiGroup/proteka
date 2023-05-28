@@ -217,7 +217,7 @@ class StructuralQualityMetrics(IMetrics):
     """Metrics that compare an ensemble to a single structure
 
         {
-            "ref_structure": md.core.trajectory.Trajectory
+            "reference_structure": md.core.trajectory.Trajectory
             "features": {
                 "rmsd": {
                     "feature_params": {"atom_selection": "name CA"},
@@ -239,9 +239,9 @@ class StructuralQualityMetrics(IMetrics):
 
     def __init__(self, metrics: Dict):
         assert isinstance(
-            metrics["ref_structure"], md.core.trajectory.Trajectory
+            metrics["reference_structure"], md.core.trajectory.Trajectory
         )
-        assert metrics["ref_structure"].n_frames == 1
+        assert metrics["reference_structure"].n_frames == 1
         self.metrics = metrics
         self.results = {}
 
@@ -251,7 +251,7 @@ class StructuralQualityMetrics(IMetrics):
         from a config file. The config should have the example following structure:
 
             StructuralQualityMetrics:
-              ref_structure: "my_structure.pdb"
+              reference_structure: "my_structure.pdb"
               features:
                 rmsd:
                   feature_params:
@@ -270,8 +270,8 @@ class StructuralQualityMetrics(IMetrics):
         config = yaml.load(open(config_file, "r"))
         sqm_config = config["StructuralQualityMetrics"]
         # load reference structure
-        ref_structure_path = sqm_config["ref_structure"]
-        sqm_config["ref_structure"] = md.load(ref_structure_path)
+        reference_structure_path = sqm_config["reference_structure"]
+        sqm_config["reference_structure"] = md.load(reference_structure_path)
 
         return cls(sqm_config)
 
@@ -306,7 +306,7 @@ class StructuralQualityMetrics(IMetrics):
             if feature_params is None:
                 feature_params = {}
             # additional args
-            args = [self.metrics["ref_structure"]]
+            args = [self.metrics["reference_structure"]]
             Featurizer.get_feature(target, feature, *args, **feature_params)
             for metric in self.metrics["features"][feature][
                 "metric_params"
@@ -318,7 +318,7 @@ class StructuralQualityMetrics(IMetrics):
                     params = {}
                 result = StructuralQualityMetrics.compute_metric(
                     target,
-                    self.metrics["ref_structure"],
+                    self.metrics["reference_structure"],
                     feature,
                     metric,
                     **params,
@@ -329,7 +329,7 @@ class StructuralQualityMetrics(IMetrics):
     @staticmethod
     def compute_metric(
         target: Ensemble,
-        ref_structure: md.Trajectory,
+        reference_structure: md.Trajectory,
         feature: str,
         metric: str = "fraction_smaller",
         **kwargs,
@@ -340,7 +340,7 @@ class StructuralQualityMetrics(IMetrics):
         ----------
         target:
             target ensemble
-        ref_structure:
+        reference_structure:
             reference structure
         feature:
             string specifying the feature for which the desired metric should be computed
@@ -371,7 +371,7 @@ class StructuralQualityMetrics(IMetrics):
         ):
             result = metric_computer(target_feat, **kwargs)
         else:
-            result = metric_computer(target_feat, ref_structure, **kwargs)
+            result = metric_computer(target_feat, reference_structure, **kwargs)
         return {f"{feature}, {metric}": result}
 
 
@@ -485,7 +485,7 @@ class EnsembleQualityMetrics(IMetrics):
               features:
                 rmsd:
                   feauture_params:
-                    ref_structure: path_to_struct.pdb
+                    reference_structure: path_to_struct.pdb
                     atom_selection: "name ca"
                   metric_params:
                     js_div:
