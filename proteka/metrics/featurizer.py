@@ -1,5 +1,5 @@
-"""Featurizer takes a proteka.dataset.Ensemble and and extract features from it
-    """
+"""Featurizer takes a proteka.dataset.Ensemble and and extract features from it"""
+import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 import json
@@ -9,6 +9,7 @@ import mdtraj as md
 from typing import Dict, Optional, List, Tuple
 from ..dataset import Ensemble
 from ..quantity import Quantity
+from ..dataset.top_utils import top2json
 from typing import Callable, Dict, List, Optional, Tuple
 from itertools import combinations
 
@@ -423,6 +424,9 @@ class Featurizer:
         """
 
         trajectory = ensemble.get_all_in_one_mdtraj_trj()
+        # store for serialization
+        ref_coords = reference_structure.xyz.tolist()
+        ref_top = top2json(reference_structure.topology)
 
         if atom_selection is not None:
             target_inds = trajectory.topology.select(atom_selection)
@@ -445,10 +449,22 @@ class Featurizer:
                 **kwargs,
             )
 
+        # np.array serialization
+        for key in kwargs.keys():
+            if isinstance(kwargs[key], np.ndarray):
+                kwargs[key] = kwargs[key].tolist()
+
         quantity = Quantity(
             rmsd,
             "nanometers",
-            metadata={"feature": "rmsd", "atom_selection": atom_selection},
+            metadata={
+                "feature": "rmsd",
+                "reference_structure": {
+                    "coords": ref_coords,
+                    "ref_top": ref_top,
+                },
+                "atom_selection": atom_selection,
+            }.update(kwargs),
         )
         ensemble.set_quantity("rmsd", quantity)
 
@@ -674,6 +690,7 @@ class Featurizer:
         feat_func: Callable,
         *args,
         units: Optional[str] = None,
+        warn_user=True,
         **kwargs,
     ):
         """Generates temporary feautures according to a user defined transform, `feat_func`, with args
@@ -693,6 +710,12 @@ class Featurizer:
         units:
             If supplied, specifies the units of the feature
         """
+
+        if warn_user:
+            warnings.warn(
+                "This functionality does not support serialization. Please "
+                "use for temporary analyses only."
+            )
 
         feature = feat_func(*args, **kwargs)
 
@@ -721,8 +744,29 @@ class Featurizer:
         else:
             # Need to check, that current feature has the same
             # parameters as the requested one
+            for value in args:
+                # Handle RMSD structure serialization
+                if feature == "rmsd":
+                    reference_structure = args[0]
+                    ref_coords = reference_structure.xyz.tolist()
+                    ref_top = top2json(reference_structure.topology)
+                    stored_coords = ensemble[feature].metadata.get(
+                        "reference_structure"
+                    )["coords"]
+                    stored_top = ensemble[feature].metadata.get(
+                        "reference_structure"
+                    )["top"]
+
+                    equals = []
+                    equals.append(stored_top == ref_top)
+                    equals.append(stored_coords == ref_coords)
+                    if not all(equals):
+                        recompute = True
+                        break
             for key, value in kwargs.items():
-                if not ensemble[feature].metadata.get(key) == value:
+                if not ensemble[feature].metadata.get(key) == (
+                    value.tolist if isinstance(value, np.ndarray) else value
+                ):
                     recompute = True
                     break
         if recompute:

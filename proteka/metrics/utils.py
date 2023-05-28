@@ -1,7 +1,7 @@
 import numpy as np
 import mdtraj as md
 from ..dataset import Ensemble
-from typing import Union, Tuple, Optional
+from typing import Union, Tuple, Optional, Dict
 from itertools import combinations
 
 __all__ = [
@@ -160,7 +160,7 @@ def get_general_distances(
     return distances
 
 
-def get_CLN_trajectory(single_frame=False) -> md.Trajectory:
+def get_CLN_trajectory(single_frame=False, seed=1678543) -> md.Trajectory:
     """Get a random 49 atom CG backbonde + CB model of CLN025 (nanometers),
     with 100 noise-perturbed frames.
     """
@@ -220,6 +220,7 @@ def get_CLN_trajectory(single_frame=False) -> md.Trajectory:
         dtype="float64",
     )
     if single_frame == False:
+        np.random.seed(seed)
         coords = coords + 0.01 * np.random.randn(nframes, 49, 3)
     topology = md.Topology()
     chain = topology.add_chain()

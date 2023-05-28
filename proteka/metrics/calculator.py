@@ -512,7 +512,6 @@ class EnsembleQualityMetrics(IMetrics):
 
         for feature in eqm_config["features"].keys():
             feature_dict = eqm_config["features"][feature]
-            # new_features_dict[feature] = {"metric_params": {}}
             for metric in feature_dict["metric_params"].keys():
                 if "bins" in list(feature_dict["metric_params"][metric].keys()):
                     binopts = feature_dict["metric_params"][metric]["bins"]
@@ -528,7 +527,6 @@ class EnsembleQualityMetrics(IMetrics):
                         eqm_config["features"][feature]["metric_params"][
                             metric
                         ]["bins"] = np.linspace(**binopts)
-                        # new_features_dict[feature][""]
                 else:
                     raise ValueError(f"unknown bin options {binopts}")
         return cls(eqm_config)

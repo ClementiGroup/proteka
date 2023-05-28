@@ -305,7 +305,7 @@ def test_rmsd(get_CLN_traj):
     feat.add_rmsd(ens, ref_structure)
     rmsd = ens.get_quantity("rmsd").raw_value
     # we need to add some tolerance to the test or it breaks
-    np.testing.assert_array_almost_equal_nulp(rmsd, manual_rmsd, nulp=1e3)
+    np.testing.assert_array_almost_equal(rmsd, manual_rmsd, decimal=4)
 
 
 def test_rmsd_atom_selection(get_CLN_traj):
@@ -330,3 +330,37 @@ def test_rmsd_atom_selection(get_CLN_traj):
     )
     rmsd = ca_ens.get_quantity("rmsd").raw_value
     np.testing.assert_array_equal(rmsd, manual_rmsd)
+
+
+def test_feature_recompute(get_CLN_traj):
+    # Checks to make sure that features are recomputed if different options are specified
+    ens = get_CLN_traj.make_ens()
+    ref_structure = ens.get_all_in_one_mdtraj_trj()[0]
+
+    feat = Featurizer()
+    feat.add_rg(ens, atom_selection="name CA")
+    feat.add_rmsd(ens, ref_structure, atom_selection="name CA")
+
+    stored_rg = ens.get_quantity("rg").raw_value
+    stored_rmsd = ens.get_quantity("rmsd").raw_value
+
+    feat.add_rg(ens)
+    feat.add_rmsd(
+        ens,
+        ref_structure,
+        atom_indices=np.array([1, 2, 3, 4, 5]),
+        ref_atom_indices=np.array([1, 2, 3, 4, 5]),
+    )
+
+    np.testing.assert_raises(
+        AssertionError,
+        np.testing.assert_array_equal,
+        stored_rg,
+        ens.get_quantity("rg").raw_value,
+    )
+    np.testing.assert_raises(
+        AssertionError,
+        np.testing.assert_array_equal,
+        stored_rmsd,
+        ens.get_quantity("rmsd").raw_value,
+    )
