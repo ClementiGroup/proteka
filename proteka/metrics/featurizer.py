@@ -449,23 +449,24 @@ class Featurizer:
                 **kwargs,
             )
 
-        # np.array serialization
-        for key in kwargs.keys():
-            if isinstance(kwargs[key], np.ndarray):
-                kwargs[key] = kwargs[key].tolist()
+        metadata = {
+            "feature": "rmsd",
+            "reference_structure": {
+                "coords": ref_coords,
+                "top": ref_top,
+            },
+            "atom_selection": atom_selection,
+        }
 
-        quantity = Quantity(
-            rmsd,
-            "nanometers",
-            metadata={
-                "feature": "rmsd",
-                "reference_structure": {
-                    "coords": ref_coords,
-                    "ref_top": ref_top,
-                },
-                "atom_selection": atom_selection,
-            }.update(kwargs),
-        )
+        # Cannot use `update` method if kwargs is None/{}
+        if kwargs is not None:
+            for k, v in kwargs.items():
+                if isinstance(v, np.ndarray):
+                    metadata[k] = v.tolist()
+                else:
+                    metadata[k] = v
+
+        quantity = Quantity(rmsd, "nanometers", metadata=metadata)
         ensemble.set_quantity("rmsd", quantity)
 
     def add_rg(
@@ -492,13 +493,18 @@ class Featurizer:
                 trajectory.topology.select(atom_selection)
             )
         rg = md.compute_rg(trajectory, **kwargs)
-        quantity = Quantity(
-            rg,
-            "nanometers",
-            metadata={"feature": "rg", "atom_selection": atom_selection}.update(
-                kwargs
-            ),
-        )
+
+        metadata = {"feature": "rg", "atom_selection": atom_selection}
+
+        # Cannot use `update` method if kwargs is None/{}
+        if kwargs is not None:
+            for k, v in kwargs.items():
+                if isinstance(v, np.ndarray):
+                    metadata[k] = v.tolist()
+                else:
+                    metadata[k] = v
+
+        quantity = Quantity(rg, "nanometers", metadata=metadata)
         ensemble.set_quantity("rg", quantity)
 
     def add_end2end_distance(self, ensemble: Ensemble):
@@ -727,6 +733,37 @@ class Featurizer:
         ensemble.set_quantity(name, quantity)
 
     @staticmethod
+    def _reference_structure_equality(
+        input_structure: md.core.trajectory.Trajectory,
+        serialized_structure: Dict,
+    ) -> bool:
+        """Helper method for testing reference structure serialized equality for RMSD recomputation
+
+        Parameters
+        ----------
+        input_structures:
+            input MDTraj single frame Trajectory for proposed RMSD calculations
+        serialized_structure:
+            Serialized reference structure
+
+        Returns
+        -------
+        bool:
+            If the coordinates and topologies between the proposed and stored structures are
+            the same, True is returned. Else, False is returned.
+        """
+
+        ref_coords = input_structure.xyz.tolist()
+        ref_top = top2json(input_structure.topology)
+        stored_coords = serialized_structure["coords"]
+        stored_top = serialized_structure["top"]
+
+        equals = []
+        equals.append(stored_top == ref_top)
+        equals.append(stored_coords == ref_coords)
+        return all(equals)
+
+    @staticmethod
     def get_feature(
         ensemble: Ensemble, feature: str, *args, recompute=False, **kwargs
     ):
@@ -744,31 +781,33 @@ class Featurizer:
         else:
             # Need to check, that current feature has the same
             # parameters as the requested one
-            for value in args:
-                # Handle RMSD structure serialization
-                if feature == "rmsd":
-                    reference_structure = args[0]
-                    ref_coords = reference_structure.xyz.tolist()
-                    ref_top = top2json(reference_structure.topology)
-                    stored_coords = ensemble[feature].metadata.get(
-                        "reference_structure"
-                    )["coords"]
-                    stored_top = ensemble[feature].metadata.get(
-                        "reference_structure"
-                    )["top"]
-
-                    equals = []
-                    equals.append(stored_top == ref_top)
-                    equals.append(stored_coords == ref_coords)
-                    if not all(equals):
-                        recompute = True
-                        break
-            for key, value in kwargs.items():
-                if not ensemble[feature].metadata.get(key) == (
-                    value.tolist if isinstance(value, np.ndarray) else value
+            if feature == "rmsd" and len(args) == 1:
+                # Handle RMSD structure serialization (as arg)
+                reference_structure = args[0]
+                if not Featurizer._reference_structure_equality(
+                    reference_structure,
+                    ensemble[feature].metadata["reference_structure"],
                 ):
                     recompute = True
-                    break
+
+            for key, value in kwargs.items():
+                if feature == "rmsd" and key == "reference_structure":
+                    # Handle RMSD structure serialization (as kwarg)
+                    reference_structure = kwargs[key]
+                    if not Featurizer._reference_structure_equality(
+                        reference_structure,
+                        ensemble[feature].metadata["reference_structure"],
+                    ):
+                        recompute = True
+                        break
+                else:
+                    if not ensemble[feature].metadata.get(key) == (
+                        value.tolist()
+                        if isinstance(value, np.ndarray)
+                        else value
+                    ):
+                        recompute = True
+                        break
         if recompute:
             featurizer = Featurizer()
             featurizer.add(ensemble, feature, *args, **kwargs)

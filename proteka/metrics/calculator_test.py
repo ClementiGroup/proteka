@@ -66,18 +66,56 @@ def test_structural_metric_run(get_two_ensembles):
 
 def test_ensemble_metric_run(get_two_ensembles):
     target_ensemble, ref_ensemble = get_two_ensembles
+    reference_structure = target_ensemble.get_all_in_one_mdtraj_trj()[0]
+
     metrics = {
         "features": {
+            "ca_distances": {
+                "feature_params": {},
+                "metric_params": {"js_div": {"bins": np.linspace(0, 1.6, 100)}},
+            },
             "rg": {
                 "feature_params": {"atom_selection": "name CA"},
-                "metric_params": {"js_div": {"bins": np.linspace(0, 100, 101)}},
-            }
-        }
+                "metric_params": {"js_div": {"bins": np.linspace(0, 1.6, 100)}},
+            },
+            "end2end_distance": {
+                "feature_params": {},
+                "metric_params": {"js_div": {"bins": np.linspace(0, 1.6, 100)}},
+            },
+            "rmsd": {
+                "feature_params": {
+                    "reference_structure": reference_structure,
+                    "atom_selection": "name CA",
+                },
+                "metric_params": {"js_div": {"bins": np.linspace(0, 1.6, 100)}},
+            },
+            "dssp": {
+                "feature_params": {"digitize": True},
+                "metric_params": {
+                    "mse_ldist": {"bins": np.array([0, 1, 2, 3, 4])},
+                    "js_div": {"bins": np.array([0, 1, 2, 3, 4])},
+                },
+            },
+            "local_contact_number": {
+                "feature_params": {"atom_type": "CB"},
+                "metric_params": {
+                    "mse_ldist": {
+                        "bins": np.linspace(
+                            0, reference_structure.topology.n_residues, 100
+                        )
+                    },
+                    "js_div": {
+                        "bins": np.linspace(
+                            0, reference_structure.topology.n_residues, 100
+                        )
+                    },
+                },
+            },
+        },
     }
-
     eqm = EnsembleQualityMetrics(metrics)
     results = eqm(target_ensemble, ref_ensemble)
-    assert len(results) == 1
+    assert len(results) == 8
 
 
 def test_calculator_config_bin_conversion():
