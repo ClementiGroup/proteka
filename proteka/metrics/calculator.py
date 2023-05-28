@@ -2,7 +2,7 @@
 """
 import warnings
 from abc import ABCMeta, abstractmethod
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 import numpy as np
 import mdtraj as md
 from ruamel.yaml import YAML
@@ -491,7 +491,7 @@ class EnsembleQualityMetrics(IMetrics):
                     js_div:
                       bins: 100
                     mse_ldist:
-                      bins:
+                      -bins:
                         start: 0
                         stop: 100
                         num: 1000
@@ -499,7 +499,8 @@ class EnsembleQualityMetrics(IMetrics):
 
         for specific metrics, bins can be either an integer or a dictionary
         of key value pairs corresponding to kwargs of `np.linspace` to instance
-        equal-width bins over a specific range of values.
+        equal-width bins over a specific range of values. For 2D metrics, a
+        list of binopts can be specified through the "-" operator.
 
         parameters
         ----------
@@ -515,18 +516,41 @@ class EnsembleQualityMetrics(IMetrics):
             for metric in feature_dict["metric_params"].keys():
                 if "bins" in list(feature_dict["metric_params"][metric].keys()):
                     binopts = feature_dict["metric_params"][metric]["bins"]
-                    if (
-                        isinstance(binopts, int)
-                        or isinstance(binopts, np.ndarray)
-                        or isinstance(binopts, list)
-                        or binopts is None
-                    ):
+                    if isinstance(binopts, int) or binopts is None:
+                        # Simple "num bins" or histogram default
                         continue
-                    elif isinstance(binopts, dict):
-                        # reinstance bins with np.linspace
+                    elif isinstance(binopts, Mapping):
+                        # 1D specified bin array using np.linspace
                         eqm_config["features"][feature]["metric_params"][
                             metric
                         ]["bins"] = np.linspace(**binopts)
+                    elif isinstance(binopts, list):
+                        print(binopts)
+                        # 2D histogram handling for np.histogram2d
+                        if len(binopts) != 2:
+                            raise ValueError(
+                                f"Currently only 2D distributions are supported"
+                            )
+
+                        if all([isinstance(opt, int) for opt in binopts]):
+                            # List of ints
+                            continue
+                        elif all([isinstance(opt, Mapping) for opt in binopts]):
+                            # list of 1D arrays for each dimension
+                            converted_bins = []
+                            for bin_opt in binopts:
+                                print(bin_opt)
+                                # reinstance bins with np.linspace
+                                c_bins = np.linspace(**bin_opt)
+                                converted_bins.append(c_bins)
+
+                            eqm_config["features"][feature]["metric_params"][
+                                metric
+                            ]["bins"] = converted_bins
+                        else:
+                            raise ValueError(
+                                f"Currently, only List[int] or List[dict] are accepted for multiple bin specifications, but {binopts} was supplied"
+                            )
                 else:
                     raise ValueError(f"unknown bin options {binopts}")
         return cls(eqm_config)

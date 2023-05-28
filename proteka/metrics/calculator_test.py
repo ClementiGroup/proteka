@@ -129,13 +129,39 @@ def test_calculator_config_bin_conversion():
                     "metric_params": {
                         "js_div": {
                             "bins": {"start": 0, "stop": 100, "num": 101}
-                        }
+                        },
                     },
-                }
-            }
-        }
+                },
+                "ca_distances": {
+                    "feature_params": {"offset": 1},
+                    "metric_params": {
+                        "mse_ldist": {"bins": 101},
+                    },
+                },
+                "a_2D_feature": {
+                    "feature_params": {"offset": 1},
+                    "metric_params": {
+                        "kl_div": {"bins": [101, 101]},
+                    },
+                },
+                "another_2D_feature": {
+                    "feature_params": {"offset": 1},
+                    "metric_params": {
+                        "mse_dist": {
+                            "bins": [
+                                {"start": 0, "stop": 1, "num": 101},
+                                {"start": 0, "stop": 2, "num": 101},
+                            ]
+                        },
+                    },
+                },
+            },
+        },
     }
-    expected_bins = np.linspace(0, 100, 101)
+    expected_bins1 = np.linspace(0, 100, 101)
+    expected_bins2 = 101
+    expected_bins3 = [101, 101]
+    expected_bins4 = [np.linspace(0, 1, 101), np.linspace(0, 2, 101)]
 
     with tempfile.TemporaryDirectory() as tmp:
         yaml = YAML()
@@ -143,13 +169,37 @@ def test_calculator_config_bin_conversion():
         eqm = EnsembleQualityMetrics.from_config(osp.join(tmp, "test.yaml"))
         np.testing.assert_array_equal(
             eqm.metrics["features"]["rg"]["metric_params"]["js_div"]["bins"],
-            expected_bins,
+            expected_bins1,
         )
+        assert (
+            eqm.metrics["features"]["ca_distances"]["metric_params"][
+                "mse_ldist"
+            ]["bins"]
+            == expected_bins2
+        )
+        assert (
+            eqm.metrics["features"]["a_2D_feature"]["metric_params"]["kl_div"][
+                "bins"
+            ]
+            == expected_bins3
+        )
+        assert isinstance(
+            eqm.metrics["features"]["another_2D_feature"]["metric_params"][
+                "mse_dist"
+            ]["bins"],
+            list,
+        )
+        for bins, ebins in zip(
+            eqm.metrics["features"]["another_2D_feature"]["metric_params"][
+                "mse_dist"
+            ]["bins"],
+            expected_bins4,
+        ):
+            np.testing.assert_array_equal(bins, ebins)
 
 
 def test_structural_calculator_config_bin_conversion():
-    # Tests to make sure non-int binopts are converted correctly
-    # for EnsembleQualityMetrics instanced from configs
+    # Tests to make sure metric params are stored properly for StructuralQualityMetrics
     root_dir = Path(__file__).parent.parent.parent
     cln_path = osp.join(
         root_dir, "examples", "example_dataset_files", "cln_folded.pdb"
