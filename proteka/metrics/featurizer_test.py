@@ -12,6 +12,7 @@ from proteka.metrics.utils import (
     get_6_bead_frame,
     get_CLN_trajectory,
 )
+from ..dataset.top_utils import top2json, json2top
 
 
 @pytest.fixture
@@ -234,10 +235,11 @@ def test_feature_rewriting(grid_polymer):
     rewritten"""
 
     distances = Featurizer.get_feature(grid_polymer, "ca_distances", offset=1)
-    new_distances = Featurizer.get_feature(
-        grid_polymer, "ca_distances", offset=2
-    )
-    assert distances.shape != new_distances.shape
+    with pytest.warns(UserWarning):
+        new_distances = Featurizer.get_feature(
+            grid_polymer, "ca_distances", offset=2
+        )
+        assert distances.shape != new_distances.shape
 
 
 def test_local_contact_number(get_CLN_frame):
@@ -256,16 +258,16 @@ def test_dssp(get_CLN_frame):
     feat.add_dssp(ens, digitize=False)
     simple_dssp = ens.get_quantity("dssp").raw_value
 
-    feat = Featurizer()
-    feat.add_dssp(ens, digitize=True)
+    with pytest.warns(UserWarning):
+        feat.add_dssp(ens, digitize=True)
     simple_dssp_digit = ens.get_quantity("dssp").raw_value
 
-    feat = Featurizer()
-    feat.add_dssp(ens, digitize=False, simplified=False)
+    with pytest.warns(UserWarning):
+        feat.add_dssp(ens, digitize=False, simplified=False)
     full_dssp = ens.get_quantity("dssp").raw_value
 
-    feat = Featurizer()
-    feat.add_dssp(ens, digitize=True, simplified=False)
+    with pytest.warns(UserWarning):
+        feat.add_dssp(ens, digitize=True, simplified=False)
     full_dssp_digit = ens.get_quantity("dssp").raw_value
 
     np.testing.assert_array_equal(simple_dssp.flatten(), ref_dssp_simple)
@@ -332,35 +334,47 @@ def test_rmsd_atom_selection(get_CLN_traj):
     np.testing.assert_array_equal(rmsd, manual_rmsd)
 
 
-def test_feature_recompute(get_CLN_traj):
+def test_rmsd_recompute(get_CLN_traj):
     # Checks to make sure that features are recomputed if different options are specified
+    # Currently this is a separate test because the rmsd overwrite checks are more complicated
     ens = get_CLN_traj.make_ens()
     ref_structure = ens.get_all_in_one_mdtraj_trj()[0]
 
     feat = Featurizer()
-    feat.add_rg(ens, atom_selection="name CA")
-    feat.add_rmsd(ens, ref_structure, atom_selection="name CA")
+    feat.add_rmsd(ens, ref_structure)
 
-    stored_rg = ens.get_quantity("rg").raw_value
     stored_rmsd = ens.get_quantity("rmsd").raw_value
 
-    feat.add_rg(ens)
-    feat.add_rmsd(
-        ens,
-        ref_structure,
-        atom_indices=np.array([1, 2, 3, 4, 5]),
-        ref_atom_indices=np.array([1, 2, 3, 4, 5]),
-    )
+    # change coords
+    ref_structure.xyz[0, 0, :] = ref_structure.xyz[0, -1, :]
+
+    with pytest.warns(UserWarning):
+        feat.add_rmsd(ens, ref_structure)
 
     np.testing.assert_raises(
         AssertionError,
         np.testing.assert_array_equal,
-        stored_rg,
-        ens.get_quantity("rg").raw_value,
+        stored_rmsd,
+        ens.get_quantity("rmsd").raw_value,
     )
-    np.testing.assert_raises(
-        AssertionError,
-        np.testing.assert_array_equal,
+
+    # change top
+    ref_structure = ens.get_all_in_one_mdtraj_trj()[0]
+    old_top = top2json(ref_structure.topology)
+
+    # Mutate first residue, but don't change the coords
+    old_top = list(old_top)
+    old_top[73] = "A"
+    old_top[74] = "S"
+    old_top[75] = "P"
+    old_top = "".join(old_top)
+
+    ref_structure.topology = json2top(old_top)
+
+    with pytest.warns(UserWarning):
+        feat.add_rmsd(ens, ref_structure)
+
+    np.testing.assert_array_equal(
         stored_rmsd,
         ens.get_quantity("rmsd").raw_value,
     )

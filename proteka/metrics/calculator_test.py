@@ -149,7 +149,8 @@ def test_general_default_clashes(cln_single_frame):
 
     ens = cln_single_frame
     original_coords = ens.get_quantity("coords").raw_value
-    ens.set_quantity("coords", 2.0 * original_coords / 3.0)
+    with pytest.warns(UserWarning):
+        ens.set_quantity("coords", 2.0 * original_coords / 3.0)
     clashes = StructuralIntegrityMetrics.general_clashes(
         ens,
         [

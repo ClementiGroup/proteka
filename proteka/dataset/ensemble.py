@@ -851,7 +851,7 @@ class Ensemble(HDF5Group):
         if name in self._data:
             old_quant = self._data[name]
             if verbose:
-                print(f"Overwriting the previously saved record {name}.")
+                warn(f"Overwriting the previously saved record {name}.")
                 if not quantity.is_unit_convertible_with(old_quant):
                     warn(
                         f"Overwriting record {name} with incompatible unit: "
