@@ -302,9 +302,15 @@ class StructuralQualityMetrics(IMetrics):
         """
         for feature in self.metrics["features"].keys():
             # compute feature in target ensemble if needed
-            feature_params = self.metrics["features"][feature]["feature_params"]
-            if feature_params is None:
+            if feature_params not in list(
+                self.metrics["features"][feature].keys()
+            ):
                 feature_params = {}
+            else:
+                feature_params = self.metrics["features"][feature][
+                    "feature_params"
+                ]
+
             # additional args
             args = [self.metrics["reference_structure"]]
             Featurizer.get_feature(target, feature, *args, **feature_params)
@@ -574,9 +580,15 @@ class EnsembleQualityMetrics(IMetrics):
         """
         for feature in self.metrics["features"].keys():
             # compute feature in target/ref ensemble if needed
-            feature_params = self.metrics["features"][feature]["feature_params"]
-            if feature_params is None:
+            if feature_params not in list(
+                self.metrics["features"][feature].keys()
+            ):
                 feature_params = {}
+            else:
+                feature_params = self.metrics["features"][feature][
+                    "feature_params"
+                ]
+
             Featurizer.get_feature(target, feature, **feature_params)
             Featurizer.get_feature(reference, feature, **feature_params)
             for metric in self.metrics["features"][feature][
