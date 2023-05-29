@@ -302,7 +302,7 @@ class StructuralQualityMetrics(IMetrics):
         """
         for feature in self.metrics["features"].keys():
             # compute feature in target ensemble if needed
-            if feature_params not in list(
+            if "feature_params" not in list(
                 self.metrics["features"][feature].keys()
             ):
                 feature_params = {}
@@ -580,7 +580,7 @@ class EnsembleQualityMetrics(IMetrics):
         """
         for feature in self.metrics["features"].keys():
             # compute feature in target/ref ensemble if needed
-            if feature_params not in list(
+            if "feature_params" not in list(
                 self.metrics["features"][feature].keys()
             ):
                 feature_params = {}
