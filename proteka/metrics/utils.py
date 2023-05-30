@@ -91,6 +91,7 @@ def get_general_distances(
     atom_names: Tuple[str],
     res_offset: int = 1,
     stride: Optional[int] = None,
+    periodic: bool = False,
 ) -> np.ndarray:
     """Compute all distances between two all atom of two specified names. If atom names are different,
     (e.g. ("N", "O")), only name1-name2 distances will be computed, and not name1-name1 nor name2-name2.
@@ -110,6 +111,9 @@ def get_general_distances(
     stride:
         If specified, this stride is applied to the trajectory before the distance
         calculations
+    periodic:
+        If true, minimum-image conventions are used when calculating distances using
+        MDTraj.
 
     Returns
     -------
@@ -155,7 +159,7 @@ def get_general_distances(
     traj = ensemble.get_all_in_one_mdtraj_trj()
     if stride != None:
         traj.xyz = traj.xyz[::stride]
-    distances = md.compute_distances(traj, pruned_pairs)
+    distances = md.compute_distances(traj, pruned_pairs, periodic=periodic)
 
     return distances
 
