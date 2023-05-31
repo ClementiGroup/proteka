@@ -95,6 +95,7 @@ class StructuralIntegrityMetrics(IMetrics):
         res_offset: int = 1,
         stride: Optional[int] = None,
         allowance: float = 0.07,
+        save_frames: bool = False,
     ) -> Dict[str, int]:
         """ "Compute clashes between atoms of types `atom_name_1/2` according
         to user-supplied thresholds or according to the method of allowance-modified
@@ -130,6 +131,9 @@ class StructuralIntegrityMetrics(IMetrics):
         stride:
             If specified, this stride is applied to the trajectory before the distance
             calculations
+        save_frames:
+            If True, the results also contain a keyword `frames` which denotes the frame
+            indices in which clashes are detected.
 
         Returns
         -------
@@ -161,8 +165,7 @@ class StructuralIntegrityMetrics(IMetrics):
                 threshold = vdw_r1 + vdw_r2
 
                 # Handle hydrogen bonding allowances
-                # between donors and acceptors with
-                # different names
+                # between donors and acceptors
                 if all(
                     [
                         p in StructuralIntegrityMetrics.acceptors_or_donors
@@ -188,6 +191,11 @@ class StructuralIntegrityMetrics(IMetrics):
                 ensemble, atom_names, res_offset, stride
             )
             clashes = np.where(distances < threshold)[0]
+            if save_frames:
+                frame_idx = np.unique(np.argwhere(distances < threshold)[:, 0])
+                clash_dictionary[
+                    f"{atom_name_1}-{atom_name_2} frames"
+                ] = frame_idx
             clash_dictionary[
                 f"{atom_name_1}-{atom_name_2} clashes"
             ] = clashes.size
