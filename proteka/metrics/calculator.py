@@ -1,20 +1,17 @@
 """Main entry point for calculating the metrics
 """
+import warnings
 from abc import ABCMeta, abstractmethod
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 import numpy as np
 import mdtraj as md
+from ruamel.yaml import YAML
 from mdtraj.core.element import Element
 from typing import Union, Dict, Optional, List, Tuple
-
 from .featurizer import Featurizer, TICATransform
 from ..dataset import Ensemble
-from .divergence import (
-    kl_divergence,
-    js_divergence,
-    vector_kl_divergence,
-    vector_js_divergence,
-)
+from typing import Union, Dict
+from .divergence import *
 from .utils import (
     get_general_distances,
     histogram_features,
@@ -22,7 +19,13 @@ from .utils import (
     histogram_features2d,
 )
 
-__all__ = ["StructuralIntegrityMetrics", "EnsembleQualityMetrics"]
+__all__ = [
+    "StructuralIntegrityMetrics",
+    "StructuralQualityMetrics",
+    "EnsembleQualityMetrics",
+]
+
+yaml = YAML(typ="safe")
 
 
 class IMetrics(metaclass=ABCMeta):
@@ -92,6 +95,7 @@ class StructuralIntegrityMetrics(IMetrics):
         res_offset: int = 1,
         stride: Optional[int] = None,
         allowance: float = 0.07,
+        save_frames: bool = False,
     ) -> Dict[str, int]:
         """ "Compute clashes between atoms of types `atom_name_1/2` according
         to user-supplied thresholds or according to the method of allowance-modified
@@ -127,6 +131,9 @@ class StructuralIntegrityMetrics(IMetrics):
         stride:
             If specified, this stride is applied to the trajectory before the distance
             calculations
+        save_frames:
+            If True, the results also contain a keyword `frames` which denotes the frame
+            indices in which clashes are detected.
 
         Returns
         -------
@@ -140,7 +147,7 @@ class StructuralIntegrityMetrics(IMetrics):
             )
 
         # populate default thresholds
-        if thresholds == None:
+        if thresholds is None:
             thresholds = []
             atoms = np.array(list(ensemble.top.atoms))
             for pair in atom_name_pairs:
@@ -158,8 +165,7 @@ class StructuralIntegrityMetrics(IMetrics):
                 threshold = vdw_r1 + vdw_r2
 
                 # Handle hydrogen bonding allowances
-                # between donors and acceptors with
-                # different names
+                # between donors and acceptors
                 if all(
                     [
                         p in StructuralIntegrityMetrics.acceptors_or_donors
@@ -173,7 +179,8 @@ class StructuralIntegrityMetrics(IMetrics):
             raise ValueError("thresholds must be a list of floats")
         if len(atom_name_pairs) != len(thresholds):
             raise RuntimeError(
-                f"atom_name_pairs and thresholds are {len(atom_name_pairs)} and {len(thresholds)} long, respectively, but they should be the same length"
+                f"atom_name_pairs and thresholds are {len(atom_name_pairs)} and {len(thresholds)} long, "
+                f"respectively, but they should be the same length"
             )
 
         clash_dictionary = {}
@@ -184,6 +191,11 @@ class StructuralIntegrityMetrics(IMetrics):
                 ensemble, atom_names, res_offset, stride
             )
             clashes = np.where(distances < threshold)[0]
+            if save_frames:
+                frame_idx = np.unique(np.argwhere(distances < threshold)[:, 0])
+                clash_dictionary[
+                    f"{atom_name_1}-{atom_name_2} frames"
+                ] = frame_idx
             clash_dictionary[
                 f"{atom_name_1}-{atom_name_2} clashes"
             ] = clashes.size
@@ -209,211 +221,486 @@ class StructuralIntegrityMetrics(IMetrics):
         }
 
 
-class EnsembleQualityMetrics(IMetrics):
-    """Metrics to compare a target ensemble to the reference ensemble"""
+class StructuralQualityMetrics(IMetrics):
+    """Metrics that compare an ensemble to a single structure
 
-    def __init__(self, metrics_params=None):
-        super().__init__()
-        self.metrics_dict = {
-            "end2end_distance_kl_div": self.end2end_distance_kl_div,
-            "rg_kl_div": self.rg_kl_div,
-            "ca_distance_kl_div": self.ca_distance_kl_div,
-            "ca_distance_js_div": self.ca_distance_js_div,
-            "local_contact_number_js_div": self.local_contact_number_js_div,
-            "tica_div": self.tica_div,
-        }
-        if metrics_params is None:
-            metrics_params = {}
-        self.metrics_params = metrics_params
+        {
+            "reference_structure": md.Trajectory
+            "features": {
+                "rmsd": {
+                    "feature_params": {"atom_selection": "name CA"},
+                    "metric_params": {"fraction_smaller": 0.25},
+                },
+                ...
+            }
+        },
+
+    Specifying computation and metric parameters for each feature/metric
+    for comparisons between target and reference structure.
+    """
+
+    does_not_require_ref_struct = set(["rmsd, fraction_smaller"])
+    scalar_features = set(["rmsd"])
+    scalar_metrics = {
+        "fraction_smaller": fraction_smaller,
+    }
+
+    def __init__(self, metrics: Dict):
+        assert isinstance(
+            metrics["reference_structure"], md.core.trajectory.Trajectory
+        )
+        assert metrics["reference_structure"].n_frames == 1
+        self.metrics = metrics
+        self.results = {}
+
+    @classmethod
+    def from_config(cls, config_file: str):
+        """Instances an StructuralQualityMetrics
+        from a config file. The config should have the example following structure:
+
+            StructuralQualityMetrics:
+              reference_structure: "my_structure.pdb"
+              features:
+                rmsd:
+                  feature_params:
+                    atom_selection: "name CA"
+                  metric_params:
+                    fraction_smaller:
+                      threshold: 0.25
+                ...
+
+        Parameters
+        ----------
+        config_file:
+            YAML file specifying feature and config options
+        """
+
+        config = yaml.load(open(config_file, "r"))
+        sqm_config = config["StructuralQualityMetrics"]
+        # load reference structure
+        reference_structure_path = sqm_config["reference_structure"]
+        sqm_config["reference_structure"] = md.load(reference_structure_path)
+
+        return cls(sqm_config)
 
     def __call__(
         self,
         target: Ensemble,
-        reference: Ensemble,
-        metrics: Union[Iterable[str], str] = "all",
     ):
-        """Calls the `compute` method and reports the results
+        """calls the `compute` method and reports the results
         as a dictionary of metric_name: metric_value pairs
-        See compute() for more details.
+        see compute() for more details.
         """
-        self.compute(target, reference, metrics)
+        self.compute(target)
         return self.report()
 
     def compute(
         self,
         target: Ensemble,
-        reference: Ensemble,
-        metrics: Union[Iterable[str], str] = "all",
     ):
         """
-        Compute the metrics that compare the target ensemble to the reference
+        compute the metrics that compare the target ensemble to the reference strucure over
+        the specified features. compute metrics are stored in the `StructuralQualityMetrics.results`
+        attribute.
 
-        Parameters:
+        parameters:
         -----------
         target: Ensemble
-            The target ensemble
-        reference: Ensemble
-            The reference ensemble, against which the target ensemble is compared
-        metrics: Iterable of strings or str
-            The metrics to compute. If "all" is passed, all available metrics will be computed
+            the target ensemble
         """
-        if metrics == "all":
-            metrics = self.metrics_dict.keys()
-        elif isinstance(metrics, str):
-            metrics = [metrics]
-
-        for metric in metrics:
-            params = self.metrics_params.get(metric)
-            if params is None:
-                self.results.update(
-                    self.metrics_dict[metric](target, reference)
-                )
+        for feature in self.metrics["features"].keys():
+            # compute feature in target ensemble if needed
+            if "feature_params" not in list(
+                self.metrics["features"][feature].keys()
+            ):
+                feature_params = {}
             else:
-                self.results.update(
-                    self.metrics_dict[metric](target, reference, **params)
+                feature_params = self.metrics["features"][feature][
+                    "feature_params"
+                ]
+
+            # additional args
+            args = [self.metrics["reference_structure"]]
+            Featurizer.get_feature(target, feature, *args, **feature_params)
+            for metric in self.metrics["features"][feature][
+                "metric_params"
+            ].keys():
+                params = self.metrics["features"][feature]["metric_params"][
+                    metric
+                ]
+                if params is None:
+                    params = {}
+                result = StructuralQualityMetrics.compute_metric(
+                    target,
+                    self.metrics["reference_structure"],
+                    feature,
+                    metric,
+                    **params,
                 )
+                self.results.update(result)
         return
 
     @staticmethod
-    def ca_distance_kl_div(
-        target: Ensemble, reference: Ensemble
-    ) -> Dict[str, float]:
-        """Compute the KL divergence for a mixed histogram of CA distances
+    def compute_metric(
+        target: Ensemble,
+        reference_structure: md.Trajectory,
+        feature: str,
+        metric: str = "fraction_smaller",
+        **kwargs,
+    ) -> dict[str, float]:
+        """computes metric for desired feature between two ensembles.
 
-        All the pairwise distances are computed for each ensemble and then
-        a histogram for all the distances simultaneously [1]_ is computed for both
-        ensembles. The KL divergence is then computed between the two histograms.
-
-        Reference:
+        parameters
         ----------
-        .. [1] M.G. Reese, O. Lund, J. Bohr, H. Bohr, J.E. Hansen, S. Brunak,
-        Distance distributions in proteins: a six-parameter representation,
-        Protein Engineering, Design and Selection, Volume 9, Issue 9,
-        September 1996, Pages 733–740, https://doi.org/10.1093/protein/9.9.733
+        target:
+            target ensemble
+        reference_structure:
+            reference structure
+        feature:
+            string specifying the feature for which the desired metric should be computed
+            over from the target to the reference structure.
+        metric:
+            string specifying the metric to compute for the desired feature between the
+            target and reference structure.
+        bins:
+            in the case that the metric is calculated over probability distributions,
+            this integer number of bins or `np.ndarray` of bins is used to compute
+            histograms for both the target and reference ensembles
 
+        returns
+        -------
+        result:
+            dict of the form {"{feature}, {metric}" : metric_result} for
+            the specified feature and metric between the target and
+            reference ensembles.
         """
 
-        ca_distance_reference = Featurizer.get_feature(
-            reference, "ca_distances"
-        )
-        ca_distance_target = Featurizer.get_feature(target, "ca_distances")
-        # Histogram of the distances. Will use 100 bins and bin edges extracted from the reference ensemble
-        hist_target, hist_ref = histogram_features(
-            ca_distance_target, ca_distance_reference, bins=100
-        )
-        kl = kl_divergence(hist_target, hist_ref)
-        return {"CA distance, KL divergence": kl}
+        target_feat = Featurizer.get_feature(target, feature)
+        if feature in StructuralQualityMetrics.scalar_features:
+            metric_computer = StructuralQualityMetrics.scalar_metrics[metric]
 
-    @staticmethod
-    def ca_distance_js_div(
-        target: Ensemble, reference: Ensemble
-    ) -> Dict[str, float]:
-        ca_distance_reference = Featurizer.get_feature(
-            reference, "ca_distances"
-        )
-        ca_distance_target = Featurizer.get_feature(target, "ca_distances")
-        # Histogram of the distances. Will use 100 bins and bin edges extracted from the reference ensemble
-        hist_target, hist_ref = histogram_features(
-            ca_distance_target, ca_distance_reference, bins=100
-        )
-        js = js_divergence(hist_target, hist_ref)
-        return {"CA distance, JS divergence": js}
+        if (
+            f"{feature}, {metric}"
+            in StructuralQualityMetrics.does_not_require_ref_struct
+        ):
+            result = metric_computer(target_feat, **kwargs)
+        else:
+            result = metric_computer(target_feat, reference_structure, **kwargs)
+        return {f"{feature}, {metric}": result}
 
-    @staticmethod
-    def local_contact_number_js_div(
-        target: Ensemble, reference: Ensemble
-    ) -> Dict[str, np.ndarray]:
-        """Calculates local contact number JS divergence PER atom/residue"""
 
-        local_contact_num_reference = Featurizer.get_feature(
-            reference, "local_contact_number"
-        )
-        local_contact_num_target = Featurizer.get_feature(
-            target, "local_contact_number"
-        )
-        # Histogram of the local_contacts. Will use 100 bins from 0 to num_res
-        hist_target, hist_ref = histogram_vector_features(
-            local_contact_num_target, local_contact_num_reference, bins=100
-        )
-        js = vector_js_divergence(hist_target, hist_ref)
-        return {"local contact number, JS divergence": js}
+class EnsembleQualityMetrics(IMetrics):
+    """Metrics to compare a target ensemble to the reference ensemble.
+    Input metric configs must be a dictionary of the following form:
 
-    @staticmethod
-    def tica_div(
+         {
+            "features": {
+                "rg": {
+                    "feature_params": {"atom_selection": "name CA"},
+                    "metric_params": {"js_div": {"bins": 100}},
+                },
+                "ca_distances": {
+                    "feature_params": None,
+                    "metric_params": {"js_div": {"bins": 100}},
+                },
+                "dssp": {
+                    "feature_params": {"digitize": True},
+                    "metric_params": {
+                        "mse_ldist": {"bins": np.array([0, 1, 2, 3, 4])}
+                    },
+                },
+            }
+        },
+
+    Specifying computation and metric parameters for each feature/metric
+    for comparisons between target and reference ensembles.
+    """
+
+    metric_types = set(
+        [
+            "kl_div",
+            "js_div",
+            "mse",
+            "mse_dist",
+            "mse_ldist",
+            "fraction_smaller",
+            "wasserstein",
+        ]
+    )
+    scalar_metrics = {
+        "kl_div": kl_divergence,
+        "js_div": js_divergence,
+        "mse": mse,
+        "mse_dist": mse_dist,
+        "mse_ldist": mse_log,
+        "fraction_smaller": fraction_smaller,
+        "wasserstein": wasserstein,
+    }
+    vector_metrics = {
+        "kl_div": vector_kl_divergence,
+        "js_div": vector_js_divergence,
+        "mse": vector_mse,
+        "mse_dist": vector_mse,
+        "mse_ldist": vector_mse_log,
+        "wasserstein": vector_wasserstein,
+    }
+
+    metrics_2d = {
+        "kl_div": kl_divergence,
+        "js_div": js_divergence,
+        "mse": mse,
+        "mse_dist": mse_dist,
+        "mse_ldist": mse_log,
+        "fraction_smaller": fraction_smaller,
+        "wasserstein": wasserstein,
+    }
+
+    excluded_quantities = set(
+        [
+            "top",
+            "coords",
+            "time",
+            "forces",
+            "cell_angles",
+            "cell_lengths",
+            "trjs",
+        ]
+    )
+
+    scalar_features = set(
+        ["rg", "ca_distances", "rmsd", "end2end_distance", "tic1", "tic2"]
+    )
+    vector_features = set(["local_contact_number", "dssp"])
+    features_2d = set(["tic1_tic2"])
+
+    def __init__(self, metrics: Dict):
+        super().__init__()
+        self.metrics = metrics
+        self.metrics_results = {}
+
+    def __call__(
+        self,
         target: Ensemble,
         reference: Ensemble,
-        transform: Union[TICATransform, str, None] = None,
-    ) -> Dict[str, float]:
-        """Perform TICA on the reference enseble and use it to transform target ensemble.
-        Then compute KL divergence between the two TICA projections, using the first 2 TICA components
-
-        Parameters
-        ----------
-        target : Ensemble
-            target ensemble
-        reference : Ensemble
-            reference ensemble, will be used for TICA model fitting
-        transform : TICATransform
-            TICA transform used to compute TICA
-
-        Returns
-        -------
-        dict
-            Resulting scores
+    ):
+        """calls the `compute` method and reports the results
+        as a dictionary of metric_name: metric_value pairs
+        see compute() for more details.
         """
-        if transform is None:
-            transform = TICATransform(
-                features={"ca_distances": {"offset": 1}},
-                estimation_params={"lagtime": 10, "dim": 2},
+        self.compute(target, reference)
+        return self.report()
+
+    @classmethod
+    def from_config(cls, config_file: str):
+        """instances an EnsembleQualityMetrics
+        from a config file. the config should have the example following structure:
+
+            EnsembleQualityMetrics:
+              features:
+                rmsd:
+                  feauture_params:
+                    reference_structure: path_to_struct.pdb
+                    atom_selection: "name ca"
+                  metric_params:
+                    js_div:
+                      bins: 100
+                    mse_ldist:
+                      -bins:
+                        start: 0
+                        stop: 100
+                        num: 1000
+                ...
+
+        for specific metrics, bins can be either an integer or a dictionary
+        of key value pairs corresponding to kwargs of `np.linspace` to instance
+        equal-width bins over a specific range of values. For 2D metrics, a
+        list of binopts can be specified through the "-" operator.
+
+        parameters
+        ----------
+        config_file:
+            yaml file specifying feature and config options
+        """
+
+        config = yaml.load(open(config_file, "r"))
+        eqm_config = config["EnsembleQualityMetrics"]
+
+        for feature in eqm_config["features"].keys():
+            feature_dict = eqm_config["features"][feature]
+            for metric in feature_dict["metric_params"].keys():
+                if "bins" in list(feature_dict["metric_params"][metric].keys()):
+                    binopts = feature_dict["metric_params"][metric]["bins"]
+                    if isinstance(binopts, int) or binopts is None:
+                        # Simple "num bins" or histogram default
+                        continue
+                    elif isinstance(binopts, Mapping):
+                        # 1D specified bin array using np.linspace
+                        eqm_config["features"][feature]["metric_params"][
+                            metric
+                        ]["bins"] = np.linspace(**binopts)
+                    elif isinstance(binopts, list):
+                        print(binopts)
+                        # 2D histogram handling for np.histogram2d
+                        if len(binopts) != 2:
+                            raise ValueError(
+                                f"Currently only 2D distributions are supported"
+                            )
+
+                        if all([isinstance(opt, int) for opt in binopts]):
+                            # List of ints
+                            continue
+                        elif all([isinstance(opt, Mapping) for opt in binopts]):
+                            # list of 1D arrays for each dimension
+                            converted_bins = []
+                            for bin_opt in binopts:
+                                print(bin_opt)
+                                # reinstance bins with np.linspace
+                                c_bins = np.linspace(**bin_opt)
+                                converted_bins.append(c_bins)
+
+                            eqm_config["features"][feature]["metric_params"][
+                                metric
+                            ]["bins"] = converted_bins
+                        else:
+                            raise ValueError(
+                                f"Currently, only List[int] or List[dict] are accepted for multiple bin specifications, but {binopts} was supplied"
+                            )
+                else:
+                    raise ValueError(f"unknown bin options {binopts}")
+        return cls(eqm_config)
+
+    def compute(
+        self,
+        target: Ensemble,
+        reference: Ensemble,
+    ):
+        """
+        compute the metrics that compare the target ensemble to the reference over
+        the specified features. comute metrics are stored in the `EnsembleQualityMetrics.results`
+        attribute.
+
+        parameters:
+        -----------
+        target: Ensemble
+            the target ensemble
+        reference: Ensemble
+            the reference ensemble, against which the target ensemble is compared
+        """
+        for feature in self.metrics["features"].keys():
+            # compute feature in target/ref ensemble if needed
+            if "feature_params" not in list(
+                self.metrics["features"][feature].keys()
+            ):
+                feature_params = {}
+            else:
+                feature_params = self.metrics["features"][feature][
+                    "feature_params"
+                ]
+
+            Featurizer.get_feature(target, feature, **feature_params)
+            Featurizer.get_feature(reference, feature, **feature_params)
+            for metric in self.metrics["features"][feature][
+                "metric_params"
+            ].keys():
+                params = self.metrics["features"][feature]["metric_params"][
+                    metric
+                ]
+                if params is None:
+                    params = {}
+                result = EnsembleQualityMetrics.compute_metric(
+                    target, reference, feature, metric, **params
+                )
+                self.results.update(result)
+        return
+
+    @staticmethod
+    def compute_metric(
+        target: Ensemble,
+        reference: Ensemble,
+        feature: str,
+        metric: str = "kl_div",
+        bins: Union[int, np.ndarray] = 100,
+        **kwargs,
+    ) -> dict[str, float]:
+        """computes metric for desired feature between two ensembles.
+
+        parameters
+        ----------
+        target:
+            target ensemble
+        reference:
+            refernce ensemble
+        feature:
+            string specifying the feature for which the desired metric should be computed
+            over from the target to the reference ensemble. valid features can be
+            scalars (eg, `EnsembleQualityMetrics.scalar_features`) or vector features
+            (eg, `EnsembleQualityMetrics.vector_features`)
+        metric:
+            string specifying the metric to compute for the desire feature between the
+            target and reference ensembles. valid metrics are contained in
+            `EnsembleQualityMetrics.metrics`
+        bins:
+            in the case that the metric is calculated over probability distributions,
+            this integer number of bins or `np.ndarray` of bins is used to compute
+            histograms for both the target and reference ensembles
+
+        returns
+        -------
+        result:
+            dict of the form {"{feature}, {metric}" : metric_result} for
+            the specified feature and metric between the target and
+            reference ensembles.
+        """
+
+        if metric not in EnsembleQualityMetrics.metric_types:
+            raise ValueError(f"metric '{metric}' not defined.")
+
+        else:
+            target_feat = Featurizer.get_feature(target, feature)
+            reference_feat = Featurizer.get_feature(reference, feature)
+
+        reference_weights = (
+            reference.weights if hasattr(reference, "weights") else None
+        )
+        target_weights = target.weights if hasattr(target, "weights") else None
+
+        if feature in EnsembleQualityMetrics.scalar_features:
+            metric_computer = EnsembleQualityMetrics.scalar_metrics[metric]
+            hist_target, hist_ref = histogram_features(
+                target_feat,
+                reference_feat,
+                bins=bins,
+                target_weights=target_weights,
+                reference_weights=reference_weights,
             )
-        elif type(transform) == str:
-            # Here, the plan is to either load transformer from hdf5 file or
-            # deserialize a json string
-            raise NotImplementedError()
-
-        tica_reference = Featurizer.get_feature(
-            reference, "tica", transform=transform
-        )
-        # Transform can be modified during the call to get_feature, so we need to extract it again
-        # Later, here will be deserialization of the transform
-        transform_reference = reference["tica"].metadata["transform"]
-
-        tica_target = Featurizer.get_feature(
-            target, "tica", transform=transform_reference
-        )
-        # histogram data
-        hist_target, hist_ref = histogram_features2d(
-            tica_target[:, :2], tica_reference[:, :2], bins=100
-        )
-        # Compute KL divergence
-        kl = kl_divergence(hist_target, hist_ref)
-        js = js_divergence(hist_target, hist_ref)
-        return {"TICA, KL divergence": kl, "TICA, JS divergence": js}
-
-    @staticmethod
-    def rg_kl_div(target: Ensemble, reference: Ensemble) -> Dict[str, float]:
-        """Computes kl divergence for radius of gyration"""
-        rg_reference = Featurizer.get_feature(reference, "rg")
-        rg_target = Featurizer.get_feature(target, "rg")
-
-        # Histogram of the distances. Will use 100 bins and bin edges extracted from the reference ensemble
-        hist_target, hist_ref = histogram_features(
-            rg_target, rg_reference, bins=100
-        )
-        kl = kl_divergence(hist_target, hist_ref)
-        return {"Rg, KL divergence": kl}
-
-    @staticmethod
-    def end2end_distance_kl_div(
-        target: Ensemble, reference: Ensemble
-    ) -> Dict[str, float]:
-        """Computes kl divergence for end2end distance. Currently work with a single chain."""
-        d_e2e_reference = Featurizer.get_feature(reference, "end2end_distance")
-        d_e2e_target = Featurizer.get_feature(target, "end2end_distance")
-        # Histogram of the distances. Will use 100 bins and bin edges extracted from
-        # the reference ensemble
-        hist_target, hist_ref = histogram_features(
-            d_e2e_target, d_e2e_reference, bins=100
-        )
-        kl = kl_divergence(hist_target, hist_ref)
-        return {"d end2end, KL divergence": kl}
+        elif feature in EnsembleQualityMetrics.vector_features:
+            metric_computer = EnsembleQualityMetrics.vector_metrics[metric]
+            hist_target, hist_ref = histogram_vector_features(
+                target_feat,
+                reference_feat,
+                bins=bins,
+                target_weights=target_weights,
+                reference_weights=reference_weights,
+            )
+        elif feature in EnsembleQualityMetrics.features_2d:
+            metric_computer = EnsembleQualityMetrics.metrics_2d[metric]
+            hist_target, hist_ref = histogram_features2d(
+                target_feat,
+                reference_feat,
+                bins=bins,
+                target_weights=target_weights,
+                reference_weights=reference_weights,
+            )
+            hist_target = hist_target.flatten()
+            hist_ref = hist_ref.flatten()
+        else:
+            raise ValueError(
+                f"feature {feature} not registered in vector or scalar features"
+            )
+        metric_args = {
+            k: v
+            for k, v in kwargs.items()
+            if not k in ["bins", "reference_weights"]
+        }
+        result = metric_computer(hist_target, hist_ref, **metric_args)
+        return {f"{feature}, {metric}": result}

@@ -3,11 +3,18 @@
 import numpy as np
 import mdtraj as md
 import pytest
-
+import tempfile
+from pathlib import Path
+import os.path as osp
+from ruamel.yaml import YAML
 from proteka.dataset import Ensemble
 from proteka.quantity import Quantity
 from proteka.metrics import Featurizer
-from proteka.metrics import StructuralIntegrityMetrics
+from proteka.metrics import (
+    StructuralIntegrityMetrics,
+    StructuralQualityMetrics,
+    EnsembleQualityMetrics,
+)
 from proteka.metrics.utils import get_6_bead_frame, get_CLN_trajectory
 
 
@@ -16,6 +23,15 @@ def single_frame():
     traj = get_6_bead_frame()
     ensemble = Ensemble("6bead", traj.top, Quantity(traj.xyz, "nm"))
     return ensemble
+
+
+@pytest.fixture
+def get_two_ensembles():
+    ref_traj = get_CLN_trajectory()
+    target_traj = get_CLN_trajectory()
+    ref_ensemble = Ensemble.from_mdtraj_trj("ref", ref_traj)
+    target_ensemble = Ensemble.from_mdtraj_trj("target", target_traj)
+    return target_ensemble, ref_ensemble
 
 
 @pytest.fixture
@@ -30,6 +46,190 @@ def test_ca_clashes(single_frame):
     assert clashes["CA-CA clashes"] == 1
 
 
+def test_structural_metric_run(get_two_ensembles):
+    target_ensemble, _ = get_two_ensembles
+    reference_structure = target_ensemble.get_all_in_one_mdtraj_trj()[0]
+    metrics = {
+        "reference_structure": reference_structure,
+        "features": {
+            "rmsd": {
+                "feature_params": {"atom_selection": "name CA"},
+                "metric_params": {"fraction_smaller": {"threshold": 0.5}},
+            }
+        },
+    }
+
+    sqm = StructuralQualityMetrics(metrics)
+    results = sqm(target_ensemble)
+    assert len(results) == 1
+
+
+def test_ensemble_metric_run(get_two_ensembles):
+    target_ensemble, ref_ensemble = get_two_ensembles
+    reference_structure = target_ensemble.get_all_in_one_mdtraj_trj()[0]
+
+    metrics = {
+        "features": {
+            "ca_distances": {
+                "feature_params": {},
+                "metric_params": {"js_div": {"bins": np.linspace(0, 1.6, 100)}},
+            },
+            "rg": {
+                "feature_params": {"atom_selection": "name CA"},
+                "metric_params": {"js_div": {"bins": np.linspace(0, 1.6, 100)}},
+            },
+            "end2end_distance": {
+                "feature_params": {},
+                "metric_params": {"js_div": {"bins": np.linspace(0, 1.6, 100)}},
+            },
+            "rmsd": {
+                "feature_params": {
+                    "reference_structure": reference_structure,
+                    "atom_selection": "name CA",
+                },
+                "metric_params": {"js_div": {"bins": np.linspace(0, 1.6, 100)}},
+            },
+            "dssp": {
+                "feature_params": {"digitize": True},
+                "metric_params": {
+                    "mse_ldist": {"bins": np.array([0, 1, 2, 3, 4])},
+                    "js_div": {"bins": np.array([0, 1, 2, 3, 4])},
+                },
+            },
+            "local_contact_number": {
+                "feature_params": {"atom_type": "CB"},
+                "metric_params": {
+                    "mse_ldist": {
+                        "bins": np.linspace(
+                            0, reference_structure.topology.n_residues, 100
+                        )
+                    },
+                    "js_div": {
+                        "bins": np.linspace(
+                            0, reference_structure.topology.n_residues, 100
+                        )
+                    },
+                },
+            },
+        },
+    }
+    eqm = EnsembleQualityMetrics(metrics)
+    results = eqm(target_ensemble, ref_ensemble)
+    assert len(results) == 8
+
+
+def test_calculator_config_bin_conversion():
+    # Tests to make sure non-int binopts are converted correctly
+    # for EnsembleQualityMetrics instanced from configs
+    metrics = {
+        "EnsembleQualityMetrics": {
+            "features": {
+                "rg": {
+                    "feature_params": {"atom_selection": "name CA"},
+                    "metric_params": {
+                        "js_div": {
+                            "bins": {"start": 0, "stop": 100, "num": 101}
+                        },
+                    },
+                },
+                "ca_distances": {
+                    "feature_params": {"offset": 1},
+                    "metric_params": {
+                        "mse_ldist": {"bins": 101},
+                    },
+                },
+                "a_2D_feature": {
+                    "feature_params": {"offset": 1},
+                    "metric_params": {
+                        "kl_div": {"bins": [101, 101]},
+                    },
+                },
+                "another_2D_feature": {
+                    "feature_params": {"offset": 1},
+                    "metric_params": {
+                        "mse_dist": {
+                            "bins": [
+                                {"start": 0, "stop": 1, "num": 101},
+                                {"start": 0, "stop": 2, "num": 101},
+                            ]
+                        },
+                    },
+                },
+            },
+        },
+    }
+    expected_bins1 = np.linspace(0, 100, 101)
+    expected_bins2 = 101
+    expected_bins3 = [101, 101]
+    expected_bins4 = [np.linspace(0, 1, 101), np.linspace(0, 2, 101)]
+
+    with tempfile.TemporaryDirectory() as tmp:
+        yaml = YAML()
+        yaml.dump(metrics, open(osp.join(tmp, "test.yaml"), "w"))
+        eqm = EnsembleQualityMetrics.from_config(osp.join(tmp, "test.yaml"))
+        np.testing.assert_array_equal(
+            eqm.metrics["features"]["rg"]["metric_params"]["js_div"]["bins"],
+            expected_bins1,
+        )
+        assert (
+            eqm.metrics["features"]["ca_distances"]["metric_params"][
+                "mse_ldist"
+            ]["bins"]
+            == expected_bins2
+        )
+        assert (
+            eqm.metrics["features"]["a_2D_feature"]["metric_params"]["kl_div"][
+                "bins"
+            ]
+            == expected_bins3
+        )
+        assert isinstance(
+            eqm.metrics["features"]["another_2D_feature"]["metric_params"][
+                "mse_dist"
+            ]["bins"],
+            list,
+        )
+        for bins, ebins in zip(
+            eqm.metrics["features"]["another_2D_feature"]["metric_params"][
+                "mse_dist"
+            ]["bins"],
+            expected_bins4,
+        ):
+            np.testing.assert_array_equal(bins, ebins)
+
+
+def test_structural_calculator_config_bin_conversion():
+    # Tests to make sure metric params are stored properly for StructuralQualityMetrics
+    root_dir = Path(__file__).parent.parent.parent
+    cln_path = osp.join(
+        root_dir, "examples", "example_dataset_files", "cln_folded.pdb"
+    )
+    metrics = {
+        "StructuralQualityMetrics": {
+            "reference_structure": cln_path,
+            "features": {
+                "rmsd": {
+                    "feature_params": {"atom_selection": "name CA"},
+                    "metric_params": {"fraction_smaller": {"threshold": 0.25}},
+                }
+            },
+        }
+    }
+
+    expected_thres = 0.25
+
+    with tempfile.TemporaryDirectory() as tmp:
+        yaml = YAML()
+        yaml.dump(metrics, open(osp.join(tmp, "test.yaml"), "w"))
+        eqm = StructuralQualityMetrics.from_config(osp.join(tmp, "test.yaml"))
+        np.testing.assert_array_equal(
+            eqm.metrics["features"]["rmsd"]["metric_params"][
+                "fraction_smaller"
+            ]["threshold"],
+            expected_thres,
+        )
+
+
 def test_general_default_clashes(cln_single_frame):
     # Checks to makes sure a "shrunken" CLN trajecory violates certain clashes
     # between all atoms of the two terminal residues when using the default
@@ -37,7 +237,8 @@ def test_general_default_clashes(cln_single_frame):
 
     ens = cln_single_frame
     original_coords = ens.get_quantity("coords").raw_value
-    ens.set_quantity("coords", 2.0 * original_coords / 3.0)
+    with pytest.warns(UserWarning):
+        ens.set_quantity("coords", 2.0 * original_coords / 3.0)
     clashes = StructuralIntegrityMetrics.general_clashes(
         ens,
         [

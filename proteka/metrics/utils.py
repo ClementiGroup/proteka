@@ -1,7 +1,7 @@
 import numpy as np
 import mdtraj as md
 from ..dataset import Ensemble
-from typing import Union, Tuple, Optional
+from typing import Union, Tuple, Optional, Dict
 from itertools import combinations
 
 __all__ = [
@@ -47,18 +47,16 @@ def get_6_bead_frame():
     """Generate a frame that contains
       6 beads with a predefined geometry.
       Distance between consecutive beads is 0.38 nm
-      
-      0            5   
-       \\          /   
-        1-0.2nm- 4   
+
+      0            5
+       \\          /
+        1-0.2nm- 4
        /          \\
       2___0.38 nm__3
-      
-      Atoms  1, 2, 3 and 4 are in plane, atoms 0 and 5 are out of plane, 90 degrees 
-      
-      
-      
+
+      Atoms  1, 2, 3 and 4 are in plane, atoms 0 and 5 are out of plane, 90 degrees
     """
+
     n_atoms = 6
     d = 0.3800e0
     d_clash = 0.2000e0
@@ -93,6 +91,7 @@ def get_general_distances(
     atom_names: Tuple[str],
     res_offset: int = 1,
     stride: Optional[int] = None,
+    periodic: bool = False,
 ) -> np.ndarray:
     """Compute all distances between two all atom of two specified names. If atom names are different,
     (e.g. ("N", "O")), only name1-name2 distances will be computed, and not name1-name1 nor name2-name2.
@@ -112,6 +111,9 @@ def get_general_distances(
     stride:
         If specified, this stride is applied to the trajectory before the distance
         calculations
+    periodic:
+        If true, minimum-image conventions are used when calculating distances using
+        MDTraj.
 
     Returns
     -------
@@ -157,12 +159,12 @@ def get_general_distances(
     traj = ensemble.get_all_in_one_mdtraj_trj()
     if stride != None:
         traj.xyz = traj.xyz[::stride]
-    distances = md.compute_distances(traj, pruned_pairs)
+    distances = md.compute_distances(traj, pruned_pairs, periodic=periodic)
 
     return distances
 
 
-def get_CLN_trajectory(single_frame=False) -> md.Trajectory:
+def get_CLN_trajectory(single_frame=False, seed=1678543) -> md.Trajectory:
     """Get a random 49 atom CG backbonde + CB model of CLN025 (nanometers),
     with 100 noise-perturbed frames.
     """
@@ -218,9 +220,11 @@ def get_CLN_trajectory(single_frame=False) -> md.Trajectory:
             [-15.763, 3.007, 5.175],
             [-15.601, 3.176, 5.289],
             [-15.675, 3.226, 5.364],
-        ]
+        ],
+        dtype="float64",
     )
     if single_frame == False:
+        np.random.seed(seed)
         coords = coords + 0.01 * np.random.randn(nframes, 49, 3)
     topology = md.Topology()
     chain = topology.add_chain()
