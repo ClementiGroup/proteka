@@ -469,6 +469,81 @@ class Featurizer:
         quantity = Quantity(rmsd, "nanometers", metadata=metadata)
         ensemble.set_quantity("rmsd", quantity)
 
+    def add_helicity(
+        self,
+        ensemble: Ensemble,
+        sigma_squared: float = 0.02,
+        r_0: float = 0.5,
+        residue_indices: Optional[Iterable[int]] = None,
+    ):
+        """Gets helicity for specified ensemble, as described by Rudzinski and Noid
+        (2015, https://pubs.acs.org/doi/pdf/10.1021/ct5009922) :
+
+            Q_helix = (1.0/N) * \\sum_{ij in 1,4 pairs} exp(-((1.0)/(2.0*sigma_squared))*(r_{ij}-r_0)^2)
+
+        where `N` is the number of possible 1-4 carbon alpha pairs in the molecule
+        (up to the specified residues indices) and the constants `sigma_squared`
+        and `r_0` are 0.02 nm^2 and 0.5 nm respectively by default. If `residue_indices`
+        is specified, only the carbon alpha atoms in those specified residues will be
+        included in the calculation of the 1-4 distances used in the helicity computation.
+
+        Parameters
+        ----------
+        ensemble:
+            Ensemble for which helicity should be computed
+        sigma_squared:
+            Helical variance, 0.02 nm^2 by default.
+        r_0:
+            Helical 1-4 average distance, 0.5 nm by default
+        residue_indices:
+            List of zero-based, integer indices that specify which residues should
+            be considered for computing 1-4 carbon alpha pairs
+        """
+
+        traj = ensemble.get_all_in_one_mdtraj_trj()
+        ca_idx = traj.topology.select("name CA")
+        ca_atoms = np.array(list(traj.topology.atoms))[ca_idx]
+        if residue_indices is not None:
+            ca_idx = np.array(
+                [
+                    i
+                    for i in ca_idx
+                    if ca_atoms[i].residue.index in residue_indices
+                ]
+            )
+        print(ca_idx)
+        # 1-4 pair formation
+        pairs_1_4 = []
+        pairs = list(combinations(np.arange(len(ca_idx)), 2))
+        for pair in pairs:
+            a1, a2 = ca_atoms[pair[0]], ca_atoms[pair[1]]
+            if np.abs(a1.residue.index - a2.residue.index) == 3:
+                pairs_1_4.append((pair[0], pair[1]))
+
+        if len(pairs_1_4) == 0:
+            raise RuntimeError(
+                "No 1-4 carbon alpha pairs found in the topology and for the residue selection"
+            )
+
+        n_1_4 = len(pairs_1_4)
+        distances_1_4 = md.compute_distances(traj, pairs_1_4, periodic=False)
+        helicity = (1.0 / n_1_4) * np.exp(
+            -((1.0) / (sigma_squared)) * ((distances_1_4 - r_0) ** 2)
+        )
+        helicity = np.sum(helicity, axis=-1)
+
+        quantity = Quantity(
+            helicity,
+            "dimensionless",
+            metadata={
+                "feature": "helicity",
+                "sigma_squared": sigma_squared,
+                "r_0": r_0,
+                "residue_indices": residue_indices,
+            },
+        )
+        ensemble.set_quantity("helicity", quantity)
+
     def add_rg(
         self, ensemble: Ensemble, atom_selection: Optional[str] = None, **kwargs
     ):
