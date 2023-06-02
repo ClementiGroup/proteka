@@ -40,8 +40,8 @@ scaling = 5
 target_histogram1 = np.array([0.1, 0.2, 0.65, 0.05])
 reference_histogram1 = np.array([0.2, 0.3, 0.4, 0.1])
 
-target_histogram2 = np.array([0.2, 0.2, 0.2, 0.4])
-reference_histogram2 = np.array([0.0, 0.4, 0.3, 0.2])
+target_histogram2 = np.array([0.2, 0.0, 0.4, 0.4])
+reference_histogram2 = np.array([0.0, 0.5, 0.3, 0.2])
 
 reference_kld1 = manual_kl_div(target_histogram1, reference_histogram1)
 reference_jsd1 = manual_js_div(target_histogram1, reference_histogram1)
