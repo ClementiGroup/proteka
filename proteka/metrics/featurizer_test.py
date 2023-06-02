@@ -12,6 +12,7 @@ from proteka.metrics.utils import (
     get_6_bead_frame,
     get_CLN_trajectory,
 )
+from ..dataset.top_utils import top2json, json2top
 
 
 @pytest.fixture
@@ -26,6 +27,19 @@ def get_CLN_frame():
     traj = get_CLN_trajectory(single_frame=True)
     ensemble = Ensemble.from_mdtraj_trj("ref", traj)
     return ensemble
+
+
+@pytest.fixture
+def get_CLN_traj():
+    class ens_factory:
+        def make_ens(self, ca_only=False):
+            traj = get_CLN_trajectory()
+            if ca_only:
+                traj = traj.atom_slice(traj.topology.select("name CA"))
+            ensemble = Ensemble.from_mdtraj_trj("ref", traj)
+            return ensemble
+
+    return ens_factory()
 
 
 @pytest.fixture
@@ -221,10 +235,11 @@ def test_feature_rewriting(grid_polymer):
     rewritten"""
 
     distances = Featurizer.get_feature(grid_polymer, "ca_distances", offset=1)
-    new_distances = Featurizer.get_feature(
-        grid_polymer, "ca_distances", offset=2
-    )
-    assert distances.shape != new_distances.shape
+    with pytest.warns(UserWarning):
+        new_distances = Featurizer.get_feature(
+            grid_polymer, "ca_distances", offset=2
+        )
+        assert distances.shape != new_distances.shape
 
 
 def test_local_contact_number(get_CLN_frame):
@@ -243,16 +258,16 @@ def test_dssp(get_CLN_frame):
     feat.add_dssp(ens, digitize=False)
     simple_dssp = ens.get_quantity("dssp").raw_value
 
-    feat = Featurizer()
-    feat.add_dssp(ens, digitize=True)
+    with pytest.warns(UserWarning):
+        feat.add_dssp(ens, digitize=True)
     simple_dssp_digit = ens.get_quantity("dssp").raw_value
 
-    feat = Featurizer()
-    feat.add_dssp(ens, digitize=False, simplified=False)
+    with pytest.warns(UserWarning):
+        feat.add_dssp(ens, digitize=False, simplified=False)
     full_dssp = ens.get_quantity("dssp").raw_value
 
-    feat = Featurizer()
-    feat.add_dssp(ens, digitize=True, simplified=False)
+    with pytest.warns(UserWarning):
+        feat.add_dssp(ens, digitize=True, simplified=False)
     full_dssp_digit = ens.get_quantity("dssp").raw_value
 
     np.testing.assert_array_equal(simple_dssp.flatten(), ref_dssp_simple)
@@ -262,4 +277,104 @@ def test_dssp(get_CLN_frame):
     np.testing.assert_array_equal(full_dssp.flatten(), ref_dssp_full)
     np.testing.assert_array_equal(
         full_dssp_digit.flatten(), ref_dssp_full_digit
+    )
+
+
+def test_rmsd_syntax_raise(get_CLN_traj):
+    # Check to see if only one indexing choice can be used at a time
+    ens = get_CLN_traj.make_ens()
+    ref_structure = ens.get_all_in_one_mdtraj_trj()[0]
+    feat = Featurizer()
+    with pytest.raises(TypeError):
+        feat.add_rmsd(
+            ens,
+            ref_structure,
+            atom_selection="name CA",
+            atom_indices=np.arange(10),
+            ref_atom_indices=np.arange(10),
+        )
+
+
+def test_rmsd(get_CLN_traj):
+    # test rmsd calculation
+    ens = get_CLN_traj.make_ens()
+    traj = ens.get_all_in_one_mdtraj_trj()
+    ref_structure = traj[0]
+
+    manual_rmsd = md.rmsd(traj, ref_structure)
+
+    feat = Featurizer()
+    feat.add_rmsd(ens, ref_structure)
+    rmsd = ens.get_quantity("rmsd").raw_value
+    # we need to add some tolerance to the test or it breaks
+    np.testing.assert_array_almost_equal(rmsd, manual_rmsd, decimal=4)
+
+
+def test_rmsd_atom_selection(get_CLN_traj):
+    # Check to see if only one indexing choice can be used at a time
+    ens = get_CLN_traj.make_ens()
+    ca_ens = get_CLN_traj.make_ens(ca_only=True)
+    ref_structure = ens.get_all_in_one_mdtraj_trj()[0]
+    ca_traj = ca_ens.get_all_in_one_mdtraj_trj()
+
+    manual_rmsd = md.rmsd(
+        ca_traj,
+        ref_structure,
+        atom_indices=ca_traj.topology.select("name CA"),
+        ref_atom_indices=ref_structure.topology.select("name CA"),
+    )
+
+    feat = Featurizer()
+    feat.add_rmsd(
+        ca_ens,
+        ref_structure,
+        atom_selection="name CA",
+    )
+    rmsd = ca_ens.get_quantity("rmsd").raw_value
+    np.testing.assert_array_equal(rmsd, manual_rmsd)
+
+
+def test_rmsd_recompute(get_CLN_traj):
+    # Checks to make sure that features are recomputed if different options are specified
+    # Currently this is a separate test because the rmsd overwrite checks are more complicated
+    ens = get_CLN_traj.make_ens()
+    ref_structure = ens.get_all_in_one_mdtraj_trj()[0]
+
+    feat = Featurizer()
+    feat.add_rmsd(ens, ref_structure)
+
+    stored_rmsd = ens.get_quantity("rmsd").raw_value
+
+    # change coords
+    ref_structure.xyz[0, 0, :] = ref_structure.xyz[0, -1, :]
+
+    with pytest.warns(UserWarning):
+        feat.add_rmsd(ens, ref_structure)
+
+    np.testing.assert_raises(
+        AssertionError,
+        np.testing.assert_array_equal,
+        stored_rmsd,
+        ens.get_quantity("rmsd").raw_value,
+    )
+
+    # change top
+    ref_structure = ens.get_all_in_one_mdtraj_trj()[0]
+    old_top = top2json(ref_structure.topology)
+
+    # Mutate first residue, but don't change the coords
+    old_top = list(old_top)
+    old_top[73] = "A"
+    old_top[74] = "S"
+    old_top[75] = "P"
+    old_top = "".join(old_top)
+
+    ref_structure.topology = json2top(old_top)
+
+    with pytest.warns(UserWarning):
+        feat.add_rmsd(ens, ref_structure)
+
+    np.testing.assert_array_equal(
+        stored_rmsd,
+        ens.get_quantity("rmsd").raw_value,
     )

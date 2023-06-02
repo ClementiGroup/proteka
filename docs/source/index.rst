@@ -22,6 +22,9 @@ Contents
    :maxdepth: 2
 
    dev/dev
+   ensemble
+   metrics
+   quantity
    bibliography
 
 

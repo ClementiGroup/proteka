@@ -1,5 +1,5 @@
-"""Featurizer takes a proteka.dataset.Ensemble and and extract features from it
-    """
+"""Featurizer takes a proteka.dataset.Ensemble and and extract features from it"""
+import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 import json
@@ -9,6 +9,7 @@ import mdtraj as md
 from typing import Dict, Optional, List, Tuple
 from ..dataset import Ensemble
 from ..quantity import Quantity
+from ..dataset.top_utils import top2json
 from typing import Callable, Dict, List, Optional, Tuple
 from itertools import combinations
 
@@ -163,7 +164,7 @@ class TICATransform(Transform):
         """
         Instantiate Transformer from a json string
         """
-        return cls.from_dict(json.loads(string))
+        return cls.from_dict(json.loads(input_string))
 
     @staticmethod
     def from_hdf5(self, h5file: str) -> Transform:
@@ -268,10 +269,10 @@ class Featurizer:
                 consecutives.append(atom_list)
         return consecutives
 
-    def add(self, ensemble: Ensemble, feature: str, **kwargs):
+    def add(self, ensemble: Ensemble, feature: str, *args, **kwargs):
         """Add a new feature to the Ensemble object"""
         if hasattr(self, "add_" + feature):
-            getattr(self, "add_" + feature)(ensemble, **kwargs)
+            getattr(self, "add_" + feature)(ensemble, *args, **kwargs)
         else:
             allowed_features = [
                 attr for attr in dir(self) if attr.startswith("add_")
@@ -324,7 +325,6 @@ class Featurizer:
         self.validate_c_alpha(ensemble)
         # get all the pairs
         ca_pairs_all = list(combinations(ca_atoms, 2))
-        print(ca_pairs_all)
         # select pairs compatible with offset
         ca_pairs = list(
             filter(
@@ -336,7 +336,6 @@ class Featurizer:
                 ca_pairs_all,
             )
         )
-        print(ca_pairs)
         # Compute distances
         ca_distances = md.compute_distances(
             trajectory, ca_pairs, periodic=False
@@ -396,7 +395,11 @@ class Featurizer:
         ensemble.set_quantity("psi", quantity)
 
     def add_rmsd(
-        self, ensemble: Ensemble, reference_structure: md.Trajectory, **kwargs
+        self,
+        ensemble: Ensemble,
+        reference_structure: md.Trajectory,
+        atom_selection: Optional[str] = None,
+        **kwargs,
     ):
         """Get RMSD of a subset of atoms
         reference: Reference mdtraj.Trajectory object
@@ -406,23 +409,102 @@ class Featurizer:
         ----------
         reference_structure:
             Reference structure from which RMSD calculations are made
+        atom_selection:
+            MDTraj atom selection phrase to specify which atoms should contribute
+            to the RMSD calculation for both the target AND the reference structure.
+            This option can be used to ensure that consitent atom sets are used for
+            targets and references at different resolutions.
         kwargs:
             kwarg options for `mdtraj.rmsd()`,
             for example `{"frame": 0, "atom_indices": np.arange(10), "parallel": True,
-            "precentered": False}`. See
-            help(mdtraj.rmsd) for more information.
+            "precentered": False, "ref_atom_indices": np.arange(10,20)}`. See
+            help(mdtraj.rmsd) for more information. Note that if `atom_selection` is
+            specified, kwargs cannot contain atom_indices or ref_atom_indices entries
+            or a TypeError will be raised by mdtraj.rmsd.
         """
 
         trajectory = ensemble.get_all_in_one_mdtraj_trj()
-        rmsd = md.rmsd(trajectory, reference_structure, **kwargs)
-        quantity = Quantity(rmsd, "nanometers", metadata={"feature": "rmsd"})
+        # store for serialization
+        ref_coords = reference_structure.xyz.tolist()
+        ref_top = top2json(reference_structure.topology)
+
+        if atom_selection is not None:
+            target_inds = trajectory.topology.select(atom_selection)
+            ref_inds = reference_structure.topology.select(atom_selection)
+            assert len(target_inds) == len(ref_inds)
+
+            # If atom_indices/ref_atom_indices is accidently repeated in
+            # **kwargs, it will be caught by a SyntaxError :)
+            rmsd = md.rmsd(
+                trajectory,
+                reference_structure,
+                atom_indices=target_inds,
+                ref_atom_indices=ref_inds,
+                **kwargs,
+            )
+        else:
+            rmsd = md.rmsd(
+                trajectory,
+                reference_structure,
+                **kwargs,
+            )
+
+        metadata = {
+            "feature": "rmsd",
+            "reference_structure": {
+                "coords": ref_coords,
+                "top": ref_top,
+            },
+            "atom_selection": atom_selection,
+        }
+
+        # Cannot use `update` method if kwargs is None/{}
+        if kwargs is not None:
+            for k, v in kwargs.items():
+                if isinstance(v, np.ndarray):
+                    metadata[k] = v.tolist()
+                else:
+                    metadata[k] = v
+
+        quantity = Quantity(rmsd, "nanometers", metadata=metadata)
         ensemble.set_quantity("rmsd", quantity)
 
-    def add_rg(self, ensemble: Ensemble):
-        """Get radius of gyration for each structure in an ensemble"""
+    def add_rg(
+        self, ensemble: Ensemble, atom_selection: Optional[str] = None, **kwargs
+    ):
+        """Get radius of gyration for each structure in an ensemble. Additional
+        kwargs are passed to `mdtraj.compute_rg` - see
+        https://mdtraj.org/1.9.4/api/generated/mdtraj.compute_rg.html for
+        more details.
+
+        Parameters
+        ----------
+        ensemble:
+            Ensemble for which the radius of gyration should be computed
+        atom_selection:
+            MDTraj atom selection string specifying certain subsets of atoms
+            to contribute to the radius of gyration calculation (eg, "name CA" for
+            only using carbon alpha atoms)
+        """
+
         trajectory = ensemble.get_all_in_one_mdtraj_trj()
-        rg = md.compute_rg(trajectory)
-        quantity = Quantity(rg, "nanometers", metadata={"feature": "rg"})
+        if atom_selection != None:
+            trajectory = trajectory.atom_slice(
+                trajectory.topology.select(atom_selection)
+            )
+        rg = md.compute_rg(trajectory, **kwargs)
+
+        metadata = {"feature": "rg", "atom_selection": atom_selection}
+
+        # Cannot use `update` method if kwargs is None/{}
+        if kwargs is not None:
+            for k, v in kwargs.items():
+                if isinstance(v, np.ndarray):
+                    metadata[k] = v.tolist()
+                else:
+                    metadata[k] = v
+
+        quantity = Quantity(rg, "nanometers", metadata=metadata)
         ensemble.set_quantity("rg", quantity)
 
     def add_end2end_distance(self, ensemble: Ensemble):
@@ -435,6 +517,8 @@ class Featurizer:
         # Get the pair of the first and last CA atoms
         ca_pair = [[ca_atoms[0], ca_atoms[-1]]]
         distance = md.compute_distances(trajectory, ca_pair, periodic=False)
+        # reshape to have the samme shape than frames
+        distance = distance.reshape(-1)
         quantity = Quantity(
             distance,
             "nanometers",
@@ -504,8 +588,12 @@ class Featurizer:
 
         quantity = Quantity(
             dssp_codes,
-            None,
-            metadata={"feature": "dssp"},
+            "dimensionless",
+            metadata={
+                "feature": "dssp",
+                "simpflified": simplified,
+                "digitize": digitize,
+            },
         )
         ensemble.set_quantity("dssp", quantity)
         return
@@ -524,6 +612,8 @@ class Featurizer:
 
         Parameter
         ---------
+        Ensemble:
+            Ensemble for which local contact numbers should be computed
         atom_type:
             Either "CA" or "CB". Determines the heavy atoms used to determine
             contacts. If "CB" is used, all contacts for involving GLY will be
@@ -553,15 +643,18 @@ class Featurizer:
             atom_inds = trajectory.topology.select("name {}".format(atom_type))
         if atom_type == "CB":
             atom_inds = trajectory.topology.select(
-                "name {} or (name CA and resname GLY)".format(atom_type)
+                "name {} or (name CA and resname GLY) or (name CA and resname IGL)".format(
+                    atom_type
+                )
             )
         assert all(np.diff(atom_inds) > 0)
+
         residue_inds = np.array([res.index for res in residues])
 
         assert len(residue_inds) == len(atom_inds)
+
         # grab fully connected pairs
         ind1, ind2 = np.triu_indices(len(atom_inds), 1)
-
         # apply residue neighbor restriction
         pairs = np.array([atom_inds[ind1], atom_inds[ind2]]).T
         res_pairs = np.array([residue_inds[ind1], residue_inds[ind2]]).T
@@ -577,20 +670,102 @@ class Featurizer:
         # compute local contacts
         contacts = 1.0 / (1.0 + np.exp(beta * (distances - cut)))
         contacts = md.geometry.squareform(contacts, res_pairs)
+
         contact_per_atom = np.sum(contacts, axis=-1)
+
         assert contact_per_atom.shape[-1] == len(atom_inds)
 
         quantity = Quantity(
             contact_per_atom,
             None,
-            metadata={"feature": "local_contact_number"},
+            metadata={
+                "feature": "local_contact_number",
+                "atom_type": atom_type,
+                "min_res_dist": min_res_dist,
+                "cut": cut,
+                "beta": beta,
+            },
         )
         ensemble.set_quantity("local_contact_number", quantity)
         return
 
+    def add_temporary_feature(
+        self,
+        ensemble: Ensemble,
+        name: str,
+        feat_func: Callable,
+        *args,
+        units: Optional[str] = None,
+        warn_user=True,
+        **kwargs,
+    ):
+        """Generates temporary feautures according to a user defined transform, `feat_func`, with args
+        `feat_args`, and kwargs `feat_kwargs` saved as a Quantity with name `name`.
+
+        WARNING: This method adds temporary, non-serializable features. They will NOT be included
+        in serialized versions of the ensemble.
+
+        Parameters
+        ----------
+        ensemble:
+            Ensemble to which the feature should be computed for and added to
+        name:
+            String representing the name of the feature
+        feat_func:
+            Callable representing the function that generates the feature
+        units:
+            If supplied, specifies the units of the feature
+        """
+
+        if warn_user:
+            warnings.warn(
+                "This functionality does not support serialization. Please "
+                "use for temporary analyses only."
+            )
+
+        feature = feat_func(*args, **kwargs)
+
+        quantity = Quantity(
+            feature,
+            units,
+            metadata={"feature": name},
+        )
+        ensemble.set_quantity(name, quantity)
+
+    @staticmethod
+    def _reference_structure_equality(
+        input_structure: md.Trajectory,
+        serialized_structure: Dict,
+    ) -> bool:
+        """Helper method for testing reference structure serialized equality for RMSD recomputation
+
+        Parameters
+        ----------
+        input_structures:
+            input MDTraj single frame Trajectory for proposed RMSD calculations
+        serialized_structure:
+            Serialized reference structure
+
+        Returns
+        -------
+        bool:
+            If the coordinates and topologies between the proposed and stored structures are
+            the same, True is returned. Else, False is returned.
+        """
+
+        ref_coords = input_structure.xyz.tolist()
+        ref_top = top2json(input_structure.topology)
+        stored_coords = serialized_structure["coords"]
+        stored_top = serialized_structure["top"]
+
+        equals = []
+        equals.append(stored_top == ref_top)
+        equals.append(stored_coords == ref_coords)
+        return all(equals)
+
     @staticmethod
     def get_feature(
-        ensemble: Ensemble, feature: str, recompute=False, **kwargs
+        ensemble: Ensemble, feature: str, *args, recompute=False, **kwargs
     ):
         """Get feature from an Ensemble object. If it is not there,
         compute it and store it in the Ensemble object
@@ -606,10 +781,34 @@ class Featurizer:
         else:
             # Need to check, that current feature has the same
             # parameters as the requested one
-            for key, value in kwargs.items():
-                if not ensemble[feature].metadata.get(key) == value:
+            if feature == "rmsd" and len(args) == 1:
+                # Handle RMSD structure serialization (as arg)
+                reference_structure = args[0]
+                if not Featurizer._reference_structure_equality(
+                    reference_structure,
+                    ensemble[feature].metadata["reference_structure"],
+                ):
                     recompute = True
+
+            for key, value in kwargs.items():
+                if feature == "rmsd" and key == "reference_structure":
+                    # Handle RMSD structure serialization (as kwarg)
+                    reference_structure = kwargs[key]
+                    if not Featurizer._reference_structure_equality(
+                        reference_structure,
+                        ensemble[feature].metadata["reference_structure"],
+                    ):
+                        recompute = True
+                        break
+                else:
+                    if not ensemble[feature].metadata.get(key) == (
+                        value.tolist()
+                        if isinstance(value, np.ndarray)
+                        else value
+                    ):
+                        recompute = True
+                        break
         if recompute:
             featurizer = Featurizer()
-            featurizer.add(ensemble, feature, **kwargs)
+            featurizer.add(ensemble, feature, *args, **kwargs)
         return getattr(ensemble, feature)
