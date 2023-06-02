@@ -225,7 +225,7 @@ class StructuralQualityMetrics(IMetrics):
     """Metrics that compare an ensemble to a single structure
 
         {
-            "reference_structure": md.core.trajectory.Trajectory
+            "reference_structure": md.Trajectory
             "features": {
                 "rmsd": {
                     "feature_params": {"atom_selection": "name CA"},
