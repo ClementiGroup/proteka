@@ -734,7 +734,7 @@ class Featurizer:
 
     @staticmethod
     def _reference_structure_equality(
-        input_structure: md.core.trajectory.Trajectory,
+        input_structure: md.Trajectory,
         serialized_structure: Dict,
     ) -> bool:
         """Helper method for testing reference structure serialized equality for RMSD recomputation
