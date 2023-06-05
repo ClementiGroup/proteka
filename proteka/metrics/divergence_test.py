@@ -20,8 +20,9 @@ def manual_kl_div(h1, h2):
     threshold = 1e-8
     h1 = h1 / np.sum(h1)
     h2 = h2 / np.sum(h2)
-    valid_bins = np.logical_and(h1 > threshold, h2 > threshold)
-    return np.sum(h2[valid_bins] * np.log(h2[valid_bins] / h1[valid_bins]))
+    h1 = np.array([x if x > threshold else threshold for x in h1])
+    h2 = np.array([x if x > threshold else threshold for x in h2])
+    return np.sum(h2 * np.log(h2 / h1))
 
 
 def manual_js_div(h1, h2):
@@ -114,7 +115,8 @@ def test_kl_divergence():
     """
     assert np.isclose(
         kl_divergence(
-            target_histogram1, reference_histogram1, intersect_only=True
+            target_histogram1,
+            reference_histogram1,
         ),
         reference_kld1,
     )
@@ -126,7 +128,8 @@ def test_kl_divergence_3():
     """
     print(reference_kld3)
     proteka_kl = kl_divergence(
-        target_histogram3, reference_histogram3, intersect_only=False
+        target_histogram3,
+        reference_histogram3,
     )
     assert np.isclose(proteka_kl, reference_kld3, rtol=5e-2)
 
@@ -138,7 +141,6 @@ def test_kl_divergence_4():
     proteka_kl = kl_divergence(
         target_histogram4,
         reference_histogram4,
-        intersect_only=True,
         threshold=1e-8,
         replace_value=1e-12,
     )
@@ -153,7 +155,6 @@ def test_kl_divergence2d():
         kl_divergence(
             target_histogram1.reshape(2, 2),
             reference_histogram1.reshape(2, 2),
-            intersect_only=True,
         ),
         reference_kld1,
     )
@@ -167,7 +168,6 @@ def test_kl_divergence_normalized():
         kl_divergence(
             target_histogram1 * scaling,
             reference_histogram1 * scaling,
-            intersect_only=True,
             threshold=1e-8,
         ),
         reference_kld1,
@@ -255,7 +255,8 @@ def test_vector_kl_divergence():
     np.testing.assert_allclose(
         ref_vector_kl,
         vector_kl_divergence(
-            target_vector_hist, ref_vector_hist, intersect_only=True
+            target_vector_hist,
+            ref_vector_hist,
         ),
     )
 
@@ -263,5 +264,7 @@ def test_vector_kl_divergence():
 def test_vector_js_divergence():
     """Test basic functionality"""
     np.testing.assert_allclose(
-        ref_vector_js, vector_js_divergence(ref_vector_hist, target_vector_hist)
+        ref_vector_js,
+        vector_js_divergence(ref_vector_hist, target_vector_hist),
+        rtol=1e-6,
     )
