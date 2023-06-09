@@ -42,10 +42,13 @@ def clean_distribution(
     -------
     new_array:
         A new distribution where values below the threshold are
-        replaced by said threshold value
+        replaced by said threshold value. This array is also renormalized
+        after threshold adjustment.
     """
 
-    new_array = np.array([x if x > threshold else threshold for x in array])
+    new_array = np.where(array > threshold, array, threshold)
+    # renormalize
+    new_array = new_array / np.sum(new_array)
     return new_array
 
 
