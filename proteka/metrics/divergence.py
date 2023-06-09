@@ -25,7 +25,6 @@ __all__ = [
 
 def clean_distribution(
     array: np.ndarray,
-    value: float = 1e-8,
     threshold: float = 1e-8,
 ):
     """Cleans input distributions
