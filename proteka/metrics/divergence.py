@@ -104,6 +104,13 @@ def kl_divergence(
         reference_normalized = clean_distribution(
             reference_normalized, threshold=threshold
         )
+    if threshold is None:
+        if any(target_normalized == 0) or any(reference_normalized == 0):
+            raise RuntimeError(
+                "At least one reference or target bin contains zero counts, and the KL "
+                "divergence is undefined. If you wish to override this behavior, please "
+                "specify a (small) threshold with which empty bins may be filled."
+            )
     kl = rel_entr(reference_normalized, target_normalized)
     return kl.sum()
 

@@ -128,8 +128,7 @@ def test_kl_divergence_3():
     """
     print(reference_kld3)
     proteka_kl = kl_divergence(
-        target_histogram3,
-        reference_histogram3,
+        target_histogram3, reference_histogram3, threshold=1e-8
     )
     assert np.isclose(proteka_kl, reference_kld3, rtol=5e-2)
 
@@ -146,6 +145,18 @@ def test_kl_divergence_4():
     assert np.isclose(proteka_kl, reference_kld4, rtol=1e-1)
 
 
+def test_kl_divergence_raise():
+    """
+    Test basic functionality
+    """
+
+    with pytest.raises(RuntimeError):
+        proteka_kl = kl_divergence(
+            target_histogram2,
+            reference_histogram2,
+        )
+
+
 def test_kl_divergence2d():
     """
     Test basic functionality
@@ -154,6 +165,7 @@ def test_kl_divergence2d():
         kl_divergence(
             target_histogram1.reshape(2, 2),
             reference_histogram1.reshape(2, 2),
+            threshold=1e-8,
         ),
         reference_kld1,
     )
