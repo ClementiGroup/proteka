@@ -50,7 +50,7 @@ class HDF5Group:
         """
         return self._attrs
 
-    def __dir__(self) -> list[str]:
+    def __dir__(self) -> List[str]:
         return [*super().__dir__(), *self._data.keys()]
 
     def __getitem__(self, key):
