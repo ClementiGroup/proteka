@@ -1,3 +1,4 @@
+from typing import Optional
 import numpy as np
 from scipy.special import rel_entr
 from scipy.stats import wasserstein_distance
@@ -54,7 +55,7 @@ def clean_distribution(
 def kl_divergence(
     target: np.ndarray,
     reference: np.ndarray,
-    threshold: float = 1e-8,
+    threshold: Optional[float] = None,
     **kwagrs,
 ) -> float:
     r"""
@@ -95,13 +96,14 @@ def kl_divergence(
     target_normalized = target_normalized.flatten()
     reference_normalized = reference_normalized.flatten()
 
-    target_normalized = clean_distribution(
-        target_normalized,
-        threshold=threshold,
-    )
-    reference_normalized = clean_distribution(
-        reference_normalized, threshold=threshold
-    )
+    if threshold is not None:
+        target_normalized = clean_distribution(
+            target_normalized,
+            threshold=threshold,
+        )
+        reference_normalized = clean_distribution(
+            reference_normalized, threshold=threshold
+        )
     kl = rel_entr(reference_normalized, target_normalized)
     return kl.sum()
 
@@ -109,7 +111,7 @@ def kl_divergence(
 def js_divergence(
     target: np.ndarray,
     reference: np.ndarray,
-    threshold: float = 1e-8,
+    threshold: Optional[float] = 1e-8,
 ) -> float:
     """
     Compute Jensen_Shannon divergence between specified data sets.

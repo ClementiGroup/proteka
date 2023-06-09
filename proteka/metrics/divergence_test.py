@@ -142,7 +142,6 @@ def test_kl_divergence_4():
         target_histogram4,
         reference_histogram4,
         threshold=1e-8,
-        replace_value=1e-12,
     )
     assert np.isclose(proteka_kl, reference_kld4, rtol=1e-1)
 
