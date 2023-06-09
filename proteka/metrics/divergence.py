@@ -55,7 +55,6 @@ def kl_divergence(
     target: np.ndarray,
     reference: np.ndarray,
     threshold: float = 1e-8,
-    replace_value: float = 1e-8,
     **kwagrs,
 ) -> float:
     r"""
@@ -75,10 +74,7 @@ def kl_divergence(
                 Target and reference probability distributions (histograms).
                 Should have the same shape
     threshold : float, 1e-8
-        Bin is not included in the summation if its value is less than the threshold
-    replace_value:
-        if the bin has a normalized count lower than the `threshold`, then the bin gets
-        replaced with this value instead
+        Bin value is replaced by this threshold if it is lower than this threshold
 
     Returns : float
     ------
@@ -100,10 +96,11 @@ def kl_divergence(
     reference_normalized = reference_normalized.flatten()
 
     target_normalized = clean_distribution(
-        target_normalized, threshold=threshold, value=replace_value
+        target_normalized,
+        threshold=threshold,
     )
     reference_normalized = clean_distribution(
-        reference_normalized, threshold=threshold, value=replace_value
+        reference_normalized, threshold=threshold
     )
     kl = rel_entr(reference_normalized, target_normalized)
     return kl.sum()
@@ -113,7 +110,6 @@ def js_divergence(
     target: np.ndarray,
     reference: np.ndarray,
     threshold: float = 1e-8,
-    replace_value: float = 1e-8,
 ) -> float:
     """
     Compute Jensen_Shannon divergence between specified data sets.
@@ -124,12 +120,8 @@ def js_divergence(
     target, reference : np.typing.ArrayLike
                 Target and reference probability distributions (histograms).
                 Should have the same shape
-
     threshold : float, 1e-8
-        Bin is not included in the summation if its value is less than the threshold
-    replace_value:
-        if the bin has a normalized count lower than the `threshold` then the bin gets
-        replaced with this value instead
+        Bin value is replaced by this threshold if it is lower than this threshold
 
     Returns : float
     ------
@@ -144,13 +136,11 @@ def js_divergence(
             M,
             target_normalized,
             threshold=threshold,
-            replace_value=replace_value,
         )
         + kl_divergence(
             M,
             reference_normalized,
             threshold=threshold,
-            replace_value=replace_value,
         )
     )
     return jsd
@@ -228,12 +218,6 @@ def mse_dist(
        Target and reference probability distributions (histograms).
        Should have the same shape
 
-    threshold : float, 1e-8
-       Bin is not included in the summation if its value is less than the threshold
-    replace_value:
-       if the bin has a normalized count lower than the `threshold` then the bin gets
-       replaced with this value instead
-
     Returns : float
     ------
     Mean Squared Error of the target from the reference
@@ -266,7 +250,6 @@ def mse_log(
     target: np.ndarray,
     reference: np.ndarray,
     threshold: float = 1e-8,
-    replace_value: float = 1e-10,
     use_optimal_offset: bool = True,
 ) -> float:
     r"""
@@ -283,12 +266,8 @@ def mse_log(
     target, reference : np.ndarray
        Target and reference probability distributions (histograms).
        Should have the same shape
-
     threshold : float, 1e-8
-       Bin is not included in the summation if its value is less than the threshold
-    replace_value:
-       if the bin has a normalized count lower than the `threshold` then the bin gets
-       replaced with this value instead
+        Bin value is replaced by this threshold if it is lower than this threshold
 
     Returns : float
     -------
@@ -313,10 +292,12 @@ def mse_log(
     reference_normalized = reference_normalized.flatten()
 
     target_normalized = clean_distribution(
-        target_normalized, threshold=threshold, value=replace_value
+        target_normalized,
+        threshold=threshold,
     )
     reference_normalized = clean_distribution(
-        reference_normalized, threshold=threshold, value=replace_value
+        reference_normalized,
+        threshold=threshold,
     )
     log_ref = np.log(reference_normalized)
     log_tar = np.log(target_normalized)
@@ -355,7 +336,6 @@ def wasserstein(
     target: np.ndarray,
     reference: np.ndarray,
     threshold: float = 1e-8,
-    replace_value: float = 1e-8,
 ) -> float:
     """
     Compute Wasserstein distance between specified data sets.
@@ -366,10 +346,7 @@ def wasserstein(
         Target and reference probability distributions (histograms).
         Should have the same shape
     threshold : float, 1e-8
-       Bin is not included in the summation if its value is less than the threshold
-    replace_value:
-       if the bin has a normalized count lower than the `threshold` then the bin gets
-       replaced with this value instead
+        Bin value is replaced by this threshold if it is lower than this threshold
 
     Returns : float
     ------
@@ -383,10 +360,10 @@ def wasserstein(
     reference_normalized = reference / np.sum(reference)
 
     target_normalized = clean_distribution(
-        target_normalized, threshold=threshold, value=replace_value
+        target_normalized, threshold=threshold
     )
     reference_normalized = clean_distribution(
-        reference_normalized, threshold=threshold, value=replace_value
+        reference_normalized, threshold=threshold
     )
     n = len(reference_normalized)
 
@@ -402,7 +379,6 @@ def vector_kl_divergence(
     target: np.ndarray,
     reference: np.ndarray,
     threshold: float = 1e-8,
-    replace_value: float = 1e-8,
 ) -> np.ndarray:
     """
     Compute independent KL divergences between specified vector data sets.
@@ -413,10 +389,7 @@ def vector_kl_divergence(
        Target and reference probability distributions (histograms).
        Should have the same shape
     threshold : float, 1e-8
-       Bin is not included in the summation if its value is less than the threshold
-    replace_value:
-       if the bin has a normalized count lower than the `threshold` then the bin gets
-       replaced with this value instead
+        Bin value is replaced by this threshold if it is lower than this threshold
 
     Returns : np.ndarray
     -------
@@ -432,7 +405,6 @@ def vector_kl_divergence(
             target[:, i],
             reference[:, i],
             threshold=threshold,
-            replace_value=replace_value,
         )
     return kld
 
@@ -441,7 +413,6 @@ def vector_js_divergence(
     target: np.ndarray,
     reference: np.ndarray,
     threshold: float = 1e-8,
-    replace_value: float = 1e-8,
 ) -> np.ndarray:
     """
     Compute independent JS divergences between specified vector data sets.
@@ -452,12 +423,8 @@ def vector_js_divergence(
     target, reference : np.typing.ArrayLike
        Target and reference probability distributions (histograms).
        Should have the same shape
-
     threshold : float, 1e-8
-       Bin is not included in the summation if its value is less than the threshold
-    replace_value:
-       if the bin has a normalized count lower than the `threshold` then the bin gets
-       replaced with this value instead
+        Bin value is replaced by this threshold if it is lower than this threshold
 
     Returns : np.ndarray
     -------
@@ -474,7 +441,6 @@ def vector_js_divergence(
             target[:, i],
             reference[:, i],
             threshold=threshold,
-            replace_value=replace_value,
         )
     return jsd
 
@@ -547,7 +513,6 @@ def vector_mse_log(
     target: np.ndarray,
     reference: np.ndarray,
     threshold: float = 1e-8,
-    replace_value: float = 1e-8,
 ) -> float:
     r"""
     Compute vector Mean Squared Error between the log of distributions of specified data sets.
@@ -563,9 +528,6 @@ def vector_mse_log(
        Should have the same shape
     threshold : float, 1e-8
        Bin is not included in the summation if its value is less than the threshold
-    replace_value:
-       if the bin has a normalized count lower than the `threshold` then the bin gets
-       replaced with this value instead
 
     Returns : float
     ------
@@ -584,7 +546,6 @@ def vector_mse_log(
             target[:, i],
             reference[:, i],
             threshold=threshold,
-            replace_value=replace_value,
         )
 
     return val
@@ -594,7 +555,6 @@ def vector_wasserstein(
     target: np.ndarray,
     reference: np.ndarray,
     threshold: float = 1e-8,
-    replace_value: float = 1e-8,
 ) -> float:
     """
     Compute Wasserstein distance between specified data sets.
@@ -605,14 +565,10 @@ def vector_wasserstein(
     target, reference : np.typing.ArrayLike
                 Target and reference probability distributions (histograms).
                 Should have the same shape
+    threshold : float, 1e-8
+       Bin is not included in the summation if its value is less than the threshold
 
-     threshold : float, 1e-8
-        Bin is not included in the summation if its value is less than the threshold
-     replace_value:
-        if the bin has a normalized count lower than the `threshold` then the bin gets
-        replaced with this value instead
-
-     Returns : float
+    Returns : float
      ------
     Mean Squared Error of the target from the reference
 
@@ -629,7 +585,6 @@ def vector_wasserstein(
             target[:, i],
             reference[:, i],
             threshold=threshold,
-            replace_value=replace_value,
         )
 
     return val
