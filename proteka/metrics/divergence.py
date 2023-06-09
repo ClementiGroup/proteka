@@ -35,16 +35,14 @@ def clean_distribution(
     array:
         input normalized distribution
     threshold : float, 1e-8
-        Bin is not included in the summation if its value is less than the threshold
-    replace_value:
-        if the bin has a normalized count lower than the `threshold` then the bin gets
-        replaced with this value instead
+        if the bin value is lower than this threshold, its value
+        is replaced with this threshold.
 
     Returns
     -------
     new_array:
         A new distribution where values below the threshold are
-        replaced by `value`
+        replaced by said threshold value
     """
 
     new_array = np.array([x if x > threshold else threshold for x in array])
