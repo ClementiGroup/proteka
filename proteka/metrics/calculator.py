@@ -468,7 +468,15 @@ class EnsembleQualityMetrics(IMetrics):
     )
 
     scalar_features = set(
-        ["rg", "ca_distances", "rmsd", "end2end_distance", "tic1", "tic2"]
+        [
+            "rg",
+            "ca_distances",
+            "rmsd",
+            "end2end_distance",
+            "tic1",
+            "tic2",
+            "fraction_native_contacts",
+        ]
     )
     vector_features = set(["local_contact_number", "dssp"])
     features_2d = set(["tic1_tic2"])
