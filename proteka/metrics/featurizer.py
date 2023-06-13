@@ -507,6 +507,88 @@ class Featurizer:
         quantity = Quantity(rg, "nanometers", metadata=metadata)
         ensemble.set_quantity("rg", quantity)
 
+    def add_fraction_native_contacts(
+        self,
+        ensemble: Ensemble,
+        reference_structure: md.Trajectory,
+        beta: float = 50,
+        lam: float = 1.8,
+        native_cutoff: float = 0.45,
+        **kwargs,
+    ):
+        """Get fraction of native contacts given a reference
+        structure. Implemenation based on the MDTraj example
+        found here: https://mdtraj.org/1.9.3/examples/native-contact.html
+        and as reported in:
+
+        Best, Hummer, and Eaton, "Native contacts determine protein folding
+        mechanisms in atomistic simulations" PNAS (2013)
+
+        Parameters
+        ----------
+        ensemble:
+            ensemble for which faction of native contacts should be
+            computed.
+        reference_structure:
+            Reference (native) structure from which native contacts should be
+            defined
+        beta:
+            Contact membership variance. Default is 50 nm^-1
+        lam:
+            Native contact scaling. Default is 1.8
+        native_cutoff:
+            Cutoff below which two atoms are considered to be in contact. Default
+            is 0.45 nm.
+        kwargs:
+            Keyword arguements that are passed to `mdtraj.compute_contacts`. See
+            help(mdtraj.compute_contacts) or
+            https://mdtraj.org/1.9.4/api/generated/mdtraj.compute_contacts.html
+            for more information.
+        """
+
+        if reference_structure.n_frames != 1:
+            raise ValueError(
+                f"Native structure has {reference_structure.n_frames} frames, but should only have 1."
+            )
+        native_coords = reference_structure.xyz.tolist()
+        native_top = top2json(reference_structure.topology)
+
+        traj = ensemble.get_all_in_one_mdtraj_trj()
+
+        # compute native contacts and residue pairs
+        nat_dist, nat_res_pairs = md.compute_contacts(
+            reference_structure, **kwargs
+        )
+        nat_res_pairs = nat_res_pairs[nat_dist.squeeze() < native_cutoff]
+
+        # compute contact distances for these pairs over the trajectory
+        traj_distances = md.compute_distances(traj, nat_res_pairs)
+
+        # compute native distances for the same pairs
+        r_0 = md.compute_distances(reference_structure, nat_res_pairs)
+        q = np.mean(
+            1.0 / (1 + np.exp(beta * (traj_distances - lam * r_0))), axis=1
+        )
+
+        metadata = {
+            "feature": "faction_native_contacts",
+            "reference_structure": {
+                "coords": native_coords,
+                "top": native_top,
+            },
+        }
+
+        # Cannot use `update` method if kwargs is None/{}
+        if kwargs is not None:
+            for k, v in kwargs.items():
+                if isinstance(v, np.ndarray):
+                    metadata[k] = v.tolist()
+                else:
+                    metadata[k] = v
+
+        quantity = Quantity(q, "dimensionless", metadata=metadata)
+        ensemble.set_quantity("fraction_native_contacts", quantity)
+
     def add_end2end_distance(self, ensemble: Ensemble):
         """Get distance between CA atoms of the first and last residue in the protein
         for each structure in the ensemble
@@ -781,7 +863,10 @@ class Featurizer:
         else:
             # Need to check, that current feature has the same
             # parameters as the requested one
-            if feature == "rmsd" and len(args) == 1:
+            if (
+                feature in ["rmsd", "fraction_native_contacts"]
+                and len(args) == 1
+            ):
                 # Handle RMSD structure serialization (as arg)
                 reference_structure = args[0]
                 if not Featurizer._reference_structure_equality(
