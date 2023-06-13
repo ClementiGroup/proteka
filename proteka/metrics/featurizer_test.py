@@ -40,8 +40,10 @@ def get_ala10_frame():
 @pytest.fixture
 def get_CLN_traj():
     class ens_factory:
-        def make_ens(self, ca_only=False):
-            traj = get_CLN_trajectory()
+        def make_ens(self, ca_only=False, unfolded=False, single_frame=False):
+            traj = get_CLN_trajectory(
+                unfolded=unfolded, single_frame=single_frame
+            )
             if ca_only:
                 traj = traj.atom_slice(traj.topology.select("name CA"))
             ensemble = Ensemble.from_mdtraj_trj("ref", traj)
@@ -282,6 +284,28 @@ def test_local_contact_number(get_CLN_frame):
     feat.add_local_contact_number(ens)
     local_contact_number = ens.get_quantity("local_contact_number")
     np.allclose(ref_local_contact_number, local_contact_number)
+
+
+def test_fraction_native_contacts(get_CLN_traj):
+    """Test fraction of native contact number calculation
+    using an ensemble of unfolded CLN conformations"""
+    ens = get_CLN_traj.make_ens(unfolded=True)
+    native_structure = get_CLN_traj.make_ens(
+        single_frame=True
+    ).get_all_in_one_mdtraj_trj()
+    feat = Featurizer()
+    feat.add_fraction_native_contacts(
+        ens,
+        reference_structure=native_structure,
+        native_cutoff=0.6,
+        lam=1.0,
+        atom_selection="name CA",
+    )
+    np.allclose(
+        [0.3],
+        [np.average(ens.get_quantity("fraction_native_contacts"))],
+        atol=0.1,
+    )
 
 
 def test_dssp(get_CLN_frame):
