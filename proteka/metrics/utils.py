@@ -164,7 +164,6 @@ def get_general_distances(
     return distances
 
 
-
 def get_ALA_10_helix() -> md.Trajectory:
     """Get a perfect helical structure of ALA-10
     at the carbon alpha resolution in nm

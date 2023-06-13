@@ -470,7 +470,6 @@ class EnsembleQualityMetrics(IMetrics):
     scalar_features = set(
         [
             "rg",
-
             "helicity",
             "ca_distances",
             "rmsd",
