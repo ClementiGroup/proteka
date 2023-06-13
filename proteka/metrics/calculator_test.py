@@ -122,7 +122,7 @@ def test_ensemble_metric_run(get_two_ensembles):
     }
     eqm = EnsembleQualityMetrics(metrics)
     results = eqm(target_ensemble, ref_ensemble)
-    assert len(results) == 8
+    assert len(results) == 9
 
 
 def test_calculator_config_bin_conversion():
