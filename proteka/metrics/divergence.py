@@ -1,3 +1,4 @@
+from typing import Optional
 import numpy as np
 from scipy.special import rel_entr
 from scipy.stats import wasserstein_distance
@@ -25,9 +26,7 @@ __all__ = [
 
 def clean_distribution(
     array: np.ndarray,
-    value: float = 1e-8,
     threshold: float = 1e-8,
-    intersect_only=False,
 ):
     """Cleans input distributions
 
@@ -36,38 +35,27 @@ def clean_distribution(
     array:
         input normalized distribution
     threshold : float, 1e-8
-        Bin is not included in the summation if its value is less than the threshold
-        and intersect_only is `True`
-    replace_value:
-        if the bin has a normalized count lower than the `threshold`, and `intersect_only`
-        is `False`, then the bin gets replaced with this value instead
-    intersect_only:
-        if `True`, distributions will only be compared over their consistent support overlaps
-        (eg, only the mutual set of populated bins will be included in the computation)
+        if the bin value is lower than this threshold, its value
+        is replaced with this threshold.
 
     Returns
     -------
-    valid_bins:
-        If `intersect_only` is `True`, the indices of the bins that are above the `threshold`
     new_array:
-        If `intersect_only` is `False`, a new distribution where values below the threshold are
-        replaced by `value`
+        A new distribution where values below the threshold are
+        replaced by said threshold value. This array is also renormalized
+        after threshold adjustment.
     """
 
-    if intersect_only:
-        valid_bins = np.argwhere(array > threshold).flatten()
-        return valid_bins
-    else:
-        new_array = np.array([x if x > threshold else threshold for x in array])
-        return new_array
+    new_array = np.where(array > threshold, array, threshold)
+    # renormalize
+    new_array = new_array / np.sum(new_array)
+    return new_array
 
 
 def kl_divergence(
     target: np.ndarray,
     reference: np.ndarray,
-    threshold: float = 1e-8,
-    replace_value: float = 1e-8,
-    intersect_only: bool = True,
+    threshold: Optional[float] = None,
     **kwagrs,
 ) -> float:
     r"""
@@ -87,14 +75,7 @@ def kl_divergence(
                 Target and reference probability distributions (histograms).
                 Should have the same shape
     threshold : float, 1e-8
-        Bin is not included in the summation if its value is less than the threshold
-        and intersect_only is `True`
-    replace_value:
-        if the bin has a normalized count lower than the `threshold`, and `intersect_only`
-        is `False`, then the bin gets replaced with this value instead
-    intersect_only:
-        if `True`, distributions will only be compared over their consistent support overlaps
-        (eg, only the mutual set of populated bins will be included in the computation)
+        Bin value is replaced by this threshold if it is lower than this threshold
 
     Returns : float
     ------
@@ -115,41 +96,29 @@ def kl_divergence(
     target_normalized = target_normalized.flatten()
     reference_normalized = reference_normalized.flatten()
 
-    if intersect_only:
-        target_valid_bins = clean_distribution(
-            target_normalized, threshold=threshold, intersect_only=True
-        )
-        reference_valid_bins = clean_distribution(
-            reference_normalized, threshold=threshold, intersect_only=True
-        )
-        valid_bins = np.array(
-            list(
-                set(target_valid_bins.tolist()).intersection(
-                    set(reference_valid_bins.tolist())
-                )
-            )
-        )
-        kl = rel_entr(
-            reference_normalized[valid_bins],
-            target_normalized[valid_bins],
-        )
-    else:
+    if threshold is not None:
         target_normalized = clean_distribution(
-            target_normalized, threshold=threshold, value=replace_value
+            target_normalized,
+            threshold=threshold,
         )
         reference_normalized = clean_distribution(
-            reference_normalized, threshold=threshold, value=replace_value
+            reference_normalized, threshold=threshold
         )
-        kl = rel_entr(reference_normalized, target_normalized)
+    if threshold is None:
+        if any(target_normalized == 0) or any(reference_normalized == 0):
+            raise RuntimeError(
+                "At least one reference or target bin contains zero counts, and the KL "
+                "divergence is undefined. If you wish to override this behavior, please "
+                "specify a (small) threshold with which empty bins may be filled."
+            )
+    kl = rel_entr(reference_normalized, target_normalized)
     return kl.sum()
 
 
 def js_divergence(
     target: np.ndarray,
     reference: np.ndarray,
-    threshold: float = 1e-8,
-    replace_value: float = 1e-8,
-    intersect_only: bool = True,
+    threshold: Optional[float] = 1e-8,
 ) -> float:
     """
     Compute Jensen_Shannon divergence between specified data sets.
@@ -160,17 +129,8 @@ def js_divergence(
     target, reference : np.typing.ArrayLike
                 Target and reference probability distributions (histograms).
                 Should have the same shape
-
     threshold : float, 1e-8
-        Bin is not included in the summation if its value is less than the threshold
-        and intersect_only is `True`
-    replace_value:
-        if the bin has a normalized count lower than the `threshold`, and `intersect_only`
-        is `False`, then the bin gets replaced with this value instead
-    intersect_only:
-        if `True`, distributions will only be compared over their consistent support overlaps
-        (eg, only the mutual set of populated bins will be included in the computation) for KL
-        divergence subcomputations
+        Bin value is replaced by this threshold if it is lower than this threshold
 
     Returns : float
     ------
@@ -185,15 +145,11 @@ def js_divergence(
             M,
             target_normalized,
             threshold=threshold,
-            replace_value=replace_value,
-            intersect_only=intersect_only,
         )
         + kl_divergence(
             M,
             reference_normalized,
             threshold=threshold,
-            replace_value=replace_value,
-            intersect_only=intersect_only,
         )
     )
     return jsd
@@ -271,16 +227,6 @@ def mse_dist(
        Target and reference probability distributions (histograms).
        Should have the same shape
 
-    threshold : float, 1e-8
-       Bin is not included in the summation if its value is less than the threshold
-       and intersect_only is `True`
-    replace_value:
-       if the bin has a normalized count lower than the `threshold`, and `intersect_only`
-       is `False`, then the bin gets replaced with this value instead
-    intersect_only:
-       if `True`, distributions will only be compared over their consistent support overlaps
-       (eg, only the mutual set of populated bins will be included in the computation)
-
     Returns : float
     ------
     Mean Squared Error of the target from the reference
@@ -313,8 +259,6 @@ def mse_log(
     target: np.ndarray,
     reference: np.ndarray,
     threshold: float = 1e-8,
-    replace_value: float = 1e-10,
-    intersect_only: bool = False,
     use_optimal_offset: bool = True,
 ) -> float:
     r"""
@@ -331,16 +275,8 @@ def mse_log(
     target, reference : np.ndarray
        Target and reference probability distributions (histograms).
        Should have the same shape
-
     threshold : float, 1e-8
-       Bin is not included in the summation if its value is less than the threshold
-       and intersect_only is `True`
-    replace_value:
-       if the bin has a normalized count lower than the `threshold`, and `intersect_only`
-       is `False`, then the bin gets replaced with this value instead
-    intersect_only:
-       if `True`, distributions will only be compared over their consistent support overlaps
-       (eg, only the mutual set of populated bins will be included in the computation)
+        Bin value is replaced by this threshold if it is lower than this threshold
 
     Returns : float
     -------
@@ -364,46 +300,23 @@ def mse_log(
     target_normalized = target_normalized.flatten()
     reference_normalized = reference_normalized.flatten()
 
-    if intersect_only:
-        target_valid_bins = clean_distribution(
-            target_normalized, threshold=threshold, intersect_only=True
-        )
-        reference_valid_bins = clean_distribution(
-            reference_normalized, threshold=threshold, intersect_only=True
-        )
-        valid_bins = np.array(
-            list(
-                set(target_valid_bins.tolist()).intersection(
-                    set(reference_valid_bins.tolist())
-                )
-            )
-        )
-        log_ref = np.log(reference_normalized[valid_bins])
-        log_tar = np.log(target_normalized[valid_bins])
+    target_normalized = clean_distribution(
+        target_normalized,
+        threshold=threshold,
+    )
+    reference_normalized = clean_distribution(
+        reference_normalized,
+        threshold=threshold,
+    )
+    log_ref = np.log(reference_normalized)
+    log_tar = np.log(target_normalized)
 
-        if use_optimal_offset:
-            offset = optimal_offset(log_tar, log_ref)
-        else:
-            offset = 0
-
-        val = mse(log_tar, log_ref, offset)
-
+    if use_optimal_offset:
+        offset = optimal_offset(log_tar, log_ref)
     else:
-        target_normalized = clean_distribution(
-            target_normalized, threshold=threshold, value=replace_value
-        )
-        reference_normalized = clean_distribution(
-            reference_normalized, threshold=threshold, value=replace_value
-        )
-        log_ref = np.log(reference_normalized)
-        log_tar = np.log(target_normalized)
+        offset = 0
 
-        if use_optimal_offset:
-            offset = optimal_offset(log_tar, log_ref)
-        else:
-            offset = 0
-
-        val = mse(log_tar, log_ref, offset)
+    val = mse(log_tar, log_ref, offset)
 
     return val
 
@@ -432,8 +345,6 @@ def wasserstein(
     target: np.ndarray,
     reference: np.ndarray,
     threshold: float = 1e-8,
-    replace_value: float = 1e-8,
-    intersect_only: bool = False,
 ) -> float:
     """
     Compute Wasserstein distance between specified data sets.
@@ -444,14 +355,7 @@ def wasserstein(
         Target and reference probability distributions (histograms).
         Should have the same shape
     threshold : float, 1e-8
-       Bin is not included in the summation if its value is less than the threshold
-       and intersect_only is `True`
-    replace_value:
-       if the bin has a normalized count lower than the `threshold`, and `intersect_only`
-       is `False`, then the bin gets replaced with this value instead
-    intersect_only:
-       if `True`, distributions will only be compared over their consistent support overlaps
-       (eg, only the mutual set of populated bins will be included in the computation)
+        Bin value is replaced by this threshold if it is lower than this threshold
 
     Returns : float
     ------
@@ -464,44 +368,18 @@ def wasserstein(
     target_normalized = target / np.sum(target)
     reference_normalized = reference / np.sum(reference)
 
-    if intersect_only:
-        target_valid_bins = clean_distribution(
-            target_normalized, threshold=threshold, intersect_only=True
-        )
-        reference_valid_bins = clean_distribution(
-            reference_normalized, threshold=threshold, intersect_only=True
-        )
-        valid_bins = np.array(
-            list(
-                set(target_valid_bins.tolist()).intersection(
-                    set(reference_valid_bins.tolist())
-                )
-            )
-        )
-        n = len(valid_bins)
-        # Note that in scipy's implementation the first arguments (u_values, v_values)
-        # for them should be the support, whlie the weights should be the actual probability
-        # distribution
-        val = wasserstein_distance(
-            np.arange(n),
-            np.arange(n),
-            reference_normalized[valid_bins],
-            target_normalized[valid_bins],
-        )
+    target_normalized = clean_distribution(
+        target_normalized, threshold=threshold
+    )
+    reference_normalized = clean_distribution(
+        reference_normalized, threshold=threshold
+    )
+    n = len(reference_normalized)
 
-    else:
-        target_normalized = clean_distribution(
-            target_normalized, threshold=threshold, value=replace_value
-        )
-        reference_normalized = clean_distribution(
-            reference_normalized, threshold=threshold, value=replace_value
-        )
-        n = len(reference_normalized)
-
-        # see the comment in the upper part for understanding this weird definition
-        val = wasserstein_distance(
-            np.arange(n), np.arange(n), reference_normalized, target_normalized
-        )
+    # see the comment in the upper part for understanding this weird definition
+    val = wasserstein_distance(
+        np.arange(n), np.arange(n), reference_normalized, target_normalized
+    )
 
     return val
 
@@ -510,8 +388,6 @@ def vector_kl_divergence(
     target: np.ndarray,
     reference: np.ndarray,
     threshold: float = 1e-8,
-    replace_value: float = 1e-8,
-    intersect_only: bool = True,
 ) -> np.ndarray:
     """
     Compute independent KL divergences between specified vector data sets.
@@ -522,14 +398,7 @@ def vector_kl_divergence(
        Target and reference probability distributions (histograms).
        Should have the same shape
     threshold : float, 1e-8
-       Bin is not included in the summation if its value is less than the threshold
-       and intersect_only is `True`
-    replace_value:
-       if the bin has a normalized count lower than the `threshold`, and `intersect_only`
-       is `False`, then the bin gets replaced with this value instead
-    intersect_only:
-       if `True`, distributions will only be compared over their consistent support overlaps
-       (eg, only the mutual set of populated bins will be included in the computation)
+        Bin value is replaced by this threshold if it is lower than this threshold
 
     Returns : np.ndarray
     -------
@@ -545,8 +414,6 @@ def vector_kl_divergence(
             target[:, i],
             reference[:, i],
             threshold=threshold,
-            replace_value=replace_value,
-            intersect_only=intersect_only,
         )
     return kld
 
@@ -555,7 +422,6 @@ def vector_js_divergence(
     target: np.ndarray,
     reference: np.ndarray,
     threshold: float = 1e-8,
-    replace_value: float = 1e-8,
 ) -> np.ndarray:
     """
     Compute independent JS divergences between specified vector data sets.
@@ -566,16 +432,8 @@ def vector_js_divergence(
     target, reference : np.typing.ArrayLike
        Target and reference probability distributions (histograms).
        Should have the same shape
-
     threshold : float, 1e-8
-       Bin is not included in the summation if its value is less than the threshold
-       and intersect_only is `True`
-    replace_value:
-       if the bin has a normalized count lower than the `threshold`, and `intersect_only`
-       is `False`, then the bin gets replaced with this value instead
-    intersect_only:
-       if `True`, distributions will only be compared over their consistent support overlaps
-       (eg, only the mutual set of populated bins will be included in the computation)
+        Bin value is replaced by this threshold if it is lower than this threshold
 
     Returns : np.ndarray
     -------
@@ -592,7 +450,6 @@ def vector_js_divergence(
             target[:, i],
             reference[:, i],
             threshold=threshold,
-            replace_value=replace_value,
         )
     return jsd
 
@@ -612,7 +469,6 @@ def vector_mse(
        Should have the same shape
     threshold : float, 1e-8
        Bin is not included in the summation if its value is less than the threshold
-       and intersect_only is `True`
 
     Returns : float
     ------
@@ -666,8 +522,6 @@ def vector_mse_log(
     target: np.ndarray,
     reference: np.ndarray,
     threshold: float = 1e-8,
-    replace_value: float = 1e-8,
-    intersect_only: bool = False,
 ) -> float:
     r"""
     Compute vector Mean Squared Error between the log of distributions of specified data sets.
@@ -683,13 +537,6 @@ def vector_mse_log(
        Should have the same shape
     threshold : float, 1e-8
        Bin is not included in the summation if its value is less than the threshold
-       and intersect_only is `True`
-    replace_value:
-       if the bin has a normalized count lower than the `threshold`, and `intersect_only`
-       is `False`, then the bin gets replaced with this value instead
-    intersect_only:
-       if `True`, distributions will only be compared over their consistent support overlaps
-       (eg, only the mutual set of populated bins will be included in the computation)
 
     Returns : float
     ------
@@ -708,8 +555,6 @@ def vector_mse_log(
             target[:, i],
             reference[:, i],
             threshold=threshold,
-            replace_value=replace_value,
-            intersect_only=intersect_only,
         )
 
     return val
@@ -719,8 +564,6 @@ def vector_wasserstein(
     target: np.ndarray,
     reference: np.ndarray,
     threshold: float = 1e-8,
-    replace_value: float = 1e-8,
-    intersect_only: bool = False,
 ) -> float:
     """
     Compute Wasserstein distance between specified data sets.
@@ -731,18 +574,10 @@ def vector_wasserstein(
     target, reference : np.typing.ArrayLike
                 Target and reference probability distributions (histograms).
                 Should have the same shape
+    threshold : float, 1e-8
+       Bin is not included in the summation if its value is less than the threshold
 
-     threshold : float, 1e-8
-        Bin is not included in the summation if its value is less than the threshold
-        and intersect_only is `True`
-     replace_value:
-        if the bin has a normalized count lower than the `threshold`, and `intersect_only`
-        is `False`, then the bin gets replaced with this value instead
-     intersect_only:
-        if `True`, distributions will only be compared over their consistent support overlaps
-        (eg, only the mutual set of populated bins will be included in the computation)
-
-     Returns : float
+    Returns : float
      ------
     Mean Squared Error of the target from the reference
 
@@ -759,8 +594,6 @@ def vector_wasserstein(
             target[:, i],
             reference[:, i],
             threshold=threshold,
-            replace_value=replace_value,
-            intersect_only=intersect_only,
         )
 
     return val
