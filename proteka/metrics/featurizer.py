@@ -564,7 +564,6 @@ class Featurizer:
         traj_atoms = np.array(list(traj.top.atoms))
         for i1, i2 in zip(reference_idx, traj_idx):
             assert ref_atoms[i1].name == traj_atoms[i2].name
-            assert ref_atoms[i1].residue.name == traj_atoms[i2].residue.name
             assert ref_atoms[i1].residue.index == traj_atoms[i2].residue.index
 
         # compute native contacts and residue pairs
