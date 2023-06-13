@@ -514,7 +514,8 @@ class Featurizer:
         beta: float = 50,
         lam: float = 1.8,
         native_cutoff: float = 0.45,
-        **kwargs,
+        res_offset: int = 2,
+        atom_selection: str = "name CA",
     ):
         """Get fraction of native contacts given a reference
         structure. Implemenation based on the MDTraj example
@@ -539,11 +540,10 @@ class Featurizer:
         native_cutoff:
             Cutoff below which two atoms are considered to be in contact. Default
             is 0.45 nm.
-        kwargs:
-            Keyword arguements that are passed to `mdtraj.compute_contacts`. See
-            help(mdtraj.compute_contacts) or
-            https://mdtraj.org/1.9.4/api/generated/mdtraj.compute_contacts.html
-            for more information.
+        res_offset:
+            Minimum integer residue index separation for contact elegibility
+        atom_selection:
+            Atoms to use to define contacts
         """
 
         if reference_structure.n_frames != 1:
@@ -555,19 +555,62 @@ class Featurizer:
 
         traj = ensemble.get_all_in_one_mdtraj_trj()
 
+        # Indexing and checks
+        reference_idx = reference_structure.top.select(atom_selection)
+        traj_idx = traj.top.select(atom_selection)
+        assert len(reference_idx) == len(traj_idx)
+
+        ref_atoms = np.array(list(reference_structure.top.atoms))
+        traj_atoms = np.array(list(traj.top.atoms))
+        for i1, i2 in zip(reference_idx, traj_idx):
+            assert ref_atoms[i1].name == traj_atoms[i2].name
+            assert ref_atoms[i1].residue.name == traj_atoms[i2].residue.name
+            assert ref_atoms[i1].residue.index == traj_atoms[i2].residue.index
+
         # compute native contacts and residue pairs
-        nat_dist, nat_res_pairs = md.compute_contacts(
-            reference_structure, **kwargs
-        )
-        nat_res_pairs = nat_res_pairs[nat_dist.squeeze() < native_cutoff]
+        all_ref_pairs = np.array(list(combinations(reference_idx, 2)))
+        all_traj_pairs = np.array(list(combinations(traj_idx, 2)))
+        assert len(all_ref_pairs) == len(all_traj_pairs)
+
+        # Filter based on residue_offset
+        filtered_ref_pairs = []
+        filtered_traj_pairs = []
+        for p1, p2 in zip(all_ref_pairs, all_traj_pairs):
+            p1_a, p1_b = p1[0], p1[1]
+            p2_a, p2_b = p2[0], p2[1]
+            if (
+                np.abs(
+                    ref_atoms[p1_a].residue.index
+                    - ref_atoms[p1_b].residue.index
+                )
+                > res_offset
+            ):
+                filtered_ref_pairs.append([p1_a, p1_b])
+            if (
+                np.abs(
+                    traj_atoms[p1_a].residue.index
+                    - traj_atoms[p1_b].residue.index
+                )
+                > res_offset
+            ):
+                filtered_traj_pairs.append([p2_a, p2_b])
+        filtered_ref_pairs = np.array(filtered_ref_pairs)
+        filtered_traj_pairs = np.array(filtered_traj_pairs)
+
+        nat_dist = md.compute_distances(reference_structure, filtered_ref_pairs)
+        traj_dist = md.compute_distances(traj, filtered_traj_pairs)
+
+        nat_idx = np.argwhere(nat_dist.squeeze() < native_cutoff).squeeze()
+        nat_pairs = filtered_ref_pairs[nat_idx]
+        traj_nat_pairs = filtered_traj_pairs[nat_idx]
 
         # compute contact distances for these pairs over the trajectory
-        traj_distances = md.compute_distances(traj, nat_res_pairs)
+        traj_nat_dist = md.compute_distances(traj, traj_nat_pairs)
 
         # compute native distances for the same pairs
-        r_0 = md.compute_distances(reference_structure, nat_res_pairs)
+        r_0 = md.compute_distances(reference_structure, nat_pairs)
         q = np.mean(
-            1.0 / (1 + np.exp(beta * (traj_distances - lam * r_0))), axis=1
+            1.0 / (1 + np.exp(beta * (traj_nat_dist - lam * r_0))), axis=1
         )
 
         metadata = {
@@ -576,15 +619,12 @@ class Featurizer:
                 "coords": native_coords,
                 "top": native_top,
             },
+            "atom_selection": atom_selection,
+            "beta": beta,
+            "lam": lam,
+            "native_cutoff": native_cutoff,
+            "res_offset": res_offset,
         }
-
-        # Cannot use `update` method if kwargs is None/{}
-        if kwargs is not None:
-            for k, v in kwargs.items():
-                if isinstance(v, np.ndarray):
-                    metadata[k] = v.tolist()
-                else:
-                    metadata[k] = v
 
         quantity = Quantity(q, "dimensionless", metadata=metadata)
         ensemble.set_quantity("fraction_native_contacts", quantity)

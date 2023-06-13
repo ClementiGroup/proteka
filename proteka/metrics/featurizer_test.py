@@ -265,8 +265,8 @@ def test_fraction_native_contacts(get_CLN_traj):
         ens,
         reference_structure=native_structure,
         native_cutoff=0.6,
-        scheme="ca",
         lam=1.0,
+        atom_selection="name CA",
     )
     np.allclose(
         [0.3],
