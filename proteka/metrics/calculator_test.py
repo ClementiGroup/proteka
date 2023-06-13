@@ -89,6 +89,13 @@ def test_ensemble_metric_run(get_two_ensembles):
                 },
                 "metric_params": {"js_div": {"bins": np.linspace(0, 1.6, 100)}},
             },
+            "fraction_native_contacts": {
+                "feature_params": {
+                    "reference_structure": reference_structure,
+                    "atom_selection": "name CA",
+                },
+                "metric_params": {"js_div": {"bins": np.linspace(0, 1.0, 100)}},
+            },
             "dssp": {
                 "feature_params": {"digitize": True},
                 "metric_params": {
@@ -115,7 +122,7 @@ def test_ensemble_metric_run(get_two_ensembles):
     }
     eqm = EnsembleQualityMetrics(metrics)
     results = eqm(target_ensemble, ref_ensemble)
-    assert len(results) == 8
+    assert len(results) == 9
 
 
 def test_calculator_config_bin_conversion():

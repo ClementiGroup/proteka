@@ -507,6 +507,127 @@ class Featurizer:
         quantity = Quantity(rg, "nanometers", metadata=metadata)
         ensemble.set_quantity("rg", quantity)
 
+    def add_fraction_native_contacts(
+        self,
+        ensemble: Ensemble,
+        reference_structure: md.Trajectory,
+        beta: float = 50,
+        lam: float = 1.8,
+        native_cutoff: float = 0.45,
+        res_offset: int = 2,
+        atom_selection: str = "name CA",
+    ):
+        """Get fraction of native contacts given a reference
+        structure. Implemenation based on the MDTraj example
+        found here: https://mdtraj.org/1.9.3/examples/native-contact.html
+        and as reported in:
+
+        Best, Hummer, and Eaton, "Native contacts determine protein folding
+        mechanisms in atomistic simulations" PNAS (2013)
+
+        Parameters
+        ----------
+        ensemble:
+            ensemble for which faction of native contacts should be
+            computed.
+        reference_structure:
+            Reference (native) structure from which native contacts should be
+            defined
+        beta:
+            Contact membership variance. Default is 50 nm^-1
+        lam:
+            Native contact scaling. Default is 1.8
+        native_cutoff:
+            Cutoff below which two atoms are considered to be in contact. Default
+            is 0.45 nm.
+        res_offset:
+            Minimum integer residue index separation for contact elegibility
+        atom_selection:
+            Atoms to use to define contacts
+        """
+
+        if reference_structure.n_frames != 1:
+            raise ValueError(
+                f"Native structure has {reference_structure.n_frames} frames, but should only have 1."
+            )
+        native_coords = reference_structure.xyz.tolist()
+        native_top = top2json(reference_structure.topology)
+
+        traj = ensemble.get_all_in_one_mdtraj_trj()
+
+        # Indexing and checks
+        reference_idx = reference_structure.top.select(atom_selection)
+        traj_idx = traj.top.select(atom_selection)
+        assert len(reference_idx) == len(traj_idx)
+
+        ref_atoms = np.array(list(reference_structure.top.atoms))
+        traj_atoms = np.array(list(traj.top.atoms))
+        for i1, i2 in zip(reference_idx, traj_idx):
+            assert ref_atoms[i1].name == traj_atoms[i2].name
+            assert ref_atoms[i1].residue.index == traj_atoms[i2].residue.index
+
+        # compute native contacts and residue pairs
+        all_ref_pairs = np.array(list(combinations(reference_idx, 2)))
+        all_traj_pairs = np.array(list(combinations(traj_idx, 2)))
+        assert len(all_ref_pairs) == len(all_traj_pairs)
+
+        # Filter based on residue_offset
+        filtered_ref_pairs = []
+        filtered_traj_pairs = []
+        for p1, p2 in zip(all_ref_pairs, all_traj_pairs):
+            p1_a, p1_b = p1[0], p1[1]
+            p2_a, p2_b = p2[0], p2[1]
+            if (
+                np.abs(
+                    ref_atoms[p1_a].residue.index
+                    - ref_atoms[p1_b].residue.index
+                )
+                > res_offset
+            ):
+                filtered_ref_pairs.append([p1_a, p1_b])
+            if (
+                np.abs(
+                    traj_atoms[p1_a].residue.index
+                    - traj_atoms[p1_b].residue.index
+                )
+                > res_offset
+            ):
+                filtered_traj_pairs.append([p2_a, p2_b])
+        filtered_ref_pairs = np.array(filtered_ref_pairs)
+        filtered_traj_pairs = np.array(filtered_traj_pairs)
+
+        nat_dist = md.compute_distances(reference_structure, filtered_ref_pairs)
+        traj_dist = md.compute_distances(traj, filtered_traj_pairs)
+
+        nat_idx = np.argwhere(nat_dist.squeeze() < native_cutoff).squeeze()
+        nat_pairs = filtered_ref_pairs[nat_idx]
+        traj_nat_pairs = filtered_traj_pairs[nat_idx]
+
+        # compute contact distances for these pairs over the trajectory
+        traj_nat_dist = md.compute_distances(traj, traj_nat_pairs)
+
+        # compute native distances for the same pairs
+        r_0 = md.compute_distances(reference_structure, nat_pairs)
+        q = np.mean(
+            1.0 / (1 + np.exp(beta * (traj_nat_dist - lam * r_0))), axis=1
+        )
+
+        metadata = {
+            "feature": "faction_native_contacts",
+            "reference_structure": {
+                "coords": native_coords,
+                "top": native_top,
+            },
+            "atom_selection": atom_selection,
+            "beta": beta,
+            "lam": lam,
+            "native_cutoff": native_cutoff,
+            "res_offset": res_offset,
+        }
+
+        quantity = Quantity(q, "dimensionless", metadata=metadata)
+        ensemble.set_quantity("fraction_native_contacts", quantity)
+
     def add_end2end_distance(self, ensemble: Ensemble):
         """Get distance between CA atoms of the first and last residue in the protein
         for each structure in the ensemble
@@ -781,7 +902,10 @@ class Featurizer:
         else:
             # Need to check, that current feature has the same
             # parameters as the requested one
-            if feature == "rmsd" and len(args) == 1:
+            if (
+                feature in ["rmsd", "fraction_native_contacts"]
+                and len(args) == 1
+            ):
                 # Handle RMSD structure serialization (as arg)
                 reference_structure = args[0]
                 if not Featurizer._reference_structure_equality(
