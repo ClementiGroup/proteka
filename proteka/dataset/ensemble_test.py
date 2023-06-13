@@ -40,7 +40,7 @@ def test_casting(example_ensemble):
     assert example_ensemble["velocities"].unit == "nanometers/picoseconds"
     example_ensemble.weights = np.ones((10,))
     assert example_ensemble["weights"].unit == "dimensionless"
-
+    del example_ensemble.velocities  # so no warning about overwriting
     example_ensemble.velocities = Quantity(
         np.ones((10, example_ensemble.n_atoms, 3)), "Angstrom/picoseconds"
     )

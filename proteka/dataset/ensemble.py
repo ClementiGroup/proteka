@@ -201,7 +201,7 @@ def _to_quantity(array_like, unit="dimensionless"):
         raise ValueError("Input is not an array.")
     # float? cast to single-precision
     if quant.dtype.kind == "f":
-        quant = quant.astype(np.float32, casting="same_kind")
+        quant = quant.astype(np.float32, casting="same_kind", copy=False)
     quant = Quantity(quant, unit=unit)
     return quant
 
@@ -340,13 +340,15 @@ class Ensemble(HDF5Group):
         super().__init__({}, metadata=metadata)
         # setting the coords properly
         preset_coords_unit = self.unit_system.get_preset_unit("coords")
-        if not isinstance(coords, BaseQuantity):
+        if isinstance(coords, BaseQuantity):
+            coords = coords.convert_unit_to_(preset_coords_unit)
+        else:
             print(
                 f"Assuming the input `coords` to be in unit "
                 f'"{preset_coords_unit}"'
             )
-            coords = Quantity(coords, preset_coords_unit)
-        coords = coords.to_quantity_with_unit(preset_coords_unit)
+            # coords = Quantity(coords, preset_coords_unit)
+            coords = _to_quantity(coords, preset_coords_unit)
         self._save_quantity(
             "coords",
             coords,
@@ -761,7 +763,7 @@ class Ensemble(HDF5Group):
             # convert to preset unit
             if preset_unit is not None:
                 # print(f"Convert \"{key}\" to internal unit {preset_unit}")
-                quant = quant.to_quantity_with_unit(preset_unit)
+                quant = quant.convert_unit_to_(preset_unit)
         self._save_quantity(key, quant, shape=shape_hint)
 
     def get_all_in_one_mdtraj_trj(self):
