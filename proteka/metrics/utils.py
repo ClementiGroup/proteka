@@ -1,7 +1,7 @@
 import numpy as np
 import mdtraj as md
 from ..dataset import Ensemble
-from typing import Union, Tuple, Optional, Dict
+from typing import Union, Tuple, Optional, Dict, List
 from itertools import combinations
 
 __all__ = [
@@ -450,3 +450,36 @@ def histogram_features2d(
         weights=target_weights,
     )
     return hist_target, hist_reference
+
+
+def compute_native_contacts(reference_structure: md.Trajectory, atom_idx: List, res_offset: int = 2, native_cutoff: float = 0.45):
+    """Calculates all contacts under certain cutoff given a list of atom indices
+    
+    Parameters
+    ----------
+    reference_structure:
+        Trajectory of native all-atom structure
+    atom_idx:
+        list of len(n_atoms) to be considered for atom pairs
+    res_offset:
+        minimum distance between residues to be considered pairs
+    native_cutoff:
+        native contact cutoff
+        
+    Returns
+    -------
+    native_contacts:
+        list of pairs of atoms within cutoff distance in structure
+    """
+
+    # get the pairs of heavy atoms which are farther than 2 residues apart
+    pairs_idx = np.array(
+        [(i,j) for (i,j) in combinations(atom_idx, 2)
+            if abs(reference_structure.topology.atom(i).residue.index - \
+                   reference_structure.topology.atom(j).residue.index) > res_offset])
+
+    # compute the distances between pairs and get the pairs within cutoff
+    pairs_distances = md.compute_distances(reference_structure[0], pairs_idx)[0]
+    native_contacts = pairs_idx[pairs_distances < native_cutoff]
+    
+    return [list(pair) for pair in native_contacts]
