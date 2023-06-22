@@ -452,9 +452,14 @@ def histogram_features2d(
     return hist_target, hist_reference
 
 
-def compute_native_contacts(reference_structure: md.Trajectory, atom_idx: List, res_offset: int = 2, native_cutoff: float = 0.45):
+def compute_native_contacts(
+    reference_structure: md.Trajectory,
+    atom_idx: List,
+    res_offset: int = 2,
+    native_cutoff: float = 0.45,
+):
     """Calculates all contacts under certain cutoff given a list of atom indices
-    
+
     Parameters
     ----------
     reference_structure:
@@ -465,7 +470,7 @@ def compute_native_contacts(reference_structure: md.Trajectory, atom_idx: List, 
         minimum distance between residues to be considered pairs
     native_cutoff:
         native contact cutoff
-        
+
     Returns
     -------
     native_contacts:
@@ -474,12 +479,19 @@ def compute_native_contacts(reference_structure: md.Trajectory, atom_idx: List, 
 
     # get the pairs of heavy atoms which are farther than 2 residues apart
     pairs_idx = np.array(
-        [(i,j) for (i,j) in combinations(atom_idx, 2)
-            if abs(reference_structure.topology.atom(i).residue.index - \
-                   reference_structure.topology.atom(j).residue.index) > res_offset])
+        [
+            (i, j)
+            for (i, j) in combinations(atom_idx, 2)
+            if abs(
+                reference_structure.topology.atom(i).residue.index
+                - reference_structure.topology.atom(j).residue.index
+            )
+            > res_offset
+        ]
+    )
 
     # compute the distances between pairs and get the pairs within cutoff
     pairs_distances = md.compute_distances(reference_structure[0], pairs_idx)[0]
     native_contacts = pairs_idx[pairs_distances < native_cutoff]
-    
+
     return [list(pair) for pair in native_contacts]
