@@ -267,12 +267,44 @@ def test_fraction_native_contacts(get_CLN_traj):
         native_cutoff=0.6,
         lam=1.0,
         atom_selection="name CA",
+        use_atomistic_reference=False,
     )
     np.allclose(
         [0.3],
         [np.average(ens.get_quantity("fraction_native_contacts"))],
         atol=0.1,
     )
+
+
+def test_fraction_native_contacts_atomistic(get_CLN_traj):
+    """Test fraction of native contact number calculation
+    using an ensemble of unfolded CLN conformations"""
+    native_structure = get_CLN_traj.make_ens(
+        single_frame=True
+    ).get_all_in_one_mdtraj_trj()
+    nat_atoms = list(native_structure.top.atoms)
+
+    # Make CG ensemble at the CA level
+    ens = get_CLN_traj.make_ens(unfolded=True)
+    ca_traj = ens.get_all_in_one_mdtraj_trj()
+    ca_traj = ca_traj.atom_slice(ca_traj.top.select("name CA"))
+    ca_atoms = list(ca_traj.top.atoms)
+
+    ca_ens = Ensemble.from_mdtraj_trj("cg", ca_traj)
+
+    feat = Featurizer()
+    pair_dict = feat.add_fraction_native_contacts(
+        ca_ens,
+        reference_structure=native_structure,
+        atom_selection="all and not element H",
+        use_atomistic_reference=True,
+        return_pairs=True,
+    )
+    ref_atom_pairs, cg_atom_pairs = (
+        pair_dict["ref_atom_pairs"],
+        pair_dict["model_atom_pairs"],
+    )
+    assert len(ref_atom_pairs) == len(cg_atom_pairs)
 
 
 def test_dssp(get_CLN_frame):

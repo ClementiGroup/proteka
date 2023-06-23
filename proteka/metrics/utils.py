@@ -452,46 +452,37 @@ def histogram_features2d(
     return hist_target, hist_reference
 
 
-def compute_native_contacts(
-    reference_structure: md.Trajectory,
-    atom_idx: List,
-    res_offset: int = 2,
-    native_cutoff: float = 0.45,
+def reduce_atom_pairs_by_residue_offset(
+    atom_list: List[md.core.topology.Atom],
+    atom_idx_pairs,
+    res_offset: int = 3,
 ):
     """Calculates all contacts under certain cutoff given a list of atom indices
 
     Parameters
     ----------
-    reference_structure:
-        Trajectory of native all-atom structure
+    atom_list:
+        List of MDTraj `Atom` instances
     atom_idx:
-        list of len(n_atoms) to be considered for atom pairs
+        list of atom index pairs for computing distances
     res_offset:
         minimum distance between residues to be considered pairs
-    native_cutoff:
-        native contact cutoff
 
     Returns
     -------
-    native_contacts:
-        list of pairs of atoms within cutoff distance in structure
+    filtered_pairs:
+       List of atom index pairs satisyfing the minimum residue offset specified.
     """
 
-    # get the pairs of heavy atoms which are farther than 2 residues apart
-    pairs_idx = np.array(
-        [
-            (i, j)
-            for (i, j) in combinations(atom_idx, 2)
-            if abs(
-                reference_structure.topology.atom(i).residue.index
-                - reference_structure.topology.atom(j).residue.index
+    filtered_pairs = []
+    for p in atom_idx_pairs:
+        p1_a, p1_b = p[0], p[1]
+        if (
+            np.abs(
+                atom_list[p1_a].residue.index - atom_list[p1_b].residue.index
             )
             > res_offset
-        ]
-    )
+        ):
+            filtered_pairs.append([p1_a, p1_b])
 
-    # compute the distances between pairs and get the pairs within cutoff
-    pairs_distances = md.compute_distances(reference_structure[0], pairs_idx)[0]
-    native_contacts = pairs_idx[pairs_distances < native_cutoff]
-
-    return [list(pair) for pair in native_contacts]
+    return filtered_pairs

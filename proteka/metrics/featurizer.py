@@ -12,7 +12,7 @@ from ..quantity import Quantity
 from ..dataset.top_utils import top2json
 from typing import Callable, Dict, List, Optional, Tuple, Union
 from itertools import combinations
-from .utils import compute_native_contacts
+from .utils import reduce_atom_pairs_by_residue_offset
 
 __all__ = ["Featurizer", "Transform", "TICATransform"]
 
@@ -515,39 +515,57 @@ class Featurizer:
         beta: float = 50,
         lam: float = 1.8,
         native_cutoff: float = 0.45,
-        res_offset: int = 2,
-        atom_selection: str = "heavy",
+        res_offset: int = 3,
+        atom_selection: str = "all and not H",
         use_atomistic_reference: bool = True,
-        rep_bead: str = "CB",
-        cg_atoms: Union[List, None] = None,
+        rep_atoms: List[str] = ["CA"],
+        return_pairs: bool = False,
     ):
-        """Get fraction of native contacts given a reference
-        structure. Implemenation based on the MDTraj example
-        found here: https://mdtraj.org/1.9.3/examples/native-contact.html
-        and as reported in:
-
-        Best, Hummer, and Eaton, "Native contacts determine protein folding
-        mechanisms in atomistic simulations" PNAS (2013)
+        """Gets fraction of native contacts according to the method
+        defined in Best, Hummer, and Eaton (2013).
 
         Parameters
         ----------
         ensemble:
-            ensemble for which faction of native contacts should be
-            computed.
-        reference_structure:
-            Reference (native) structure from which native contacts should be
-            defined
+            Ensemble object for which the fraction of native contacts should be computed
+        refernce_structure:
+            Single frame reference md.Trajectory defining the native state
         beta:
-            Contact membership variance. Default is 50 nm^-1
+            Contact smoothing parameter. Set to 50 nm^-1 be default
         lam:
-            Native contact scaling. Default is 1.8
+            Contact fluctuation allowance factor. Set to 1.8 by default.
         native_cutoff:
-            Cutoff below which two atoms are considered to be in contact. Default
-            is 0.45 nm.
+            Float specifying contact distance threshold. Set to 0.45 nm by default.
         res_offset:
-            Minimum integer residue index separation for contact elegibility
+            Minimum residue |i-j| distance for two atoms to be considered for contact
+            set elegibility. By default, only atoms more than three residues apart are
+            considered.
         atom_selection:
-            Atoms to use to define contacts
+            MDTraj atom selection string specifying which atoms should be used to define
+            contacts in the reference.
+        use_atomistic_reference:
+            If True, `reference_structure` is assumed to be an atomistic structure, and
+            residues in contact will be determined using the `atom_selection` kwarg applied
+            to `reference_structure`. The final contact distances and pairs will be defined by the
+            `rep_atoms` kwarg, and the model distances will also be calculated for these representative
+            atoms. This option is useful for defining contacts for Go or other CG models. Eg, the residues
+            in contact can be found by the `atom_selection="heavy"` strategy for the all-atom reference, and
+            the native distances can be computed for the corresponding carbon alpha pairs with
+            `rep_atoms=["CA"]`, and the same carbon alpha distances will be thusly computed for the model
+            ensemble for the same residue pairs.
+        rep_atoms:
+            List of MDTraj atom names to define final contact distances for both the reference structure
+            and the model ensemble.
+        return_pairs;
+            If true, a dictionary keyed by `"ref_atom_pairs"` and `"model_atom_pairs"`, containing the
+            reference contact atom index pairs and the model contact atom index pairs respectively
+            is returned.
+
+        Returns
+        -------
+        dictionary:
+            If `return_pairs=True`, the dictionary specified by the `return_pairs` parameter above
+            is returned.
         """
 
         if reference_structure.n_frames != 1:
@@ -555,82 +573,155 @@ class Featurizer:
                 f"Native structure has {reference_structure.n_frames} frames, but should only have 1."
             )
 
+        # get reference coordinates and ref/ens topologies
         traj = ensemble.get_all_in_one_mdtraj_trj()
-
-        # get reference coordinates and topolgy
-        native_coords = reference_structure.xyz
+        native_coords = reference_structure.xyz  # for serialization
         native_top = reference_structure.topology
         traj_top = traj.topology
 
-        # get list of atoms present at cg resolution if not provided
-        if cg_atoms == None:
-            cg_atoms = list(set([atom.name for atom in traj_top.atoms]))
-        ref_atoms = [atom for atom in native_top.atoms]
+        # protein length check
+        assert len(list(native_top.residues)) == len(list(traj_top.residues))
+
+        # get atom/residue lists for reference and ensemble
+        model_atoms = list(traj_top.atoms)
+        model_residues = list(traj_top.residues)
+        ref_atoms = list(native_top.atoms)
+        ref_residues = list(native_top.residues)
 
         if use_atomistic_reference == True:
-            selection_all = native_top.select_atom_indices(atom_selection)
-            cg_idx = [
-                atom.index for atom in native_top.atoms if atom.name in cg_atoms
-            ]
+            # get types of atoms used for defining contacts
+            selection_all = native_top.select(atom_selection)
 
-            # separately compute contacts for just cg bead atoms and all atoms
-            contacts_all = compute_native_contacts(
-                reference_structure, selection_all, res_offset, native_cutoff
-            )
-            contacts_cg = compute_native_contacts(
-                reference_structure, cg_idx, res_offset, native_cutoff
+            # residue offset filter
+            all_ref_pairs = list(combinations(selection_all, 2))
+            ref_res_filtered_atom_pairs = np.array(
+                reduce_atom_pairs_by_residue_offset(
+                    ref_atoms, all_ref_pairs, res_offset
+                )
             )
 
-            # get sidechain contacts reduced to cb beads
-            contacts_sc = [
-                pair for pair in contacts_all if (pair not in contacts_cg)
-            ]
+            # compute the distances between filtered pairs and get the pairs within cutoff
+            ref_distances = md.compute_distances(
+                reference_structure, ref_res_filtered_atom_pairs
+            )
+            native_contacts = ref_res_filtered_atom_pairs[
+                ref_distances.squeeze() < native_cutoff
+            ].squeeze()
+            contacts_all = [list(pair) for pair in native_contacts]
 
-            for pair in contacts_sc:
-                new_pair = []
+            # Get residue indices in contact, store them
+            # And store the chosen representative atom pairs for each residue pair
+            residue_pairs = []
+            native_contacts = []
+            for atom_pair in contacts_all:
+                res_1, res_2 = (
+                    ref_atoms[atom_pair[0]].residue.index,
+                    ref_atoms[atom_pair[1]].residue.index,
+                )
+                if sorted([res_1, res_2]) not in residue_pairs:
+                    residue_pairs.append(sorted([res_1, res_2]))
+                    # store requested representative atoms
+                    res_1_rep_atoms = [
+                        atom.index
+                        for atom in ref_residues[res_1].atoms
+                        if atom.name in rep_atoms
+                    ]
+                    res_2_rep_atoms = [
+                        atom.index
+                        for atom in ref_residues[res_2].atoms
+                        if atom.name in rep_atoms
+                    ]
+                    all_ref_rep_atom_pairs = []
+                    for atom1 in res_1_rep_atoms:
+                        for atom2 in res_2_rep_atoms:
+                            if (
+                                sorted([atom1, atom2])
+                                not in all_ref_rep_atom_pairs
+                            ):
+                                all_ref_rep_atom_pairs.append(
+                                    sorted([atom1, atom2])
+                                )
+                    native_contacts.extend(all_ref_rep_atom_pairs)
 
-                for atom in pair:
-                    atom_id = ref_atoms[atom]
-                    if atom_id.name not in cg_atoms:
-                        # get cb atom of residue involved in contact
-                        atom_cb = native_top.select(
-                            "(resSeq {} and name {})".format(
-                                atom_id.residue.resSeq, rep_bead
+            # Now we do the exact same for the CG atoms, for the same residues in contact
+            traj_native_pairs = []
+            for res_pair in residue_pairs:
+                res_1, res_2 = res_pair[0], res_pair[1]
+                res_1_rep_atoms = [
+                    atom.index
+                    for atom in model_residues[res_1].atoms
+                    if atom.name in rep_atoms
+                ]
+                res_2_rep_atoms = [
+                    atom.index
+                    for atom in model_residues[res_2].atoms
+                    if atom.name in rep_atoms
+                ]
+                all_model_rep_atom_pairs = []
+                for atom1 in res_1_rep_atoms:
+                    for atom2 in res_2_rep_atoms:
+                        if (
+                            sorted([atom1, atom2])
+                            not in all_model_rep_atom_pairs
+                        ):
+                            all_model_rep_atom_pairs.append(
+                                sorted([atom1, atom2])
                             )
-                        )
-                        new_pair.append(int(atom_cb))
-                    else:
-                        # preserve backbone atom pairs as is
-                        new_pair.append(int(atom))
+                traj_native_pairs.extend(all_model_rep_atom_pairs)
 
-                contacts_cg.append(new_pair)
-
-            native_contacts = contacts_cg
-
+            # checks: make sure atom pairs are the same atoms
+            # and come from the same residues
+            assert len(native_contacts) == len(traj_native_pairs)
+            for rp, mp in zip(native_contacts, traj_native_pairs):
+                assert ref_atoms[rp[0]].name == model_atoms[mp[0]].name
+                assert ref_atoms[rp[1]].name == model_atoms[mp[1]].name
+                assert (
+                    ref_atoms[rp[0]].residue.index
+                    == model_atoms[mp[0]].residue.index
+                )
+                assert (
+                    ref_atoms[rp[1]].residue.index
+                    == model_atoms[mp[1]].residue.index
+                )
         else:
-            reference_idx = native_top.select(atom_selection)
-            native_contacts = compute_native_contacts(
-                reference_structure, reference_idx, res_offset, native_cutoff
+            # Don't assume atomistic reference
+            # Instead use mutual atom selection chosen for reference and ensemble
+            reference_idx = reference_structure.top.select(atom_selection)
+            traj_idx = traj.top.select(atom_selection)
+            assert len(reference_idx) == len(traj_idx)
+
+            ref_atoms = np.array(list(reference_structure.top.atoms))
+            traj_atoms = np.array(list(traj.top.atoms))
+
+            # check to see if atom lists are the same atoms and and come from the same residues
+            for i1, i2 in zip(reference_idx, traj_idx):
+                assert ref_atoms[i1].name == traj_atoms[i2].name
+                assert (
+                    ref_atoms[i1].residue.index == traj_atoms[i2].residue.index
+                )
+
+            all_ref_pairs = np.array(list(combinations(reference_idx, 2)))
+            all_traj_pairs = np.array(list(combinations(traj_idx, 2)))
+            assert len(all_ref_pairs) == len(all_traj_pairs)
+
+            # Filter based on residue_offset
+            filtered_ref_pairs = np.array(
+                reduce_atom_pairs_by_residue_offset(
+                    ref_atoms, all_ref_pairs, res_offset
+                )
+            )
+            filtered_traj_pairs = np.array(
+                reduce_atom_pairs_by_residue_offset(
+                    traj_atoms, all_traj_pairs, res_offset
+                )
             )
 
-        # need to get index pairs for native contacts of cg atoms corresponding in sliced trajectory (ie cg)
-        traj_native_pairs = []
-
-        # this loop will fetch the idx of cg atoms corresponding to native pairs by atom and reseidue name
-        # should avoid some issues with mismatched pairs
-        for pair in native_contacts:
-            cg_pair = []
-            for atom in pair:
-                print(pair, atom)
-                name, resSeq = (
-                    ref_atoms[atom].name,
-                    ref_atoms[atom].residue.resSeq,
-                )
-                cg_atom = traj_top.select(
-                    "(name {} and resSeq {})".format(name, resSeq)
-                )
-                cg_pair.append(cg_atom.item())
-            traj_native_pairs.append(cg_pair)
+            nat_dist = md.compute_distances(
+                reference_structure, filtered_ref_pairs
+            )
+            nat_idx = np.argwhere(nat_dist.squeeze() < native_cutoff).squeeze()
+            native_contacts = filtered_ref_pairs[nat_idx]
+            traj_native_pairs = filtered_traj_pairs[nat_idx]
 
         # now compute distances
         r_0 = np.array(
@@ -643,7 +734,7 @@ class Featurizer:
 
         # compute native contacts for the same pairs
         q = np.mean(
-            1.0 / (1 + np.exp(beta * (traj_nat_dist - lam * r_0))), axis=1
+            1.0 / (1.0 + np.exp(beta * (traj_nat_dist - lam * r_0))), axis=1
         )
 
         metadata = {
@@ -658,10 +749,18 @@ class Featurizer:
             "lam": lam,
             "native_cutoff": native_cutoff,
             "res_offset": res_offset,
+            "use_atomistic_reference": use_atomistic_reference,
+            "rep_atoms": rep_atoms,
+            "return_pairs": return_pairs,
         }
 
         quantity = Quantity(q, "dimensionless", metadata=metadata)
         ensemble.set_quantity("fraction_native_contacts", quantity)
+        if return_pairs:
+            return {
+                "ref_atom_pairs": native_contacts,
+                "model_atom_pairs": traj_native_pairs,
+            }
 
     def add_end2end_distance(self, ensemble: Ensemble):
         """Get distance between CA atoms of the first and last residue in the protein
