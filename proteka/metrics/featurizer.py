@@ -516,7 +516,7 @@ class Featurizer:
         lam: float = 1.8,
         native_cutoff: float = 0.45,
         res_offset: int = 3,
-        atom_selection: str = "all and not H",
+        atom_selection: str = "all and not element H",
         use_atomistic_reference: bool = True,
         rep_atoms: List[str] = ["CA"],
         return_pairs: bool = False,
