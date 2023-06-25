@@ -3,6 +3,7 @@ import mdtraj as md
 from ..dataset import Ensemble
 from typing import Union, Tuple, Optional, Dict, List
 from itertools import combinations
+from collections.abc import Iterable
 
 __all__ = [
     "generate_grid_polymer",
@@ -456,7 +457,7 @@ def reduce_atom_pairs_by_residue_offset(
     atom_list: List[md.core.topology.Atom],
     atom_idx_pairs,
     res_offset: int = 3,
-):
+) -> Iterable:
     """Calculates all contacts under certain cutoff given a list of atom indices
 
     Parameters

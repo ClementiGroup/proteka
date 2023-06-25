@@ -520,7 +520,7 @@ class Featurizer:
         use_atomistic_reference: bool = True,
         rep_atoms: List[str] = ["CA"],
         return_pairs: bool = False,
-    ):
+    ) -> Union[None, Dict]:
         """Gets fraction of native contacts according to the method
         defined in Best, Hummer, and Eaton (2013).
 
