@@ -479,7 +479,7 @@ class EnsembleQualityMetrics(IMetrics):
         ]
     )
     vector_features = set(["local_contact_number", "dssp"])
-    features_2d = set(["tic1_tic2"])
+    features_2d = set(["tic1_tic2", "rmsd_fraction_native_contacts"])
 
     def __init__(self, metrics: Dict):
         super().__init__()
