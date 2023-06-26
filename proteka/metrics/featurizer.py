@@ -533,29 +533,34 @@ class Featurizer:
         beta:
             Contact smoothing parameter. Set to 50 nm^-1 be default
         lam:
-            Contact fluctuation allowance factor. Set to 1.8 by default.
+            Contact fluctuation allowance factor. Set to 1.8 by default. For coarse grain
+            models, consider using a smaller factor, between 1.2-1.5.
         native_cutoff:
-            Float specifying contact distance threshold. Set to 0.45 nm by default.
+            Float specifying contact distance threshold. Set to 0.45 nm by default. If
         res_offset:
             Minimum residue |i-j| distance for two atoms to be considered for contact
             set elegibility. By default, only atoms more than three residues apart are
             considered.
         atom_selection:
             MDTraj atom selection string specifying which atoms should be used to define
-            contacts in the reference.
+            contacts in the reference. In the case of `use_atomistic_reference=True`, this
+            controls the selection for defining reference structure contacts only (for example, to get all
+            heavy atoms, supply "all and not element H"), and the atom selection for the ensemble
+            is governed by `rep_atoms`. In the case that `use_atomistic_reference=False`, this atom
+            selection is applied mutually to both the reference structure and the ensemble.
         use_atomistic_reference:
             If True, `reference_structure` is assumed to be an atomistic structure, and
             residues in contact will be determined using the `atom_selection` kwarg applied
-            to `reference_structure`. The final contact distances and pairs will be defined by the
-            `rep_atoms` kwarg, and the model distances will also be calculated for these representative
+            to `reference_structure`. The *final* contact distances and pairs will be defined by the
+            `rep_atoms` kwarg, and the ensemble distances will also be calculated for these representative
             atoms. This option is useful for defining contacts for Go or other CG models. Eg, the residues
             in contact can be found by the `atom_selection="heavy"` strategy for the all-atom reference, and
             the native distances can be computed for the corresponding carbon alpha pairs with
             `rep_atoms=["CA"]`, and the same carbon alpha distances will be thusly computed for the model
             ensemble for the same residue pairs.
         rep_atoms:
-            List of MDTraj atom names to define final contact distances for both the reference structure
-            and the model ensemble.
+            List of MDTraj atom names to define *final* contact distances for both the reference structure
+            and the model ensemble. Only used if `use_atomistic_reference=True`.
         return_pairs;
             If true, a dictionary keyed by `"ref_atom_pairs"` and `"model_atom_pairs"`, containing the
             reference contact atom index pairs and the model contact atom index pairs respectively
@@ -684,7 +689,7 @@ class Featurizer:
                     == model_atoms[mp[1]].residue.index
                 )
         else:
-            # Don't assume atomistic reference
+            # Don't assume atomistic reference for defining residues in contact
             # Instead use mutual atom selection chosen for reference and ensemble
             reference_idx = reference_structure.top.select(atom_selection)
             traj_idx = traj.top.select(atom_selection)
