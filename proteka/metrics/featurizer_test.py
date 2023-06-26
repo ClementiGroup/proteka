@@ -11,6 +11,7 @@ from proteka.metrics.utils import (
     generate_grid_polymer,
     get_6_bead_frame,
     get_CLN_trajectory,
+    get_ALA_10_helix,
 )
 from ..dataset.top_utils import top2json, json2top
 
@@ -25,6 +26,13 @@ def single_frame():
 @pytest.fixture
 def get_CLN_frame():
     traj = get_CLN_trajectory(single_frame=True)
+    ensemble = Ensemble.from_mdtraj_trj("ref", traj)
+    return ensemble
+
+
+@pytest.fixture
+def get_ala10_frame():
+    traj = get_ALA_10_helix()
     ensemble = Ensemble.from_mdtraj_trj("ref", traj)
     return ensemble
 
@@ -230,6 +238,31 @@ def test_tica(grid_polymer):
     ).fit_transform(input_features)
     for i in range(dim):
         assert np.all(np.isclose(tica_proteka[:, i], tica_deeptime[:, i]))
+
+
+def test_helicity(get_ala10_frame):
+    """Tests helicity computation for a perfect ALA10 helix"""
+    ens = get_ala10_frame
+    helicity = Featurizer.get_feature(ens, "helicity")
+    np.testing.assert_array_almost_equal(helicity, np.array([0.99]), decimal=2)
+
+
+def test_helicity_selection(get_ala10_frame):
+    """Tests helicity computation for a perfect ALA10 helilx but only for the first 4 residues"""
+    ens = get_ala10_frame
+    helicity = Featurizer.get_feature(
+        ens, "helicity", **{"residue_indices": [0, 1, 2, 3]}
+    )
+    np.testing.assert_array_almost_equal(helicity, np.array([0.99]), decimal=2)
+
+
+def test_helicity_raise(get_ala10_frame):
+    """Tests helicity RuntimeError raise when there are no 1-4 pairs"""
+    ens = get_ala10_frame
+    with pytest.raises(RuntimeError):
+        helicity = Featurizer.get_feature(
+            ens, "helicity", **{"residue_indices": [0, 1, 2]}
+        )
 
 
 def test_feature_rewriting(grid_polymer):

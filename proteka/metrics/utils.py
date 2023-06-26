@@ -165,6 +165,37 @@ def get_general_distances(
     return distances
 
 
+def get_ALA_10_helix() -> md.Trajectory:
+    """Get a perfect helical structure of ALA-10
+    at the carbon alpha resolution in nm
+    """
+
+    coords = np.array(
+        [
+            [
+                [-0.3274, -0.6615, -0.468],
+                [-0.29, -0.2958, -0.5651],
+                [-0.4475, -0.1869, -0.2367],
+                [-0.2079, -0.4088, -0.042],
+                [0.089, -0.2591, -0.2264],
+                [-0.0311, 0.0924, -0.1457],
+                [-0.0639, 0.0025, 0.2223],
+                [0.29, -0.1362, 0.2254],
+                [0.4225, 0.1834, 0.0679],
+                [0.245, 0.3929, 0.3308],
+            ]
+        ]
+    )
+
+    topology = md.Topology()
+    chain = topology.add_chain()
+    resnames = ["ALA" for _ in range(10)]
+    for r in resnames:
+        residue = topology.add_residue(r, chain)
+        topology.add_atom("CA", md.element.carbon, residue)
+    return md.Trajectory(coords, topology)
+
+
 def get_CLN_trajectory(
     single_frame=False, seed=1678543, unfolded=False
 ) -> md.Trajectory:

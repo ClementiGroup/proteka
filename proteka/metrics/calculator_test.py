@@ -78,6 +78,10 @@ def test_ensemble_metric_run(get_two_ensembles):
                 "feature_params": {"atom_selection": "name CA"},
                 "metric_params": {"js_div": {"bins": np.linspace(0, 1.6, 100)}},
             },
+            "helicity": {
+                "feature_params": {},
+                "metric_params": {"js_div": {"bins": np.linspace(0, 1.0, 100)}},
+            },
             "end2end_distance": {
                 "feature_params": {},
                 "metric_params": {"js_div": {"bins": np.linspace(0, 1.6, 100)}},
@@ -123,7 +127,7 @@ def test_ensemble_metric_run(get_two_ensembles):
     }
     eqm = EnsembleQualityMetrics(metrics)
     results = eqm(target_ensemble, ref_ensemble)
-    assert len(results) == 9
+    assert len(results) == 10
 
 
 def test_calculator_config_bin_conversion():
