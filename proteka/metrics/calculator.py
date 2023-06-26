@@ -470,6 +470,7 @@ class EnsembleQualityMetrics(IMetrics):
     scalar_features = set(
         [
             "rg",
+            "helicity",
             "ca_distances",
             "rmsd",
             "end2end_distance",
@@ -479,7 +480,7 @@ class EnsembleQualityMetrics(IMetrics):
         ]
     )
     vector_features = set(["local_contact_number", "dssp"])
-    features_2d = set(["tic1_tic2"])
+    features_2d = set(["tic1_tic2", "rg_helicity"])
 
     def __init__(self, metrics: Dict):
         super().__init__()
