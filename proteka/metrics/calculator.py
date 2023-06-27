@@ -560,6 +560,7 @@ class EnsembleQualityMetrics(IMetrics):
                             )
                 else:
                     raise ValueError(f"unknown bin options {binopts}")
+        return eqm_config
 
     @classmethod
     def from_config(cls, config_file: str):

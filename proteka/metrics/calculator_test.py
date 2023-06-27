@@ -177,36 +177,44 @@ def test_calculator_config_bin_conversion():
     with tempfile.TemporaryDirectory() as tmp:
         yaml = YAML()
         yaml.dump(metrics, open(osp.join(tmp, "test.yaml"), "w"))
-        eqm = EnsembleQualityMetrics.from_config(osp.join(tmp, "test.yaml"))
-        np.testing.assert_array_equal(
-            eqm.metrics["features"]["rg"]["metric_params"]["js_div"]["bins"],
-            expected_bins1,
-        )
-        assert (
-            eqm.metrics["features"]["ca_distances"]["metric_params"][
-                "mse_ldist"
-            ]["bins"]
-            == expected_bins2
-        )
-        assert (
-            eqm.metrics["features"]["a_2D_feature"]["metric_params"]["kl_div"][
-                "bins"
-            ]
-            == expected_bins3
-        )
-        assert isinstance(
-            eqm.metrics["features"]["another_2D_feature"]["metric_params"][
-                "mse_dist"
-            ]["bins"],
-            list,
-        )
-        for bins, ebins in zip(
-            eqm.metrics["features"]["another_2D_feature"]["metric_params"][
-                "mse_dist"
-            ]["bins"],
-            expected_bins4,
-        ):
-            np.testing.assert_array_equal(bins, ebins)
+        eqm1 = EnsembleQualityMetrics.from_config(
+            osp.join(tmp, "test.yaml")
+        )  # from YAML
+        eqm2 = EnsembleQualityMetrics.from_dictionary(
+            metrics
+        )  # from dictionary
+        for eqm in [eqm1, eqm2]:
+            np.testing.assert_array_equal(
+                eqm.metrics["features"]["rg"]["metric_params"]["js_div"][
+                    "bins"
+                ],
+                expected_bins1,
+            )
+            assert (
+                eqm.metrics["features"]["ca_distances"]["metric_params"][
+                    "mse_ldist"
+                ]["bins"]
+                == expected_bins2
+            )
+            assert (
+                eqm.metrics["features"]["a_2D_feature"]["metric_params"][
+                    "kl_div"
+                ]["bins"]
+                == expected_bins3
+            )
+            assert isinstance(
+                eqm.metrics["features"]["another_2D_feature"]["metric_params"][
+                    "mse_dist"
+                ]["bins"],
+                list,
+            )
+            for bins, ebins in zip(
+                eqm.metrics["features"]["another_2D_feature"]["metric_params"][
+                    "mse_dist"
+                ]["bins"],
+                expected_bins4,
+            ):
+                np.testing.assert_array_equal(bins, ebins)
 
 
 def test_structural_calculator_config_bin_conversion():
