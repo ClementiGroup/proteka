@@ -597,7 +597,14 @@ class Featurizer:
         return_pairs: bool = False,
     ) -> Union[None, Dict]:
         """Gets fraction of native contacts according to the method
-        defined in Best, Hummer, and Eaton (2013).
+        defined in Best, Hummer, and Eaton (2013). This method allows for two
+        ways to compute contacts, controlled by the `use_atomistic_reference` keyword
+        argument (see below). If `use_atomistic_reference=True`, the contacting residues
+        are determined at the all atom resolution, and equilibrium contact distances are
+        determined for a set of representative atoms (thereby allowing native contacts to
+        be defined for coarse grain representations. Else, the reference and the supplied
+        ensemble are assumed to be at the same resolution, and the contacts are defined and
+        computed based on the suppled atom selection.
 
         Parameters
         ----------
