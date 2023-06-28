@@ -684,10 +684,9 @@ class Featurizer:
             ref_distances = md.compute_distances(
                 reference_structure, ref_res_filtered_atom_pairs, periodic=False
             )
-            native_contacts = ref_res_filtered_atom_pairs[
+            contacts_all = ref_res_filtered_atom_pairs[
                 ref_distances.squeeze() < native_cutoff
             ].squeeze()
-            contacts_all = [list(pair) for pair in native_contacts]
 
             # Get residue indices in contact, store them
             # And store the chosen representative atom pairs for each residue pair
