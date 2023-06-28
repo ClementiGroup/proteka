@@ -608,8 +608,8 @@ class EnsembleQualityMetrics(IMetrics):
 
         parameters
         ----------
-        config_file:
-            yaml file specifying feature and config options
+        input_dictionary:
+            unparsed config dictionary specifying feature and config options
         """
 
         eqm_config = EnsembleQualityMetrics.parse_config(
