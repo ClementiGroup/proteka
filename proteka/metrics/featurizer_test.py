@@ -435,3 +435,50 @@ def test_rmsd_recompute(get_CLN_traj):
         stored_rmsd,
         ens.get_quantity("rmsd").raw_value,
     )
+
+
+def test_feature_composition(get_CLN_traj):
+    # Tests to make sure that 2D feature composing works
+    ens = get_CLN_traj.make_ens()
+    ref_structure = ens.get_all_in_one_mdtraj_trj()[0]
+
+    feat = Featurizer()
+    feat.add_rmsd(ens, ref_structure)
+    feat.add_rg(ens)
+
+    n = ens.n_frames
+    manual_feature = np.hstack(
+        [
+            ens.get_quantity("rmsd").raw_value.reshape(n, 1),
+            ens.get_quantity("rg").raw_value.reshape(n, 1),
+        ]
+    )
+    print(manual_feature.shape)
+    composed_feature = feat.compose_2d_feature(ens, "rmsd_AND_rg")
+
+    np.testing.assert_array_equal(manual_feature, composed_feature)
+
+
+def test_feature_composition_raises(get_CLN_traj):
+    # Tests composing raises
+    ens = get_CLN_traj.make_ens()
+    feat = Featurizer()
+
+    # improper compose strings
+    compose_strings = [
+        "feat1_feat2",
+        "feat1_AND_feat2_AND_feat3",
+        "feat1_and_feat2",
+    ]
+    for cs in compose_strings:
+        with pytest.raises(AssertionError):
+            feat.compose_2d_feature(ens, cs)
+
+    # improper feat
+    feat.add_rg(ens)
+    with pytest.raises(ValueError):
+        feat.compose_2d_feature(ens, "rg_AND_megarg")
+
+    # not yet calculated features):
+    with pytest.raises(RuntimeError):
+        feat.compose_2d_feature(ens, "rg_AND_rmsd")
