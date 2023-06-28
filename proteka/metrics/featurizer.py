@@ -675,6 +675,11 @@ class Featurizer:
         ref_atoms = list(native_top.atoms)
         ref_residues = list(native_top.residues)
 
+        # rep_atom checks
+        for ra in rep_atoms:
+            assert ra in set([atom.name for atom in ref_atoms])
+            assert ra in set([atom.name for atom in model_atoms])
+
         if use_atomistic_reference == True:
             # get types of atoms used for defining contacts
             selection_all = native_top.select(atom_selection)
@@ -699,6 +704,7 @@ class Featurizer:
             # And store the chosen representative atom pairs for each residue pair
             residue_pairs = []
             native_contacts = []
+            recorded_ref_pairs = []
             for atom_pair in contacts_all:
                 res_1, res_2 = (
                     ref_atoms[atom_pair[0]].residue.index,
@@ -707,52 +713,67 @@ class Featurizer:
                 if sorted([res_1, res_2]) not in residue_pairs:
                     residue_pairs.append(sorted([res_1, res_2]))
                     # store requested representative atoms
-                    res_1_rep_atoms = [
-                        atom.index
-                        for atom in ref_residues[res_1].atoms
-                        if atom.name in rep_atoms
-                    ]
-                    res_2_rep_atoms = [
-                        atom.index
-                        for atom in ref_residues[res_2].atoms
-                        if atom.name in rep_atoms
-                    ]
+                    res_1_rep_atoms = []
+                    res_2_rep_atoms = []
+                    for ra in rep_atoms:
+                        res1_atoms = list(ref_residues[res_1].atoms_by_name(ra))
+                        res2_atoms = list(ref_residues[res_2].atoms_by_name(ra))
+                        # account for cases where the requested atom is missing
+                        if not (len(res1_atoms) == len(res2_atoms) == 1):
+                            if len(res1_atoms) == 0 or len(res2_atoms) == 0:
+                                continue  # skip because pair cannot be formed
+                            else:
+                                raise RuntimeError(
+                                    f"Residue {ref_residues[res_1]} or residue {ref_residues[res_2]} has a repeated {ra} atom"
+                                )
+                        res_1_rep_atoms.append(res1_atoms[0])
+                        res_2_rep_atoms.append(res2_atoms[0])
+
                     all_ref_rep_atom_pairs = []
                     for atom1 in res_1_rep_atoms:
                         for atom2 in res_2_rep_atoms:
-                            if (
-                                sorted([atom1, atom2])
-                                not in all_ref_rep_atom_pairs
-                            ):
+                            if [
+                                atom1.index,
+                                atom2.index,
+                            ] not in all_ref_rep_atom_pairs:
                                 all_ref_rep_atom_pairs.append(
-                                    sorted([atom1, atom2])
+                                    [atom1.index, atom2.index]
                                 )
+                                recorded_ref_pairs.append([atom1, atom2])
                     native_contacts.extend(all_ref_rep_atom_pairs)
 
-            # Now we do the exact same for the CG atoms, for the same residues in contact
+            # Now we do the exact same for the ensemble atoms, for the same residues in contact
             traj_native_pairs = []
+            recorded_pairs = []
             for res_pair in residue_pairs:
                 res_1, res_2 = res_pair[0], res_pair[1]
-                res_1_rep_atoms = [
-                    atom.index
-                    for atom in model_residues[res_1].atoms
-                    if atom.name in rep_atoms
-                ]
-                res_2_rep_atoms = [
-                    atom.index
-                    for atom in model_residues[res_2].atoms
-                    if atom.name in rep_atoms
-                ]
+                res_1_rep_atoms = []
+                res_2_rep_atoms = []
+                for ra in rep_atoms:
+                    res1_atoms = list(model_residues[res_1].atoms_by_name(ra))
+                    res2_atoms = list(model_residues[res_2].atoms_by_name(ra))
+                    # account for cases where the requested atom is missing
+                    if not (len(res1_atoms) == len(res2_atoms) == 1):
+                        if len(res1_atoms) == 0 or len(res2_atoms) == 0:
+                            continue  # skip because pair cannot be formed
+                        else:
+                            raise RuntimeError(
+                                f"Residue {ref_residues[res_1]} or residue {ref_residues[res_2]} has a repeated {ra} atom"
+                            )
+                    res_1_rep_atoms.append(res1_atoms[0])
+                    res_2_rep_atoms.append(res2_atoms[0])
+
                 all_model_rep_atom_pairs = []
                 for atom1 in res_1_rep_atoms:
                     for atom2 in res_2_rep_atoms:
                         if (
-                            sorted([atom1, atom2])
+                            sorted([atom1.index, atom2.index])
                             not in all_model_rep_atom_pairs
                         ):
                             all_model_rep_atom_pairs.append(
-                                sorted([atom1, atom2])
+                                sorted([atom1.index, atom2.index])
                             )
+                            recorded_pairs.append([atom1, atom2])
                 traj_native_pairs.extend(all_model_rep_atom_pairs)
 
             # checks: make sure atom pairs are the same atoms

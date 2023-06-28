@@ -40,9 +40,17 @@ def get_ala10_frame():
 @pytest.fixture
 def get_CLN_traj():
     class ens_factory:
-        def make_ens(self, ca_only=False, unfolded=False, single_frame=False):
+        def make_ens(
+            self,
+            ca_only=False,
+            unfolded=False,
+            single_frame=False,
+            pro_ca_cb_swap=False,
+        ):
             traj = get_CLN_trajectory(
-                unfolded=unfolded, single_frame=single_frame
+                unfolded=unfolded,
+                single_frame=single_frame,
+                pro_ca_cb_swap=pro_ca_cb_swap,
             )
             if ca_only:
                 traj = traj.atom_slice(traj.topology.select("name CA"))
@@ -330,6 +338,41 @@ def test_fraction_native_contacts_atomistic(get_CLN_traj):
         ca_ens,
         reference_structure=native_structure,
         atom_selection="all and not element H",
+        use_atomistic_reference=True,
+        return_pairs=True,
+    )
+    ref_atom_pairs, cg_atom_pairs = (
+        pair_dict["ref_atom_pairs"],
+        pair_dict["model_atom_pairs"],
+    )
+    assert len(ref_atom_pairs) == len(cg_atom_pairs)
+
+
+def test_fraction_native_contacts_atomisitc_order(get_CLN_traj):
+    """Test fraction of native contact number calculation
+    when then reference has a different atom order"""
+    native_structure = get_CLN_traj.make_ens(
+        single_frame=True, pro_ca_cb_swap=True
+    ).get_all_in_one_mdtraj_trj()
+    nat_atoms = list(native_structure.top.atoms)
+
+    # Make CG ensemble at the CA level with different PRO CA-CB order
+    ens = get_CLN_traj.make_ens(unfolded=True)
+    cg_traj = ens.get_all_in_one_mdtraj_trj()
+    cg_traj = cg_traj.atom_slice(cg_traj.top.select("name CA or name CB"))
+    cg_atoms = list(cg_traj.top.atoms)
+    cg_ens = Ensemble.from_mdtraj_trj("cg", cg_traj)
+
+    print(nat_atoms)
+    print("")
+    print(cg_atoms)
+
+    feat = Featurizer()
+    pair_dict = feat.add_fraction_native_contacts(
+        cg_ens,
+        reference_structure=native_structure,
+        atom_selection="all and not element H",
+        rep_atoms=["CA", "CB"],
         use_atomistic_reference=True,
         return_pairs=True,
     )

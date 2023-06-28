@@ -197,7 +197,7 @@ def get_ALA_10_helix() -> md.Trajectory:
 
 
 def get_CLN_trajectory(
-    single_frame=False, seed=1678543, unfolded=False
+    single_frame=False, seed=1678543, unfolded=False, pro_ca_cb_swap=False
 ) -> md.Trajectory:
     """Get a random 49 atom CG backbone + CB model of CLN025 (nanometers),
     with 100 noise-perturbed frames.
@@ -333,9 +333,15 @@ def get_CLN_trajectory(
     for r in resnames:
         residue = topology.add_residue(r, chain)
         topology.add_atom("N", md.element.nitrogen, residue)
-        topology.add_atom("CA", md.element.carbon, residue)
         if r != "GLY":
-            topology.add_atom("CB", md.element.carbon, residue)
+            if pro_ca_cb_swap and r == "PRO":
+                topology.add_atom("CB", md.element.carbon, residue)
+                topology.add_atom("CA", md.element.carbon, residue)
+            else:
+                topology.add_atom("CA", md.element.carbon, residue)
+                topology.add_atom("CB", md.element.carbon, residue)
+        else:
+            topology.add_atom("CA", md.element.carbon, residue)
         topology.add_atom("C", md.element.carbon, residue)
         topology.add_atom("O", md.element.oxygen, residue)
     return md.Trajectory(coords, topology)
