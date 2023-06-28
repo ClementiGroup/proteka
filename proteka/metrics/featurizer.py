@@ -682,7 +682,7 @@ class Featurizer:
 
             # compute the distances between filtered pairs and get the pairs within cutoff
             ref_distances = md.compute_distances(
-                reference_structure, ref_res_filtered_atom_pairs
+                reference_structure, ref_res_filtered_atom_pairs, periodic=False
             )
             native_contacts = ref_res_filtered_atom_pairs[
                 ref_distances.squeeze() < native_cutoff
@@ -797,20 +797,19 @@ class Featurizer:
             )
 
             nat_dist = md.compute_distances(
-                reference_structure, filtered_ref_pairs
+                reference_structure, filtered_ref_pairs, periodic=False
             )
             nat_idx = np.argwhere(nat_dist.squeeze() < native_cutoff).squeeze()
             native_contacts = filtered_ref_pairs[nat_idx]
             traj_native_pairs = filtered_traj_pairs[nat_idx]
 
         # now compute distances
-        r_0 = np.array(
-            md.compute_distances(reference_structure, native_contacts),
-            dtype=np.float128,
-        )
-        traj_nat_dist = np.array(
-            md.compute_distances(traj, traj_native_pairs), dtype=np.float128
-        )
+        r_0 = md.compute_distances(
+            reference_structure, native_contacts, periodic=False
+        ).astype("float64")
+        traj_nat_dist = md.compute_distances(
+            traj, traj_native_pairs, periodic=False
+        ).astype("float64")
 
         # compute native contacts for the same pairs
         q = np.mean(
