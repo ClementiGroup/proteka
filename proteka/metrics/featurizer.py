@@ -817,7 +817,7 @@ class Featurizer:
         )
 
         metadata = {
-            "feature": "faction_native_contacts",
+            "feature": "fraction_native_contacts",
             "reference_structure": {
                 "coords": native_coords,
                 "top": native_top,
