@@ -180,9 +180,7 @@ def test_calculator_config_bin_conversion():
         eqm1 = EnsembleQualityMetrics.from_config(
             osp.join(tmp, "test.yaml")
         )  # from YAML
-        eqm2 = EnsembleQualityMetrics.from_dictionary(
-            metrics
-        )  # from dictionary
+        eqm2 = EnsembleQualityMetrics.from_config(metrics)  # from dictionary
         for eqm in [eqm1, eqm2]:
             np.testing.assert_array_equal(
                 eqm.metrics["features"]["rg"]["metric_params"]["js_div"][

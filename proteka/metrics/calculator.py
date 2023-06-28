@@ -563,7 +563,7 @@ class EnsembleQualityMetrics(IMetrics):
         return eqm_config
 
     @classmethod
-    def from_config(cls, config_file: str):
+    def from_config(cls, config_file: Union[str, Dict]):
         """instances an EnsembleQualityMetrics
         from a config file. the config should have the example following structure:
 
@@ -591,30 +591,23 @@ class EnsembleQualityMetrics(IMetrics):
         parameters
         ----------
         config_file:
-            yaml file specifying feature and config options
+            If str, a path to a YAML file specifying feature and config options.
+            If Dict, a dictionary of a loaded YAML file
         """
-
-        config = yaml.load(open(config_file, "r"))
+        if not isinstance(config_file, str) and not isinstance(
+            config_file, dict
+        ):
+            raise ValueError(
+                f"`config_file` must be str/dict but type {type(config_file)} was supplied."
+            )
+        if isinstance(config_file, str):
+            config = yaml.load(open(config_file, "r"))
+        if isinstance(config_file, dict):
+            config = config_file
         eqm_config = EnsembleQualityMetrics.parse_config(
             config["EnsembleQualityMetrics"]
         )
 
-        return cls(eqm_config)
-
-    @classmethod
-    def from_dictionary(cls, input_dictionary: Dict):
-        """instances an EnsembleQualityMetrics from an unparsed config dictionary.
-        See `help(EnsembleQualityMetrics.from_config)` for expected format.
-
-        parameters
-        ----------
-        config_file:
-            yaml file specifying feature and config options
-        """
-
-        eqm_config = EnsembleQualityMetrics.parse_config(
-            input_dictionary["EnsembleQualityMetrics"]
-        )
         return cls(eqm_config)
 
     def compute(
