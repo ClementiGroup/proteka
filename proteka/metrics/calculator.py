@@ -532,7 +532,6 @@ class EnsembleQualityMetrics(IMetrics):
                             metric
                         ]["bins"] = np.linspace(**binopts)
                     elif isinstance(binopts, list):
-                        print(binopts)
                         # 2D histogram handling for np.histogram2d
                         if len(binopts) != 2:
                             raise ValueError(
@@ -546,7 +545,6 @@ class EnsembleQualityMetrics(IMetrics):
                             # list of 1D arrays for each dimension
                             converted_bins = []
                             for bin_opt in binopts:
-                                print(bin_opt)
                                 # reinstance bins with np.linspace
                                 c_bins = np.linspace(**bin_opt)
                                 converted_bins.append(c_bins)
@@ -560,6 +558,11 @@ class EnsembleQualityMetrics(IMetrics):
                             )
                 else:
                     raise ValueError(f"unknown bin options {binopts}")
+            
+            if "feature_params" in list(feature_dict.keys()):
+                for feat_param in feature_dict["feature_params"].keys():
+                    if feat_param == 'reference_structure':
+                        eqm_config["features"][feature]["feature_params"][feat_param] = md.load(eqm_config["features"][feature]["feature_params"][feat_param])
         return eqm_config
 
     @classmethod
