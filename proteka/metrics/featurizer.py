@@ -704,7 +704,6 @@ class Featurizer:
             # And store the chosen representative atom pairs for each residue pair
             residue_pairs = []
             native_contacts = []
-            recorded_ref_pairs = []
             for atom_pair in contacts_all:
                 res_1, res_2 = (
                     ref_atoms[atom_pair[0]].residue.index,
@@ -739,12 +738,10 @@ class Featurizer:
                                 all_ref_rep_atom_pairs.append(
                                     [atom1.index, atom2.index]
                                 )
-                                recorded_ref_pairs.append([atom1, atom2])
                     native_contacts.extend(all_ref_rep_atom_pairs)
 
             # Now we do the exact same for the ensemble atoms, for the same residues in contact
             traj_native_pairs = []
-            recorded_pairs = []
             for res_pair in residue_pairs:
                 res_1, res_2 = res_pair[0], res_pair[1]
                 res_1_rep_atoms = []
@@ -773,7 +770,6 @@ class Featurizer:
                             all_model_rep_atom_pairs.append(
                                 sorted([atom1.index, atom2.index])
                             )
-                            recorded_pairs.append([atom1, atom2])
                 traj_native_pairs.extend(all_model_rep_atom_pairs)
 
             # checks: make sure atom pairs are the same atoms
