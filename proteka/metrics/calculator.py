@@ -499,41 +499,25 @@ class EnsembleQualityMetrics(IMetrics):
         self.compute(target, reference)
         return self.report()
 
-    @classmethod
-    def from_config(cls, config_file: str):
-        """instances an EnsembleQualityMetrics
-        from a config file. the config should have the example following structure:
+    @staticmethod
+    def parse_config(eqm_config: Dict) -> Dict:
+        """Parser for input configuration loaded
+        from YAML or otherwise dictionaries that
+        have unparsed bin options
 
-            EnsembleQualityMetrics:
-              features:
-                rmsd:
-                  feauture_params:
-                    reference_structure: path_to_struct.pdb
-                    atom_selection: "name ca"
-                  metric_params:
-                    js_div:
-                      bins: 100
-                    mse_ldist:
-                      -bins:
-                        start: 0
-                        stop: 100
-                        num: 1000
-                ...
-
-        for specific metrics, bins can be either an integer or a dictionary
-        of key value pairs corresponding to kwargs of `np.linspace` to instance
-        equal-width bins over a specific range of values. For 2D metrics, a
-        list of binopts can be specified through the "-" operator.
-
-        parameters
+        Parameters
         ----------
-        config_file:
-            yaml file specifying feature and config options
+        eqm_config:
+            Unparsed EnsembleQualityMetrics configuration
+            options dictionary
+
+        Returns
+        -------
+        eqm_config:
+            Parsed EnsembleQualityMetrics configuration
+            options dictionary that can be used for class
+            instantiation.
         """
-
-        config = yaml.load(open(config_file, "r"))
-        eqm_config = config["EnsembleQualityMetrics"]
-
         for feature in eqm_config["features"].keys():
             feature_dict = eqm_config["features"][feature]
             for metric in feature_dict["metric_params"].keys():
@@ -576,6 +560,54 @@ class EnsembleQualityMetrics(IMetrics):
                             )
                 else:
                     raise ValueError(f"unknown bin options {binopts}")
+        return eqm_config
+
+    @classmethod
+    def from_config(cls, config_file: Union[str, Dict]):
+        """instances an EnsembleQualityMetrics
+        from a config file. the config should have the example following structure:
+
+            EnsembleQualityMetrics:
+              features:
+                rmsd:
+                  feauture_params:
+                    reference_structure: path_to_struct.pdb
+                    atom_selection: "name ca"
+                  metric_params:
+                    js_div:
+                      bins: 100
+                    mse_ldist:
+                      -bins:
+                        start: 0
+                        stop: 100
+                        num: 1000
+                ...
+
+        for specific metrics, bins can be either an integer or a dictionary
+        of key value pairs corresponding to kwargs of `np.linspace` to instance
+        equal-width bins over a specific range of values. For 2D metrics, a
+        list of binopts can be specified through the "-" operator.
+
+        parameters
+        ----------
+        config_file:
+            If str, a path to a YAML file specifying feature and config options.
+            If Dict, a dictionary of a loaded YAML file
+        """
+        if not isinstance(config_file, str) and not isinstance(
+            config_file, dict
+        ):
+            raise ValueError(
+                f"`config_file` must be str/dict but type {type(config_file)} was supplied."
+            )
+        if isinstance(config_file, str):
+            config = yaml.load(open(config_file, "r"))
+        if isinstance(config_file, dict):
+            config = config_file
+        eqm_config = EnsembleQualityMetrics.parse_config(
+            config["EnsembleQualityMetrics"]
+        )
+
         return cls(eqm_config)
 
     def compute(
