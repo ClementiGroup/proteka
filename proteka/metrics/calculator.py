@@ -506,8 +506,86 @@ class EnsembleQualityMetrics(IMetrics):
         self.compute(target, reference)
         return self.report()
 
+    @staticmethod
+    def parse_config(eqm_config: Dict) -> Dict:
+        """Parser for input configuration loaded
+        from YAML or otherwise dictionaries that
+        have unparsed bin options
+
+        Parameters
+        ----------
+        eqm_config:
+            Unparsed EnsembleQualityMetrics configuration
+            options dictionary
+
+        Returns
+        -------
+        eqm_config:
+            Parsed EnsembleQualityMetrics configuration
+            options dictionary that can be used for class
+            instantiation.
+        """
+        for feature in eqm_config["features"].keys():
+            feature_dict = eqm_config["features"][feature]
+            for metric in feature_dict["metric_params"].keys():
+                if "bins" in list(feature_dict["metric_params"][metric].keys()):
+                    binopts = feature_dict["metric_params"][metric]["bins"]
+                    if isinstance(binopts, int) or binopts is None:
+                        # Simple "num bins" or histogram default
+                        continue
+                    elif isinstance(binopts, Mapping):
+                        # 1D specified bin array using np.linspace
+                        eqm_config["features"][feature]["metric_params"][
+                            metric
+                        ]["bins"] = np.linspace(**binopts)
+                    elif isinstance(binopts, list):
+                        # 2D histogram handling for np.histogram2d
+                        if len(binopts) != 2:
+                            raise ValueError(
+                                f"Currently only 2D distributions are supported"
+                            )
+
+                        if all([isinstance(opt, int) for opt in binopts]):
+                            # List of ints
+                            continue
+                        elif all([isinstance(opt, Mapping) for opt in binopts]):
+                            # list of 1D arrays for each dimension
+                            converted_bins = []
+                            for bin_opt in binopts:
+                                # reinstance bins with np.linspace
+                                c_bins = np.linspace(**bin_opt)
+                                converted_bins.append(c_bins)
+
+                            eqm_config["features"][feature]["metric_params"][
+                                metric
+                            ]["bins"] = converted_bins
+                        else:
+                            raise ValueError(
+                                f"Currently, only List[int] or List[dict] are accepted for multiple bin specifications, but {binopts} was supplied"
+                            )
+                else:
+                    raise ValueError(f"unknown bin options {binopts}")
+
+            if "feature_params" in list(feature_dict.keys()):
+                for feat_param in feature_dict["feature_params"].keys():
+                    if feat_param == "reference_structure":
+                        if isinstance(
+                            eqm_config["features"][feature]["feature_params"][
+                                feat_param
+                            ],
+                            str,
+                        ):
+                            eqm_config["features"][feature]["feature_params"][
+                                feat_param
+                            ] = md.load(
+                                eqm_config["features"][feature][
+                                    "feature_params"
+                                ][feat_param]
+                            )
+        return eqm_config
+
     @classmethod
-    def from_config(cls, config_file: str):
+    def from_config(cls, config_file: Union[str, Dict]):
         """instances an EnsembleQualityMetrics
         from a config file. the config should have the example following structure:
 
@@ -535,54 +613,23 @@ class EnsembleQualityMetrics(IMetrics):
         parameters
         ----------
         config_file:
-            yaml file specifying feature and config options
+            If str, a path to a YAML file specifying feature and config options.
+            If Dict, a dictionary of a loaded YAML file
         """
+        if not isinstance(config_file, str) and not isinstance(
+            config_file, dict
+        ):
+            raise ValueError(
+                f"`config_file` must be str/dict but type {type(config_file)} was supplied."
+            )
+        if isinstance(config_file, str):
+            config = yaml.load(open(config_file, "r"))
+        if isinstance(config_file, dict):
+            config = config_file
+        eqm_config = EnsembleQualityMetrics.parse_config(
+            config["EnsembleQualityMetrics"]
+        )
 
-        config = yaml.load(open(config_file, "r"))
-        eqm_config = config["EnsembleQualityMetrics"]
-
-        for feature in eqm_config["features"].keys():
-            feature_dict = eqm_config["features"][feature]
-            for metric in feature_dict["metric_params"].keys():
-                if "bins" in list(feature_dict["metric_params"][metric].keys()):
-                    binopts = feature_dict["metric_params"][metric]["bins"]
-                    if isinstance(binopts, int) or binopts is None:
-                        # Simple "num bins" or histogram default
-                        continue
-                    elif isinstance(binopts, Mapping):
-                        # 1D specified bin array using np.linspace
-                        eqm_config["features"][feature]["metric_params"][
-                            metric
-                        ]["bins"] = np.linspace(**binopts)
-                    elif isinstance(binopts, list):
-                        print(binopts)
-                        # 2D histogram handling for np.histogram2d
-                        if len(binopts) != 2:
-                            raise ValueError(
-                                f"Currently only 2D distributions are supported"
-                            )
-
-                        if all([isinstance(opt, int) for opt in binopts]):
-                            # List of ints
-                            continue
-                        elif all([isinstance(opt, Mapping) for opt in binopts]):
-                            # list of 1D arrays for each dimension
-                            converted_bins = []
-                            for bin_opt in binopts:
-                                print(bin_opt)
-                                # reinstance bins with np.linspace
-                                c_bins = np.linspace(**bin_opt)
-                                converted_bins.append(c_bins)
-
-                            eqm_config["features"][feature]["metric_params"][
-                                metric
-                            ]["bins"] = converted_bins
-                        else:
-                            raise ValueError(
-                                f"Currently, only List[int] or List[dict] are accepted for multiple bin specifications, but {binopts} was supplied"
-                            )
-                else:
-                    raise ValueError(f"unknown bin options {binopts}")
         return cls(eqm_config)
 
     def compute(
