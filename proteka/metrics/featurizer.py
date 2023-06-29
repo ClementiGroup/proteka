@@ -776,16 +776,22 @@ class Featurizer:
             # and come from the same residues
             assert len(native_contacts) == len(traj_native_pairs)
             for rp, mp in zip(native_contacts, traj_native_pairs):
-                assert ref_atoms[rp[0]].name == model_atoms[mp[0]].name
-                assert ref_atoms[rp[1]].name == model_atoms[mp[1]].name
+                assert (
+                    ref_atoms[rp[0]].name == model_atoms[mp[0]].name
+                ), f"mismatch between ref atom {ref_atoms[rp[0]]} and model atom {model_atoms[mp[0]]}"
+                assert (
+                    ref_atoms[rp[1]].name == model_atoms[mp[1]].name
+                ), f"mismatch between ref atom {ref_atoms[rp[1]]} and model atom {model_atoms[mp[1]]}"
+
                 assert (
                     ref_atoms[rp[0]].residue.index
                     == model_atoms[mp[0]].residue.index
-                )
+                ), f"mismatch between ref residue {ref_atoms[rp[0]].residue} and model residue {model_atoms[mp[0]].residue}"
                 assert (
                     ref_atoms[rp[1]].residue.index
                     == model_atoms[mp[1]].residue.index
-                )
+                ), f"mismatch between ref residue {ref_atoms[rp[1]].residue} and model residue {model_atoms[mp[1]].residue}"
+
         else:
             # Don't assume atomistic reference for defining residues in contact
             # Instead use mutual atom selection chosen for reference and ensemble
