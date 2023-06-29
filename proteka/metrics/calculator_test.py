@@ -203,21 +203,21 @@ def test_calculator_config_bin_conversion():
                 == expected_bins2
             )
             assert (
-                eqm.metrics["features"]["a_2D_feature"]["metric_params"][
-                    "kl_div"
-                ]["bins"]
+                eqm.metrics["features"]["feature3_AND_feature4"][
+                    "metric_params"
+                ]["kl_div"]["bins"]
                 == expected_bins3
             )
             assert isinstance(
-                eqm.metrics["features"]["another_2D_feature"]["metric_params"][
-                    "mse_dist"
-                ]["bins"],
+                eqm.metrics["features"]["feature1_AND_feature2"][
+                    "metric_params"
+                ]["mse_dist"]["bins"],
                 list,
             )
             for bins, ebins in zip(
-                eqm.metrics["features"]["another_2D_feature"]["metric_params"][
-                    "mse_dist"
-                ]["bins"],
+                eqm.metrics["features"]["feature1_AND_feature2"][
+                    "metric_params"
+                ]["mse_dist"]["bins"],
                 expected_bins4,
             ):
                 np.testing.assert_array_equal(bins, ebins)
@@ -262,7 +262,6 @@ def test_calculator_config_mdtraj_conversion():
                 ],
                 md.Trajectory,
             )
-
 
 
 def test_structural_calculator_config_bin_conversion():
