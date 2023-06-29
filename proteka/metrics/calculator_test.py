@@ -214,6 +214,43 @@ def test_calculator_config_bin_conversion():
             ):
                 np.testing.assert_array_equal(bins, ebins)
 
+def test_calculator_config_mdtraj_conversion():
+    # Tests to make sure paths to pdb files are converted correctly
+    # for EnsembleQualityMetrics instanced from configs
+    root_dir = Path(__file__).parent.parent.parent
+    cln_path = osp.join(
+        root_dir, "examples", "example_dataset_files", "cln_folded.pdb"
+    )
+    metrics = {
+        "EnsembleQualityMetrics": {
+            "features": {
+                "rmsd": {
+                    "feature_params": {
+                        "atom_selection": "name CA",
+                        "reference_structure": cln_path
+                    },
+                    "metric_params": {
+                        "js_div": {
+                            "bins": {"start": 0, "stop": 100, "num": 101}
+                        },
+                    },
+                },
+            },
+        },
+    }
+
+    with tempfile.TemporaryDirectory() as tmp:
+        yaml = YAML()
+        yaml.dump(metrics, open(osp.join(tmp, "test.yaml"), "w"))
+        eqm1 = EnsembleQualityMetrics.from_config(
+            osp.join(tmp, "test.yaml")
+        )  # from YAML
+        eqm2 = EnsembleQualityMetrics.from_config(metrics)  # from dictionary
+        for eqm in [eqm1, eqm2]:
+            assert isinstance(
+                eqm.metrics["features"]["rmsd"]["feature_params"]["reference_structure"],
+                md.Trajectory
+            )
 
 def test_structural_calculator_config_bin_conversion():
     # Tests to make sure metric params are stored properly for StructuralQualityMetrics
