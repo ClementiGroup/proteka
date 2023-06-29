@@ -101,6 +101,7 @@ def test_ensemble_metric_run(get_two_ensembles):
                 "feature_params": {
                     "reference_structure": reference_structure,
                     "atom_selection": "name CA",
+                    "use_atomistic_reference": False,
                 },
                 "metric_params": {"js_div": {"bins": np.linspace(0, 1.0, 100)}},
             },

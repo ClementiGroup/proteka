@@ -1,8 +1,9 @@
 import numpy as np
 import mdtraj as md
 from ..dataset import Ensemble
-from typing import Union, Tuple, Optional, Dict
+from typing import Union, Tuple, Optional, Dict, List
 from itertools import combinations
+from collections.abc import Iterable
 
 __all__ = [
     "generate_grid_polymer",
@@ -196,7 +197,7 @@ def get_ALA_10_helix() -> md.Trajectory:
 
 
 def get_CLN_trajectory(
-    single_frame=False, seed=1678543, unfolded=False
+    single_frame=False, seed=1678543, unfolded=False, pro_ca_cb_swap=False
 ) -> md.Trajectory:
     """Get a random 49 atom CG backbone + CB model of CLN025 (nanometers),
     with 100 noise-perturbed frames.
@@ -332,9 +333,15 @@ def get_CLN_trajectory(
     for r in resnames:
         residue = topology.add_residue(r, chain)
         topology.add_atom("N", md.element.nitrogen, residue)
-        topology.add_atom("CA", md.element.carbon, residue)
         if r != "GLY":
-            topology.add_atom("CB", md.element.carbon, residue)
+            if pro_ca_cb_swap and r == "PRO":
+                topology.add_atom("CB", md.element.carbon, residue)
+                topology.add_atom("CA", md.element.carbon, residue)
+            else:
+                topology.add_atom("CA", md.element.carbon, residue)
+                topology.add_atom("CB", md.element.carbon, residue)
+        else:
+            topology.add_atom("CA", md.element.carbon, residue)
         topology.add_atom("C", md.element.carbon, residue)
         topology.add_atom("O", md.element.oxygen, residue)
     return md.Trajectory(coords, topology)
@@ -481,3 +488,39 @@ def histogram_features2d(
         weights=target_weights,
     )
     return hist_target, hist_reference
+
+
+def reduce_atom_pairs_by_residue_offset(
+    atom_list: List[md.core.topology.Atom],
+    atom_idx_pairs,
+    res_offset: int = 3,
+) -> Iterable:
+    """Calculates all contacts under certain cutoff given a list of atom indices
+
+    Parameters
+    ----------
+    atom_list:
+        List of MDTraj `Atom` instances
+    atom_idx:
+        list of atom index pairs for computing distances
+    res_offset:
+        minimum distance between residues to be considered pairs
+
+    Returns
+    -------
+    filtered_pairs:
+       List of atom index pairs satisyfing the minimum residue offset specified.
+    """
+
+    filtered_pairs = []
+    for p in atom_idx_pairs:
+        p1_a, p1_b = p[0], p[1]
+        if (
+            np.abs(
+                atom_list[p1_a].residue.index - atom_list[p1_b].residue.index
+            )
+            > res_offset
+        ):
+            filtered_pairs.append([p1_a, p1_b])
+
+    return filtered_pairs
