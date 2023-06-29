@@ -561,8 +561,9 @@ class EnsembleQualityMetrics(IMetrics):
             
             if "feature_params" in list(feature_dict.keys()):
                 for feat_param in feature_dict["feature_params"].keys():
-                    if feat_param == 'reference_structure':
-                        eqm_config["features"][feature]["feature_params"][feat_param] = md.load(eqm_config["features"][feature]["feature_params"][feat_param])
+                    if feat_param == "reference_structure":
+                        if isinstance(eqm_config["features"][feature]["feature_params"][feat_param], str):
+                            eqm_config["features"][feature]["feature_params"][feat_param] = md.load(eqm_config["features"][feature]["feature_params"][feat_param])
         return eqm_config
 
     @classmethod
