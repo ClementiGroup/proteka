@@ -1157,7 +1157,10 @@ class Featurizer:
                     recompute = True
 
             for key, value in kwargs.items():
-                if feature == "rmsd" and key == "reference_structure":
+                if (
+                    feature in ["rmsd", "fraction_native_contacts"]
+                    and key == "reference_structure"
+                ):
                     # Handle RMSD structure serialization (as kwarg)
                     reference_structure = kwargs[key]
                     if not Featurizer._reference_structure_equality(
