@@ -593,7 +593,7 @@ class Featurizer:
         res_offset: int = 3,
         atom_selection: str = "all and not element H",
         use_atomistic_reference: bool = True,
-        rep_atoms: List[str] = ["CA"],
+        rep_atoms: Optional[List[str]] = None,
         return_pairs: bool = False,
     ) -> Union[None, Dict]:
         """Gets fraction of native contacts according to the method
@@ -642,7 +642,8 @@ class Featurizer:
             ensemble for the same residue pairs.
         rep_atoms:
             List of MDTraj atom names to define *final* contact distances for both the reference structure
-            and the model ensemble. Only used if `use_atomistic_reference=True`.
+            and the model ensemble. Only used if `use_atomistic_reference=True`. If not set, only CA atoms
+            will be used.
         return_pairs;
             If true, a dictionary keyed by `"ref_atom_pairs"` and `"model_atom_pairs"`, containing the
             reference contact atom index pairs and the model contact atom index pairs respectively
@@ -676,6 +677,8 @@ class Featurizer:
         ref_residues = list(native_top.residues)
 
         # rep_atom checks
+        if rep_atoms is None:
+            rep_atoms = ["CA"]
         for ra in rep_atoms:
             assert ra in set([atom.name for atom in ref_atoms])
             assert ra in set([atom.name for atom in model_atoms])
