@@ -317,6 +317,30 @@ def test_fraction_native_contacts(get_CLN_traj):
     )
 
 
+def test_fraction_native_contacts_featurizer(get_CLN_traj):
+    """Test fraction of native contact number calculation
+    using an ensemble of unfolded CLN conformations"""
+    ens = get_CLN_traj.make_ens(unfolded=True)
+    native_structure = get_CLN_traj.make_ens(
+        single_frame=True
+    ).get_all_in_one_mdtraj_trj()
+    feat = Featurizer()
+    params = {
+        "reference_structure": native_structure,
+        "native_cutoff": 0.6,
+        "lam": 1.0,
+        "atom_selection": "name CA",
+        "use_atomistic_reference": False,
+    }
+    feat.add_fraction_native_contacts(ens, **params)
+    output = feat.get_feature(ens, "fraction_native_contacts", **params)
+    np.allclose(
+        [0.3],
+        [np.average(output)],
+        atol=0.1,
+    )
+
+
 def test_fraction_native_contacts_atomistic(get_CLN_traj):
     """Test fraction of native contact number calculation
     using an ensemble of unfolded CLN conformations"""
