@@ -480,14 +480,6 @@ class EnsembleQualityMetrics(IMetrics):
         ]
     )
     vector_features = set(["local_contact_number", "dssp"])
-    features_2d = set(
-        [
-            "tic1_tic2",
-            "rg_AND_helicity",
-            "rmsd_AND_fraction_native_contacts",
-            "rg_AND_rmsd",
-        ]
-    )
 
     def __init__(self, metrics: Dict):
         super().__init__()
@@ -723,7 +715,7 @@ class EnsembleQualityMetrics(IMetrics):
 
         else:
             # catch and compute compound features
-            if ("_AND_" in feature) and (feature is not "tic1_tic2"):
+            if ("_AND_" in feature) and (feature != "tic1_tic2"):
                 target_feat = Featurizer.compose_2d_feature(target, feature)
                 reference_feat = Featurizer.compose_2d_feature(
                     reference, feature
@@ -755,7 +747,7 @@ class EnsembleQualityMetrics(IMetrics):
                 target_weights=target_weights,
                 reference_weights=reference_weights,
             )
-        elif feature in EnsembleQualityMetrics.features_2d:
+        elif target_feat.shape[-1] == reference_feat.shape[-1] == 2:
             metric_computer = EnsembleQualityMetrics.metrics_2d[metric]
             hist_target, hist_ref = histogram_features2d(
                 target_feat,
