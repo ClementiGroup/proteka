@@ -1150,7 +1150,7 @@ class Featurizer:
         """
 
         allowed_features = [
-            str(attr).split("add_")[-1]
+            attr[len("add_"):]
             for attr in dir(Featurizer)
             if attr.startswith("add_")
         ]
