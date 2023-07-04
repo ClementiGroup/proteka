@@ -551,7 +551,7 @@ def test_feature_composition_raises(get_CLN_traj):
 
     # improper feat
     feat.add_rg(ens)
-    with pytest.raises(ValueError):
+    with pytest.raises(RuntimeError):
         feat.compose_2d_feature(ens, "rg_AND_megarg")
 
     # not yet calculated features):
