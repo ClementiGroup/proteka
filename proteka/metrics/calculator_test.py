@@ -68,6 +68,13 @@ def test_ensemble_metric_run(get_two_ensembles):
     target_ensemble, ref_ensemble = get_two_ensembles
     reference_structure = target_ensemble.get_all_in_one_mdtraj_trj()[0]
 
+    # precompute features needed for compound features
+    feat = Featurizer()
+    feat.add_rg(target_ensemble)
+    feat.add_rg(ref_ensemble)
+    feat.add_end2end_distance(target_ensemble)
+    feat.add_end2end_distance(ref_ensemble)
+
     metrics = {
         "features": {
             "ca_distances": {
@@ -75,15 +82,12 @@ def test_ensemble_metric_run(get_two_ensembles):
                 "metric_params": {"js_div": {"bins": np.linspace(0, 1.6, 100)}},
             },
             "rg": {
-                "feature_params": {"atom_selection": "name CA"},
                 "metric_params": {"js_div": {"bins": np.linspace(0, 1.6, 100)}},
             },
             "helicity": {
-                "feature_params": {},
                 "metric_params": {"js_div": {"bins": np.linspace(0, 1.0, 100)}},
             },
             "end2end_distance": {
-                "feature_params": {},
                 "metric_params": {"js_div": {"bins": np.linspace(0, 1.6, 100)}},
             },
             "rmsd": {
@@ -100,6 +104,9 @@ def test_ensemble_metric_run(get_two_ensembles):
                     "use_atomistic_reference": False,
                 },
                 "metric_params": {"js_div": {"bins": np.linspace(0, 1.0, 100)}},
+            },
+            "rg_AND_helicity": {
+                "metric_params": {"js_div": {"bins": 100}},
             },
             "dssp": {
                 "feature_params": {"digitize": True},
@@ -127,7 +134,7 @@ def test_ensemble_metric_run(get_two_ensembles):
     }
     eqm = EnsembleQualityMetrics(metrics)
     results = eqm(target_ensemble, ref_ensemble)
-    assert len(results) == 10
+    assert len(results) == 11
 
 
 def test_calculator_config_bin_conversion():
@@ -150,13 +157,13 @@ def test_calculator_config_bin_conversion():
                         "mse_ldist": {"bins": 101},
                     },
                 },
-                "a_2D_feature": {
+                "feature3_AND_feature4": {
                     "feature_params": {"offset": 1},
                     "metric_params": {
                         "kl_div": {"bins": [101, 101]},
                     },
                 },
-                "another_2D_feature": {
+                "feature1_AND_feature2": {
                     "feature_params": {"offset": 1},
                     "metric_params": {
                         "mse_dist": {
@@ -196,21 +203,21 @@ def test_calculator_config_bin_conversion():
                 == expected_bins2
             )
             assert (
-                eqm.metrics["features"]["a_2D_feature"]["metric_params"][
-                    "kl_div"
-                ]["bins"]
+                eqm.metrics["features"]["feature3_AND_feature4"][
+                    "metric_params"
+                ]["kl_div"]["bins"]
                 == expected_bins3
             )
             assert isinstance(
-                eqm.metrics["features"]["another_2D_feature"]["metric_params"][
-                    "mse_dist"
-                ]["bins"],
+                eqm.metrics["features"]["feature1_AND_feature2"][
+                    "metric_params"
+                ]["mse_dist"]["bins"],
                 list,
             )
             for bins, ebins in zip(
-                eqm.metrics["features"]["another_2D_feature"]["metric_params"][
-                    "mse_dist"
-                ]["bins"],
+                eqm.metrics["features"]["feature1_AND_feature2"][
+                    "metric_params"
+                ]["mse_dist"]["bins"],
                 expected_bins4,
             ):
                 np.testing.assert_array_equal(bins, ebins)
