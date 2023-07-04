@@ -512,7 +512,6 @@ class Featurizer:
                     if ca_atoms[i].residue.index in residue_indices
                 ]
             )
-        print(ca_idx)
         # 1-4 pair formation
         pairs_1_4 = []
         pairs = list(combinations(np.arange(len(ca_idx)), 2))
@@ -1150,11 +1149,10 @@ class Featurizer:
         """
 
         allowed_features = [
-            attr[len("add_"):]
+            attr[len("add_") :]
             for attr in dir(Featurizer)
             if attr.startswith("add_")
         ]
-        print(allowed_features)
         # parse/check composition
         assert "_AND_" in compose_str
         features = compose_str.split("_AND_")
