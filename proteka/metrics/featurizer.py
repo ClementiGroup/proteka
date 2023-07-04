@@ -512,7 +512,6 @@ class Featurizer:
                     if ca_atoms[i].residue.index in residue_indices
                 ]
             )
-        print(ca_idx)
         # 1-4 pair formation
         pairs_1_4 = []
         pairs = list(combinations(np.arange(len(ca_idx)), 2))
@@ -1128,6 +1127,58 @@ class Featurizer:
         equals.append(stored_top == ref_top)
         equals.append(stored_coords == ref_coords)
         return all(equals)
+
+    @staticmethod
+    def compose_2d_feature(ens: Ensemble, compose_str: str) -> np.ndarray:
+        """Composes two 1-D features into a 2-D features. Features must be
+        already computed and stored in the supplied ensemble to preserve metadata.
+        Since these features are composed of already stored quantities, the 2-D feature
+        will not be registered as a quaitity.
+
+        Parameters
+        ----------
+        ens:
+            The ensemble for which the features should be composed
+        compose_str:
+            Composition string of two features with a single delimeter "_AND_".
+            Eg, "rmsd_AND_fraction_native_contacts", "rg_AND_helicity", etc
+
+        Returns
+        -------
+        composed_feature:
+            numpy.ndarray of the composed 2-D feature, of shape (n_frames, 2), with
+            the order of the features on the last axis the same as the order
+            specified by `compose_str`
+        """
+
+        allowed_features = [
+            attr[len("add_") :]
+            for attr in dir(Featurizer)
+            if attr.startswith("add_")
+        ]
+        # parse/check composition
+        assert "_AND_" in compose_str
+        features = compose_str.split("_AND_")
+        assert len(features) == 2
+
+        feature_data = []
+        for feature in features:
+            if not hasattr(ens, feature):
+                raise RuntimeError(
+                    f"Feature composition should only be performed with already computed features, and '{feature}' was not found in the supplied ensemble."
+                )
+            else:
+                feature_data.append(ens.get_quantity(feature).raw_value)
+        assert len(feature_data) == 2
+        assert feature_data[0].shape == feature_data[1].shape
+        n_frames = ens.n_frames
+        composed_feature = np.hstack(
+            [
+                feature_data[0].reshape(n_frames, 1),
+                feature_data[1].reshape(n_frames, 1),
+            ]
+        )
+        return composed_feature
 
     @staticmethod
     def get_feature(

@@ -480,9 +480,6 @@ class EnsembleQualityMetrics(IMetrics):
         ]
     )
     vector_features = set(["local_contact_number", "dssp"])
-    features_2d = set(
-        ["tic1_tic2", "rmsd_fraction_native_contacts", "rg_helicity"]
-    )
 
     def __init__(self, metrics: Dict):
         super().__init__()
@@ -587,7 +584,7 @@ class EnsembleQualityMetrics(IMetrics):
             EnsembleQualityMetrics:
               features:
                 rmsd:
-                  feauture_params:
+                  feature_params:
                     reference_structure: path_to_struct.pdb
                     atom_selection: "name ca"
                   metric_params:
@@ -654,9 +651,12 @@ class EnsembleQualityMetrics(IMetrics):
                 feature_params = self.metrics["features"][feature][
                     "feature_params"
                 ]
-
-            Featurizer.get_feature(target, feature, **feature_params)
-            Featurizer.get_feature(reference, feature, **feature_params)
+            # Compute features if needed but
+            # don't compute compound features, as they can only be composed from existing 1-D features
+            # at metric computation time downstream
+            if "_AND_" not in feature:
+                Featurizer.get_feature(target, feature, **feature_params)
+                Featurizer.get_feature(reference, feature, **feature_params)
             for metric in self.metrics["features"][feature][
                 "metric_params"
             ].keys():
@@ -714,8 +714,15 @@ class EnsembleQualityMetrics(IMetrics):
             raise ValueError(f"metric '{metric}' not defined.")
 
         else:
-            target_feat = Featurizer.get_feature(target, feature)
-            reference_feat = Featurizer.get_feature(reference, feature)
+            # catch and compute compound features
+            if ("_AND_" in feature) and (feature != "tic1_tic2"):
+                target_feat = Featurizer.compose_2d_feature(target, feature)
+                reference_feat = Featurizer.compose_2d_feature(
+                    reference, feature
+                )
+            else:
+                target_feat = Featurizer.get_feature(target, feature)
+                reference_feat = Featurizer.get_feature(reference, feature)
 
         reference_weights = (
             reference.weights if hasattr(reference, "weights") else None
@@ -740,7 +747,7 @@ class EnsembleQualityMetrics(IMetrics):
                 target_weights=target_weights,
                 reference_weights=reference_weights,
             )
-        elif feature in EnsembleQualityMetrics.features_2d:
+        elif target_feat.shape[-1] == reference_feat.shape[-1] == 2:
             metric_computer = EnsembleQualityMetrics.metrics_2d[metric]
             hist_target, hist_ref = histogram_features2d(
                 target_feat,
