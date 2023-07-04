@@ -1160,11 +1160,7 @@ class Featurizer:
 
         feature_data = []
         for feature in features:
-            if feature not in allowed_features:
-                raise ValueError(
-                    f"Requested feature {feature} not in allowed feature set."
-                )
-            elif not hasattr(ens, feature):
+            if not hasattr(ens, feature):
                 raise RuntimeError(
                     f"Feature composition should only be performed with already computed features, and '{feature}' was not found in the supplied ensemble."
                 )
