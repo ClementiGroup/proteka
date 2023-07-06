@@ -440,7 +440,7 @@ class EnsembleQualityMetrics(IMetrics):
         "kl_div": vector_kl_divergence,
         "js_div": vector_js_divergence,
         "mse": vector_mse,
-        "mse_dist": vector_mse,
+        "mse_dist": vector_mse_dist,
         "mse_ldist": vector_mse_log,
         "wasserstein": vector_wasserstein,
     }
