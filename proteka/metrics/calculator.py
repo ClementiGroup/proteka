@@ -518,6 +518,7 @@ class EnsembleQualityMetrics(IMetrics):
             options dictionary that can be used for class
             instantiation.
         """
+        eqm_config = deepcopy(eqm_config)
         for feature in eqm_config["features"].keys():
             feature_dict = eqm_config["features"][feature]
             for metric in feature_dict["metric_params"].keys():
