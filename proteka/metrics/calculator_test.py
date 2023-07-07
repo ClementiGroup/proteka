@@ -253,7 +253,9 @@ def test_eqm_input_dict_copy():
                 assert isinstance(binopts, list)
                 assert all([isinstance(opt, Mapping) for opt in binopts])
 
-    parsed_metrics = EnsembleQualityMetrics.parse_config(metrics)
+    parsed_metrics = EnsembleQualityMetrics.parse_config(
+        metrics["EnsembleQualityMetrics"]
+    )
     for feature in metrics["EnsembleQualityMetrics"]["features"].keys():
         feature_dict = metrics["EnsembleQualityMetrics"]["features"][feature]
         for metric in feature_dict["metric_params"].keys():
