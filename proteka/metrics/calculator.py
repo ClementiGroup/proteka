@@ -6,6 +6,7 @@ from collections.abc import Iterable, Mapping
 import numpy as np
 import mdtraj as md
 from ruamel.yaml import YAML
+from copy import deepcopy
 from mdtraj.core.element import Element
 from typing import Union, Dict, Optional, List, Tuple
 from .featurizer import Featurizer, TICATransform
@@ -619,7 +620,7 @@ class EnsembleQualityMetrics(IMetrics):
         if isinstance(config_file, dict):
             config = config_file
         eqm_config = EnsembleQualityMetrics.parse_config(
-            config["EnsembleQualityMetrics"]
+            deepcopy(config["EnsembleQualityMetrics"])
         )
 
         return cls(eqm_config)
