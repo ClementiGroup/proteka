@@ -223,6 +223,7 @@ def test_calculator_config_bin_conversion():
             ):
                 np.testing.assert_array_equal(bins, ebins)
 
+
 def test_eqm_input_dict_copy():
     # Tests whether the dictionnary used to intialize EnsembleQualityMetrics is modified when calling from_config()
     metrics = {
@@ -243,7 +244,7 @@ def test_eqm_input_dict_copy():
         },
     }
 
-    eqm = EnsembleQualityMetrics.from_config(metrics) 
+    eqm = EnsembleQualityMetrics.from_config(metrics)
     for feature in metrics["EnsembleQualityMetrics"]["features"].keys():
         feature_dict = metrics["EnsembleQualityMetrics"]["features"][feature]
         for metric in feature_dict["metric_params"].keys():
@@ -251,6 +252,7 @@ def test_eqm_input_dict_copy():
                 binopts = feature_dict["metric_params"][metric]["bins"]
                 assert isinstance(binopts, list)
                 assert all([isinstance(opt, Mapping) for opt in binopts])
+
 
 def test_calculator_config_mdtraj_conversion():
     # Tests to make sure paths to pdb files are converted correctly
