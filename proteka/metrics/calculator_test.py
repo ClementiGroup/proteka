@@ -7,6 +7,7 @@ import tempfile
 from pathlib import Path
 import os.path as osp
 from ruamel.yaml import YAML
+from collections.abc import Iterable, Mapping
 from proteka.dataset import Ensemble
 from proteka.quantity import Quantity
 from proteka.metrics import Featurizer
@@ -221,6 +222,36 @@ def test_calculator_config_bin_conversion():
                 expected_bins4,
             ):
                 np.testing.assert_array_equal(bins, ebins)
+
+
+def test_eqm_input_dict_copy():
+    # Tests whether the dictionnary used to intialize EnsembleQualityMetrics is modified when calling from_config()
+    metrics = {
+        "EnsembleQualityMetrics": {
+            "features": {
+                "feature1_AND_feature2": {
+                    "feature_params": {"offset": 1},
+                    "metric_params": {
+                        "mse_dist": {
+                            "bins": [
+                                {"start": 0, "stop": 1, "num": 101},
+                                {"start": 0, "stop": 2, "num": 101},
+                            ]
+                        },
+                    },
+                },
+            },
+        },
+    }
+
+    eqm = EnsembleQualityMetrics.from_config(metrics)
+    for feature in metrics["EnsembleQualityMetrics"]["features"].keys():
+        feature_dict = metrics["EnsembleQualityMetrics"]["features"][feature]
+        for metric in feature_dict["metric_params"].keys():
+            if "bins" in list(feature_dict["metric_params"][metric].keys()):
+                binopts = feature_dict["metric_params"][metric]["bins"]
+                assert isinstance(binopts, list)
+                assert all([isinstance(opt, Mapping) for opt in binopts])
 
 
 def test_calculator_config_mdtraj_conversion():
