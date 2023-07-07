@@ -253,6 +253,17 @@ def test_eqm_input_dict_copy():
                 assert isinstance(binopts, list)
                 assert all([isinstance(opt, Mapping) for opt in binopts])
 
+    parsed_metrics = EnsembleQualityMetrics.parse_config(
+        metrics["EnsembleQualityMetrics"]
+    )
+    for feature in metrics["EnsembleQualityMetrics"]["features"].keys():
+        feature_dict = metrics["EnsembleQualityMetrics"]["features"][feature]
+        for metric in feature_dict["metric_params"].keys():
+            if "bins" in list(feature_dict["metric_params"][metric].keys()):
+                binopts = feature_dict["metric_params"][metric]["bins"]
+                assert isinstance(binopts, list)
+                assert all([isinstance(opt, Mapping) for opt in binopts])
+
 
 def test_calculator_config_mdtraj_conversion():
     # Tests to make sure paths to pdb files are converted correctly
