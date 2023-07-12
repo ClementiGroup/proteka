@@ -17,6 +17,38 @@ from .utils import reduce_atom_pairs_by_residue_offset
 __all__ = ["Featurizer", "Transform", "TICATransform"]
 
 
+def sigmoid(x):
+    return 1.0 / (1.0 + np.exp(-x))
+
+
+def clipped_sigmoid(x: np.ndarray, x_min: float = -80, x_max: float = 80):
+    """Returns the sigmoid, but input values are capped and output is scaled.
+
+    Input values (x) are capped at x_min and x_max, and the output is linearly
+    scaled to have a range of [0,1]. Continuous, but not smooth; useful to
+    avoid overflow errors.
+
+    Parameters
+    ----------
+    x: np.ndarray
+        Values to transform via modified sigmoid
+    x_min: float
+        Minimum to cap values at.
+    x_max: float
+        Maximum to cap values at.
+
+
+    Returns
+    -------
+    np.ndarray of transformed values.
+    """
+
+    min_sig = sigmoid(x_min)
+    max_sig = sigmoid(x_max)
+    val = sigmoid(np.clip(x, a_min=x_min, a_max=x_max))
+    return (val - min_sig) / (max_sig - min_sig)
+
+
 class Transform(ABC):
     """Abstract transformer class that defines a transformation of the
     data. The class should be serializable, so it can be stored in Ensemble
@@ -1033,7 +1065,7 @@ class Featurizer:
         distances = md.compute_distances(trajectory, pairs, periodic=False)
 
         # compute local contacts
-        contacts = 1.0 / (1.0 + np.exp(beta * (distances - cut)))
+        contacts = clipped_sigmoid(beta * (cut - distances))
         contacts = md.geometry.squareform(contacts, res_pairs)
 
         contact_per_atom = np.sum(contacts, axis=-1)
