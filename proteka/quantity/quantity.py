@@ -26,7 +26,7 @@ class BaseQuantity:
     """
 
     def __init__(self, value, unit="dimensionless"):
-        self._value = np.array(value)
+        self._value = np.asarray(value)
         self._unit = format_unit(unit)
 
     @property
@@ -137,6 +137,38 @@ class BaseQuantity:
         new_raw_value = self.in_unit_of(target_unit)
         return self.__class__(new_raw_value, new_unit)
 
+    def convert_unit_to_(self, target_unit="dimensionless"):
+        """Convert the quantity to target unit. If not possible, raise `ValueError`.
+        Comparing to `to_quantity_with_unit`, the operation is in-place and thus no new
+        `Quantity` will be created.
+
+        Parameters
+        ----------
+        target_unit : str, optional
+            The unit string to convert the current quantity into, by default
+            "dimensionless".
+
+        Returns
+        -------
+        (Base)Quantity
+            `self` in `target_unit`.
+
+        Raises
+        ------
+        ValueError
+            When the current quantity is not convertible to `target_unit`.
+        """
+        target_unit = format_unit(target_unit)
+        ucf = unit_conv(self.unit, target_unit)
+        if ucf is None:
+            raise ValueError(
+                f"Quantity unit {self.unit} is not compatible with desired unit {target_unit}."
+            )
+        if not np.isclose(ucf, 1.0):
+            self._value *= unit_conv(self.unit, target_unit)
+        self._set_unit(target_unit)
+        return self
+
 
 class Quantity(MetaArray, BaseQuantity):
     """Quantity (numpy.ndarray + unit str) with metadata (`metadata`). Specialized
@@ -160,7 +192,7 @@ class Quantity(MetaArray, BaseQuantity):
         `metadata` or make it identical with the argument.
     """
 
-    def __init__(self, value, unit="dimensionless", metadata=None):
+    def __init__(self, value, unit="dimensionless", metadata=None, copy=False):
         if metadata is None:
             metadata = {}
         if "unit" in metadata and unit != metadata["unit"]:
@@ -168,7 +200,7 @@ class Quantity(MetaArray, BaseQuantity):
                 'Ambigious `unit` assignment: "unit" should not appear in `metadata`.'
             )
         metadata["unit"] = unit
-        super().__init__(np.asarray(value), metadata)
+        super().__init__(np.asarray(value), metadata, copy=copy)
 
     @property
     def unit(self):
