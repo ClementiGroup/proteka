@@ -1065,7 +1065,6 @@ class Featurizer:
         distances = md.compute_distances(trajectory, pairs, periodic=False)
 
         # compute local contacts
-        # contacts = 1.0 / (1.0 + np.exp(beta * (distances - cut)))
         contacts = clipped_sigmoid(beta * (cut - distances))
         contacts = md.geometry.squareform(contacts, res_pairs)
 
