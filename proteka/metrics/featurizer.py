@@ -431,14 +431,14 @@ class Featurizer:
         """Compute sin and cos of the feature corresponding to feat_name."""
         base_feat = self.get_feature(ensemble, feat_name, *args, **kwargs)
         quantity = Quantity(
-            np.sin(base_feat), 
-            "dimensionless", 
+            np.sin(base_feat),
+            "dimensionless",
             metadata={"feature": "sin_" + feat_name},
         )
         ensemble.set_quantity("sin_" + feat_name, quantity)
         quantity = Quantity(
             np.cos(base_feat),
-            "dimensionless", 
+            "dimensionless",
             metadata={"feature": "cos_" + feat_name},
         )
         ensemble.set_quantity("cos_" + feat_name, quantity)
