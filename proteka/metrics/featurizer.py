@@ -434,13 +434,13 @@ class Featurizer:
             np.sin(base_feat), 
             "dimensionless", 
             metadata={"feature": "sin_" + feat_name},
-            )
+        )
         ensemble.set_quantity("sin_" + feat_name, quantity)
         quantity = Quantity(
-            np.cos(base_feat), 
+            np.cos(base_feat),
             "dimensionless", 
             metadata={"feature": "cos_" + feat_name},
-            )
+        )
         ensemble.set_quantity("cos_" + feat_name, quantity)
 
     def add_rmsd(
