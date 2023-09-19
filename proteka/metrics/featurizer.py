@@ -427,6 +427,22 @@ class Featurizer:
         quantity = Quantity(psi, "radians", metadata={"feature": "psi"})
         ensemble.set_quantity("psi", quantity)
 
+    def add_sin_cos(self, ensemble: Ensemble, feat_name: str, *args, **kwargs):
+        """Compute sin and cos of the feature corresponding to feat_name."""
+        base_feat = self.get_feature(ensemble, feat_name, *args, **kwargs)
+        quantity = Quantity(
+            np.sin(base_feat),
+            "dimensionless",
+            metadata={"feature": "sin_" + feat_name},
+        )
+        ensemble.set_quantity("sin_" + feat_name, quantity)
+        quantity = Quantity(
+            np.cos(base_feat),
+            "dimensionless",
+            metadata={"feature": "cos_" + feat_name},
+        )
+        ensemble.set_quantity("cos_" + feat_name, quantity)
+
     def add_rmsd(
         self,
         ensemble: Ensemble,
