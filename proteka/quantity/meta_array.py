@@ -157,12 +157,17 @@ class MetaArray:
             None
         """
 
+        # local hack for storing strings
+        value_to_save = self._value
+        if value_to_save.dtype == np.dtype("O"):
+            value_to_save = np.asarray(str(value_to_save[()]), dtype="O")
+
         def overwrite(dataset_node, input_pattern="h5_node"):
             # overwrite an existing Dataset in HDF5 file
             warn(
                 f"Input `{input_pattern}` correponds to existing Dataset with name {dataset_node.name}. Overwritting..."
             )
-            dataset_node[...] = self._value
+            dataset_node[...] = value_to_save
             for k, v in self.metadata.items():
                 dataset_node.attrs[k] = v
 
@@ -182,7 +187,7 @@ class MetaArray:
                 overwrite(h5_node[name], "h5_node[name]")
             else:
                 # create a new Dataset under h5_node
-                h5_node[name] = self._value
+                h5_node[name] = value_to_save
                 for k, v in self.metadata.items():
                     h5_node[name].attrs[k] = v
         else:
