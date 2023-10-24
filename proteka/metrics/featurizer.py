@@ -6,7 +6,6 @@ import json
 import warnings
 import numpy as np
 import mdtraj as md
-from typing import Dict, Optional, List, Tuple
 from ..dataset import Ensemble
 from ..quantity import Quantity
 from ..dataset.top_utils import top2json
@@ -484,10 +483,8 @@ class Featurizer:
 
         metadata = {
             "feature": "rmsd",
-            "reference_structure": {
-                "coords": ref_coords,
-                "top": ref_top,
-            },
+            "reference_structure_coords": ref_coords,
+            "reference_structure_top": ref_top,
             "atom_selection": atom_selection,
         }
 
@@ -881,11 +878,9 @@ class Featurizer:
 
         metadata = {
             "feature": "fraction_native_contacts",
-            "reference_structure": {
-                "coords": native_coords,
-                "top": native_top,
-                "atomistic": use_atomistic_reference,
-            },
+            "reference_structure_coords": native_coords,
+            "reference_structure_top": top2json(native_top),
+            "reference_structure_is_atomistic": use_atomistic_reference,
             "atom_selection": atom_selection,
             "beta": beta,
             "lam": lam,
@@ -1132,7 +1127,8 @@ class Featurizer:
     @staticmethod
     def _reference_structure_equality(
         input_structure: md.Trajectory,
-        serialized_structure: Dict,
+        stored_coords: Union[List, np.ndarray],
+        stored_top: str,
     ) -> bool:
         """Helper method for testing reference structure serialized equality for RMSD recomputation
 
@@ -1140,8 +1136,10 @@ class Featurizer:
         ----------
         input_structures:
             input MDTraj single frame Trajectory for proposed RMSD calculations
-        serialized_structure:
-            Serialized reference structure
+        stored_coords:
+            Saved reference structure coordinates
+        stored_top:
+            Saved reference structure topology
 
         Returns
         -------
@@ -1150,14 +1148,13 @@ class Featurizer:
             the same, True is returned. Else, False is returned.
         """
 
-        ref_coords = input_structure.xyz.tolist()
+        ref_coords = np.array(input_structure.xyz)
+        stored_coords = np.array(stored_coords)
         ref_top = top2json(input_structure.topology)
-        stored_coords = serialized_structure["coords"]
-        stored_top = serialized_structure["top"]
 
         equals = []
         equals.append(stored_top == ref_top)
-        equals.append(stored_coords == ref_coords)
+        equals.append(np.allclose(stored_coords, ref_coords))
         return all(equals)
 
     @staticmethod
@@ -1238,7 +1235,8 @@ class Featurizer:
                 reference_structure = args[0]
                 if not Featurizer._reference_structure_equality(
                     reference_structure,
-                    ensemble[feature].metadata["reference_structure"],
+                    ensemble[feature].metadata["reference_structure_coords"],
+                    ensemble[feature].metadata["reference_structure_top"],
                 ):
                     recompute = True
 
@@ -1251,7 +1249,10 @@ class Featurizer:
                     reference_structure = kwargs[key]
                     if not Featurizer._reference_structure_equality(
                         reference_structure,
-                        ensemble[feature].metadata["reference_structure"],
+                        ensemble[feature].metadata[
+                            "reference_structure_coords"
+                        ],
+                        ensemble[feature].metadata["reference_structure_top"],
                     ):
                         recompute = True
                         break
