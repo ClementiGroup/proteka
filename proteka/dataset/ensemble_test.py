@@ -4,8 +4,11 @@ from pathlib import Path
 from proteka import Ensemble, UnitSystem, Quantity
 from proteka.quantity.quantity_shapes import PerFrameQuantity
 from proteka.dataset.ensemble import HDF5Group
+from proteka.metrics import Featurizer
+from proteka.metrics.utils import get_CLN_trajectory
 import pytest
 import numpy as np
+import mdtraj as md
 
 from .top_utils import json2top, top2json
 
@@ -18,6 +21,27 @@ def example_ensemble(example_json_topology):
         name="example_ensemble", top=top, coords=np.zeros((10, top.n_atoms, 3))
     )
     assert top2json(ensemble.top) == example_json_topology
+    return ensemble
+
+
+@pytest.fixture
+def cln_example_ensemble():
+    """Create a noisy CLN ensemble."""
+    cln_trajs = [get_CLN_trajectory(seed=i) for i in range(10)]
+    trajectory_slices = {}
+    current_frames = 0
+    coords = []
+    for i, traj in enumerate(cln_trajs):
+        frames = traj.xyz.shape[0]
+        coords.append(traj.xyz)
+        slc = slice(current_frames, current_frames + frames, 1)
+        trajectory_slices["traj_{i}"] = slc
+        current_frames += frames
+    ensemble = Ensemble(
+        name="cln_example_ensemble",
+        top=cln_trajs[0].top,
+        coords=np.concatenate(coords),
+    )
     return ensemble
 
 
@@ -126,6 +150,221 @@ def test_ensemble_to_h5(example_ensemble, tmpdir):
     assert np.allclose(ensemble2.coords, ensemble.coords)
     assert np.allclose(ensemble2.forces, ensemble.forces)
     assert np.allclose(ensemble2.custom_field, ensemble.custom_field)
+    assert ensemble2.top == ensemble.top
+    assert ensemble2.name == ensemble.name
+    assert ensemble2["custom_field"].unit == "dimensionless"
+
+
+def test_featurized_all_ensemble_to_h5(cln_example_ensemble, tmpdir):
+    """Test saving and loading ensembles."""
+    ensemble = cln_example_ensemble
+    ensemble.forces = np.zeros((ensemble.n_frames, ensemble.n_atoms, 3))
+    ensemble.custom_field = np.zeros((5, ensemble.n_atoms, 3))
+    # random weights inspired by MSM analysis.
+    weights = np.random.rand(ensemble.n_frames)
+    ensemble.set_quantity("weights", weights)
+    # quantities from a featurizer.
+    root_dir = Path(__file__).parent.parent.parent
+    cln_path = (
+        root_dir / "examples" / "example_dataset_files" / "cln_folded.pdb"
+    )
+    cln_native_structure = md.load_pdb(cln_path)
+    feat = Featurizer()
+    feat.add_rg(ensemble)
+    feat.add_fraction_native_contacts(
+        ensemble, reference_structure=cln_native_structure
+    )
+    feat.add_rmsd(ensemble, reference_structure=cln_native_structure)
+    feat.add_ca_distances(ensemble, offset=1, subset_selection="name CA")
+    with h5py.File(tmpdir / "test.h5", "w") as f:
+        ensemble.write_to_hdf5(f, name="example_ensemble")
+
+    with h5py.File(tmpdir / "test.h5", "r") as f:
+        group = f["example_ensemble"]
+        ensemble2 = Ensemble.from_hdf5(group)
+
+    assert ensemble2.n_frames == ensemble.n_frames
+    assert np.allclose(ensemble2.coords, ensemble.coords)
+    assert np.allclose(ensemble2.forces, ensemble.forces)
+    assert np.allclose(ensemble2.custom_field, ensemble.custom_field)
+    assert set(ensemble2.list_quantities()) == set(ensemble.list_quantities())
+    assert np.allclose(
+        ensemble2.get_quantity("weights").raw_value,
+        ensemble.get_quantity("weights").raw_value,
+    )
+    assert np.allclose(
+        ensemble2.get_quantity("rg").raw_value,
+        ensemble.get_quantity("rg").raw_value,
+    )
+    assert np.allclose(
+        ensemble2.get_quantity("rmsd").raw_value,
+        ensemble.get_quantity("rmsd").raw_value,
+    )
+    assert np.allclose(
+        ensemble2.get_quantity("fraction_native_contacts").raw_value,
+        ensemble.get_quantity("fraction_native_contacts").raw_value,
+    )
+    assert np.allclose(
+        ensemble2.get_quantity("ca_distances").raw_value,
+        ensemble.get_quantity("ca_distances").raw_value,
+    )
+    assert ensemble2.top == ensemble.top
+    assert ensemble2.name == ensemble.name
+    assert ensemble2["custom_field"].unit == "dimensionless"
+
+
+def test_featurized_weights_ensemble_to_h5(cln_example_ensemble, tmpdir):
+    """Test saving and loading ensembles."""
+    ensemble = cln_example_ensemble
+    ensemble.forces = np.zeros((ensemble.n_frames, ensemble.n_atoms, 3))
+    ensemble.custom_field = np.zeros((5, ensemble.n_atoms, 3))
+    # random weights inspired by MSM analysis.
+    weights = np.random.rand(ensemble.n_frames)
+    ensemble.set_quantity("weights", weights)
+
+    with h5py.File(tmpdir / "test.h5", "w") as f:
+        ensemble.write_to_hdf5(f, name="example_ensemble")
+
+    with h5py.File(tmpdir / "test.h5", "r") as f:
+        group = f["example_ensemble"]
+        ensemble2 = Ensemble.from_hdf5(group)
+
+    assert ensemble2.n_frames == ensemble.n_frames
+    assert np.allclose(ensemble2.coords, ensemble.coords)
+    assert np.allclose(ensemble2.forces, ensemble.forces)
+    assert np.allclose(ensemble2.custom_field, ensemble.custom_field)
+    assert set(ensemble2.list_quantities()) == set(ensemble.list_quantities())
+    assert np.allclose(
+        ensemble2.get_quantity("weights").raw_value,
+        ensemble.get_quantity("weights").raw_value,
+    )
+    assert ensemble2.top == ensemble.top
+    assert ensemble2.name == ensemble.name
+    assert ensemble2["custom_field"].unit == "dimensionless"
+
+
+def test_featurized_rg_ensemble_to_h5(cln_example_ensemble, tmpdir):
+    """Test saving and loading ensembles."""
+    ensemble = cln_example_ensemble
+    ensemble.forces = np.zeros((ensemble.n_frames, ensemble.n_atoms, 3))
+    ensemble.custom_field = np.zeros((5, ensemble.n_atoms, 3))
+    feat = Featurizer()
+    feat.add_rg(ensemble)
+    with h5py.File(tmpdir / "test.h5", "w") as f:
+        ensemble.write_to_hdf5(f, name="example_ensemble")
+
+    with h5py.File(tmpdir / "test.h5", "r") as f:
+        group = f["example_ensemble"]
+        ensemble2 = Ensemble.from_hdf5(group)
+
+    assert ensemble2.n_frames == ensemble.n_frames
+    assert np.allclose(ensemble2.coords, ensemble.coords)
+    assert np.allclose(ensemble2.forces, ensemble.forces)
+    assert np.allclose(ensemble2.custom_field, ensemble.custom_field)
+    assert set(ensemble2.list_quantities()) == set(ensemble.list_quantities())
+    assert np.allclose(
+        ensemble2.get_quantity("rg").raw_value,
+        ensemble.get_quantity("rg").raw_value,
+    )
+    assert ensemble2.top == ensemble.top
+    assert ensemble2.name == ensemble.name
+    assert ensemble2["custom_field"].unit == "dimensionless"
+
+
+def test_featurized_fraction_native_contacs_ensemble_to_h5(
+    cln_example_ensemble, tmpdir
+):
+    """Test saving and loading ensembles."""
+    ensemble = cln_example_ensemble
+    ensemble.forces = np.zeros((ensemble.n_frames, ensemble.n_atoms, 3))
+    ensemble.custom_field = np.zeros((5, ensemble.n_atoms, 3))
+    root_dir = Path(__file__).parent.parent.parent
+    cln_path = (
+        root_dir / "examples" / "example_dataset_files" / "cln_folded.pdb"
+    )
+    cln_native_structure = md.load_pdb(cln_path)
+    feat = Featurizer()
+    feat.add_fraction_native_contacts(
+        ensemble, reference_structure=cln_native_structure
+    )
+    with h5py.File(tmpdir / "test.h5", "w") as f:
+        ensemble.write_to_hdf5(f, name="example_ensemble")
+
+    with h5py.File(tmpdir / "test.h5", "r") as f:
+        group = f["example_ensemble"]
+        ensemble2 = Ensemble.from_hdf5(group)
+
+    assert ensemble2.n_frames == ensemble.n_frames
+    assert np.allclose(ensemble2.coords, ensemble.coords)
+    assert np.allclose(ensemble2.forces, ensemble.forces)
+    assert np.allclose(ensemble2.custom_field, ensemble.custom_field)
+    assert set(ensemble2.list_quantities()) == set(ensemble.list_quantities())
+    assert np.allclose(
+        ensemble2.get_quantity("fraction_native_contacts").raw_value,
+        ensemble.get_quantity("fraction_native_contacts").raw_value,
+    )
+    assert ensemble2.top == ensemble.top
+    assert ensemble2.name == ensemble.name
+    assert ensemble2["custom_field"].unit == "dimensionless"
+
+
+def test_featurized_rmsd_ensemble_to_h5(cln_example_ensemble, tmpdir):
+    """Test saving and loading ensembles."""
+    ensemble = cln_example_ensemble
+    ensemble.forces = np.zeros((ensemble.n_frames, ensemble.n_atoms, 3))
+    ensemble.custom_field = np.zeros((5, ensemble.n_atoms, 3))
+    root_dir = Path(__file__).parent.parent.parent
+    cln_path = (
+        root_dir / "examples" / "example_dataset_files" / "cln_folded.pdb"
+    )
+    cln_native_structure = md.load_pdb(cln_path)
+    feat = Featurizer()
+    feat.add_rmsd(ensemble, reference_structure=cln_native_structure)
+    with h5py.File(tmpdir / "test.h5", "w") as f:
+        ensemble.write_to_hdf5(f, name="example_ensemble")
+
+    with h5py.File(tmpdir / "test.h5", "r") as f:
+        group = f["example_ensemble"]
+        ensemble2 = Ensemble.from_hdf5(group)
+
+    assert ensemble2.n_frames == ensemble.n_frames
+    assert np.allclose(ensemble2.coords, ensemble.coords)
+    assert np.allclose(ensemble2.forces, ensemble.forces)
+    assert np.allclose(ensemble2.custom_field, ensemble.custom_field)
+    assert set(ensemble2.list_quantities()) == set(ensemble.list_quantities())
+    assert np.allclose(
+        ensemble2.get_quantity("rmsd").raw_value,
+        ensemble.get_quantity("rmsd").raw_value,
+    )
+    assert ensemble2.top == ensemble.top
+    assert ensemble2.name == ensemble.name
+    assert ensemble2["custom_field"].unit == "dimensionless"
+
+
+def test_featurized_ca_dist_ensemble_to_h5(cln_example_ensemble, tmpdir):
+    """Test saving and loading ensembles."""
+    ensemble = cln_example_ensemble
+    ensemble.forces = np.zeros((ensemble.n_frames, ensemble.n_atoms, 3))
+    ensemble.custom_field = np.zeros((5, ensemble.n_atoms, 3))
+    # quantities from a featurizer.
+    feat = Featurizer()
+    feat.add_ca_distances(ensemble, offset=1, subset_selection="name CA")
+    with h5py.File(tmpdir / "test.h5", "w") as f:
+        ensemble.write_to_hdf5(f, name="example_ensemble")
+
+    with h5py.File(tmpdir / "test.h5", "r") as f:
+        group = f["example_ensemble"]
+        ensemble2 = Ensemble.from_hdf5(group)
+
+    assert ensemble2.n_frames == ensemble.n_frames
+    assert np.allclose(ensemble2.coords, ensemble.coords)
+    assert np.allclose(ensemble2.forces, ensemble.forces)
+    assert np.allclose(ensemble2.custom_field, ensemble.custom_field)
+    assert set(ensemble2.list_quantities()) == set(ensemble.list_quantities())
+    assert np.allclose(
+        ensemble2.get_quantity("ca_distances").raw_value,
+        ensemble.get_quantity("ca_distances").raw_value,
+    )
     assert ensemble2.top == ensemble.top
     assert ensemble2.name == ensemble.name
     assert ensemble2["custom_field"].unit == "dimensionless"
