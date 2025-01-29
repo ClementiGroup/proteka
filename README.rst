@@ -3,7 +3,9 @@ proteka
 
 
 .. start-intro
-Library for comparing and benchmarking protein models
+Library for comparing and benchmarking protein models. In particular
+it contains an implementation for computing the fraction of native contacts
+using as a reference a CG pdb.
 
 
 .. end-intro
