@@ -1,10 +1,14 @@
+##########
 Ensemble
-=========
+##########
 
+*************
 Introduction
-------------
+*************
+
 
 About ``Quantity``
+===================
 
 A ``Quantity`` wraps a ``numpy.ndarray`` and a ``unit`` (defined in ``proteka.dataset.unit_quantity``). Assigning a ``Quantity`` to an ``Ensemble`` either during initialization or via the dot (.) notation as an attribute:
 
@@ -31,7 +35,7 @@ and correspond to the same number of atoms as indicated by ``self.top``, if it i
 _ATOMIC_VECTOR_.
 
 Trajectories:
--------------
+=============
 
 Storing the information about which samples contained in the ``Ensemble`` come from
 which trajectory.
@@ -41,7 +45,7 @@ Trajectories info is supposed to be stored either during the Ensemble initializa
 or after with ``.register_trjs`` method.
 
 Properties
----------- 
+===========
 
 - ``.n_trjs`` (int): number of trajectories
 - ``.n_frames_per_trj`` (Dict[str, int]): dictionary of number of frames in each trajectory
@@ -49,14 +53,14 @@ Properties
 - ``.trj_indices`` (Dict[str, np.ndarray]): indices for different trajectoriesaccording to the ``.trjs`` records
 
 ``mdtraj`` interface:
---------------------
+======================
 
 - ``.get_mdtraj_trjs()`` (-> Dict[str, mdtraj.Trajectory]): pack an ``Ensemble``'s ``top``and ``coords`` (and unitcell + simulation times, if available) into a dictionary of ``mdtraj.Trajectory`` for analyses according to ``self.trjs``
 - ``.get_all_in_one_mdtraj_trj()``: pack all ``coords`` into one ``Trajectory`` object (maybe not suitable for kinetic analyses, such as TICA and MSM!)
 
 
 Implementations
-----------
+===============
 
 .. autoclass:: proteka.dataset.Ensemble
     :members:
