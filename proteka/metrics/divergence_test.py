@@ -1,6 +1,7 @@
 """
 test proteka.metrics.divergence module
 """
+
 import numpy as np
 import pytest
 from scipy.spatial.distance import jensenshannon as js

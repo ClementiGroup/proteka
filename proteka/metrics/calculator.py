@@ -1,5 +1,6 @@
 """Main entry point for calculating the metrics
 """
+
 import warnings
 from abc import ABCMeta, abstractmethod
 from collections.abc import Iterable, Mapping
@@ -194,12 +195,12 @@ class StructuralIntegrityMetrics(IMetrics):
             clashes = np.where(distances < threshold)[0]
             if save_frames:
                 frame_idx = np.unique(np.argwhere(distances < threshold)[:, 0])
-                clash_dictionary[
-                    f"{atom_name_1}-{atom_name_2} frames"
-                ] = frame_idx
-            clash_dictionary[
-                f"{atom_name_1}-{atom_name_2} clashes"
-            ] = clashes.size
+                clash_dictionary[f"{atom_name_1}-{atom_name_2} frames"] = (
+                    frame_idx
+                )
+            clash_dictionary[f"{atom_name_1}-{atom_name_2} clashes"] = (
+                clashes.size
+            )
         return clash_dictionary
 
     @staticmethod
