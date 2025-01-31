@@ -392,9 +392,9 @@ class StructuralQualityMetrics(IMetrics):
 
 class EnsembleQualityMetrics(IMetrics):
     """Metrics to compare a target ensemble to the reference ensemble.
-    Input metric configs must be a dictionary of the following form:
+    Input metric configs must be a dictionary of the following form::
 
-         {
+        {
             "features": {
                 "rg": {
                     "feature_params": {"atom_selection": "name CA"},
@@ -581,7 +581,7 @@ class EnsembleQualityMetrics(IMetrics):
     @classmethod
     def from_config(cls, config_file: Union[str, Dict]):
         """instances an EnsembleQualityMetrics
-        from a config file. the config should have the example following structure:
+        from a config file. the config should have the example following structure::
 
             EnsembleQualityMetrics:
               features:
