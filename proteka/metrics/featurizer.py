@@ -1,4 +1,5 @@
 """Featurizer takes a proteka.dataset.Ensemble and and extract features from it"""
+
 import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
@@ -74,7 +75,6 @@ class Transform(ABC):
 
 
 class TICATransform(Transform):
-
     """Get TICA transform of the data.
     A feature vector X is transformed as
     (X - bias)@transform_matrix

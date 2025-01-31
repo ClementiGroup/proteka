@@ -2,6 +2,7 @@
 a certain thermodynamic state. The samples usually correspond to a
 Boltzmann distribution.
 """
+
 from types import MappingProxyType
 from typing import Optional, List
 from warnings import warn
