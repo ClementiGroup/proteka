@@ -207,40 +207,26 @@ the number of clashes found for those name pairs</p>
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">proteka.metrics.calculator.</span></span><span class="sig-name descname"><span class="pre">EnsembleQualityMetrics</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">metrics</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/proteka/metrics/calculator.html#EnsembleQualityMetrics"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#proteka.metrics.calculator.EnsembleQualityMetrics" title="Link to this definition"></a></dt>
 <dd><p>Metrics to compare a target ensemble to the reference ensemble.
 Input metric configs must be a dictionary of the following form:</p>
-<blockquote>
-<div><blockquote>
-<div><dl>
-<dt>{</dt><dd><dl>
-<dt>“features”: {</dt><dd><dl class="simple">
-<dt>“rg”: {</dt><dd><p>“feature_params”: {“atom_selection”: “name CA”},
-“metric_params”: {“js_div”: {“bins”: 100}},</p>
-</dd>
-</dl>
-<p>},
-“ca_distances”: {</p>
-<blockquote>
-<div><p>“feature_params”: None,
-“metric_params”: {“js_div”: {“bins”: 100}},</p>
-</div></blockquote>
-<p>},
-“dssp”: {</p>
-<blockquote>
-<div><p>“feature_params”: {“digitize”: True},
-“metric_params”: {</p>
-<blockquote>
-<div><p>“mse_ldist”: {“bins”: np.array([0, 1, 2, 3, 4])}</p>
-</div></blockquote>
-<p>},</p>
-</div></blockquote>
-<p>},</p>
-</dd>
-</dl>
-<p>}</p>
-</dd>
-</dl>
-</div></blockquote>
-<p>},</p>
-</div></blockquote>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;features&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;rg&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;feature_params&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;atom_selection&quot;</span><span class="p">:</span> <span class="s2">&quot;name CA&quot;</span><span class="p">},</span>
+            <span class="s2">&quot;metric_params&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;js_div&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;bins&quot;</span><span class="p">:</span> <span class="mi">100</span><span class="p">}},</span>
+        <span class="p">},</span>
+        <span class="s2">&quot;ca_distances&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;feature_params&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="s2">&quot;metric_params&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;js_div&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;bins&quot;</span><span class="p">:</span> <span class="mi">100</span><span class="p">}},</span>
+        <span class="p">},</span>
+        <span class="s2">&quot;dssp&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;feature_params&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;digitize&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span>
+            <span class="s2">&quot;metric_params&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;mse_ldist&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;bins&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">])}</span>
+            <span class="p">},</span>
+        <span class="p">},</span>
+    <span class="p">}</span>
+<span class="p">},</span>
+</pre></div>
+</div>
 <p>Specifying computation and metric parameters for each feature/metric
 for comparisons between target and reference ensembles.</p>
 <dl class="py method">
@@ -297,35 +283,23 @@ reference ensembles.</p>
 <em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_config</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config_file</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/proteka/metrics/calculator.html#EnsembleQualityMetrics.from_config"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#proteka.metrics.calculator.EnsembleQualityMetrics.from_config" title="Link to this definition"></a></dt>
 <dd><p>instances an EnsembleQualityMetrics
 from a config file. the config should have the example following structure:</p>
-<blockquote>
-<div><dl>
-<dt>EnsembleQualityMetrics:</dt><dd><dl>
-<dt>features:</dt><dd><dl class="simple">
-<dt>rmsd:</dt><dd><dl class="simple">
-<dt>feature_params:</dt><dd><p>reference_structure: path_to_struct.pdb
-atom_selection: “name ca”</p>
-</dd>
-<dt>metric_params:</dt><dd><dl class="simple">
-<dt>js_div:</dt><dd><p>bins: 100</p>
-</dd>
-<dt>mse_ldist:</dt><dd><dl class="simple">
-<dt>-bins:</dt><dd><p>start: 0
-stop: 100
-num: 1000</p>
-</dd>
-</dl>
-</dd>
-</dl>
-</dd>
-</dl>
-</dd>
-</dl>
-<p>…</p>
-</dd>
-</dl>
-</dd>
-</dl>
-</div></blockquote>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">EnsembleQualityMetrics</span><span class="p">:</span>
+  <span class="n">features</span><span class="p">:</span>
+    <span class="n">rmsd</span><span class="p">:</span>
+      <span class="n">feature_params</span><span class="p">:</span>
+        <span class="n">reference_structure</span><span class="p">:</span> <span class="n">path_to_struct</span><span class="o">.</span><span class="n">pdb</span>
+        <span class="n">atom_selection</span><span class="p">:</span> <span class="s2">&quot;name ca&quot;</span>
+      <span class="n">metric_params</span><span class="p">:</span>
+        <span class="n">js_div</span><span class="p">:</span>
+          <span class="n">bins</span><span class="p">:</span> <span class="mi">100</span>
+        <span class="n">mse_ldist</span><span class="p">:</span>
+          <span class="o">-</span><span class="n">bins</span><span class="p">:</span>
+            <span class="n">start</span><span class="p">:</span> <span class="mi">0</span>
+            <span class="n">stop</span><span class="p">:</span> <span class="mi">100</span>
+            <span class="n">num</span><span class="p">:</span> <span class="mi">1000</span>
+    <span class="o">...</span>
+</pre></div>
+</div>
 <p>for specific metrics, bins can be either an integer or a dictionary
 of key value pairs corresponding to kwargs of <cite>np.linspace</cite> to instance
 equal-width bins over a specific range of values. For 2D metrics, a

@@ -80,6 +80,8 @@
  | <a href="#F"><strong>F</strong></a>
  | <a href="#G"><strong>G</strong></a>
  | <a href="#I"><strong>I</strong></a>
+ | <a href="#L"><strong>L</strong></a>
+ | <a href="#N"><strong>N</strong></a>
  | <a href="#P"><strong>P</strong></a>
  | <a href="#Q"><strong>Q</strong></a>
  | <a href="#R"><strong>R</strong></a>
@@ -137,9 +139,15 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="metrics.html#proteka.metrics.calculator.EnsembleQualityMetrics.from_config">from_config() (proteka.metrics.calculator.EnsembleQualityMetrics class method)</a>
 </li>
+      <li><a href="ensemble.html#proteka.dataset.Ensemble.from_hdf5">from_hdf5() (proteka.dataset.Ensemble class method)</a>
+
+      <ul>
+        <li><a href="quantity.html#proteka.quantity.quantity.Quantity.from_hdf5">(proteka.quantity.quantity.Quantity static method)</a>
+</li>
+      </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="quantity.html#proteka.quantity.quantity.Quantity.from_hdf5">from_hdf5() (proteka.quantity.quantity.Quantity static method)</a>
+      <li><a href="ensemble.html#proteka.dataset.Ensemble.from_mdtraj_trj">from_mdtraj_trj() (proteka.dataset.Ensemble static method)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -148,6 +156,16 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="metrics.html#proteka.metrics.calculator.StructuralIntegrityMetrics.general_clashes">general_clashes() (proteka.metrics.calculator.StructuralIntegrityMetrics static method)</a>
+</li>
+      <li><a href="ensemble.html#proteka.dataset.Ensemble.get_all_in_one_mdtraj_trj">get_all_in_one_mdtraj_trj() (proteka.dataset.Ensemble method)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="ensemble.html#proteka.dataset.Ensemble.get_mdtraj_trjs">get_mdtraj_trjs() (proteka.dataset.Ensemble method)</a>
+</li>
+      <li><a href="ensemble.html#proteka.dataset.Ensemble.get_quantity">get_quantity() (proteka.dataset.Ensemble method)</a>
+</li>
+      <li><a href="ensemble.html#proteka.dataset.Ensemble.get_unit">get_unit() (proteka.dataset.Ensemble method)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -162,6 +180,30 @@
       <li><a href="quantity.html#proteka.quantity.quantity.BaseQuantity.in_unit_of">in_unit_of() (proteka.quantity.quantity.BaseQuantity method)</a>
 </li>
       <li><a href="quantity.html#proteka.quantity.quantity.BaseQuantity.is_unit_convertible_with">is_unit_convertible_with() (proteka.quantity.quantity.BaseQuantity method)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="L">L</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="ensemble.html#proteka.dataset.Ensemble.list_quantities">list_quantities() (proteka.dataset.Ensemble method)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="N">N</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="ensemble.html#proteka.dataset.Ensemble.n_atoms">n_atoms (proteka.dataset.Ensemble property)</a>
+</li>
+      <li><a href="ensemble.html#proteka.dataset.Ensemble.n_frames">n_frames (proteka.dataset.Ensemble property)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="ensemble.html#proteka.dataset.Ensemble.n_frames_per_trj">n_frames_per_trj (proteka.dataset.Ensemble property)</a>
+</li>
+      <li><a href="ensemble.html#proteka.dataset.Ensemble.n_trjs">n_trjs (proteka.dataset.Ensemble property)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -188,10 +230,18 @@
       <li><a href="quantity.html#proteka.quantity.quantity.BaseQuantity.raw_value">raw_value (proteka.quantity.quantity.BaseQuantity property)</a>
 </li>
   </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="ensemble.html#proteka.dataset.Ensemble.register_trjs">register_trjs() (proteka.dataset.Ensemble method)</a>
+</li>
+  </ul></td>
 </tr></table>
 
 <h2 id="S">S</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="ensemble.html#proteka.dataset.Ensemble.set_quantity">set_quantity() (proteka.dataset.Ensemble method)</a>
+</li>
+  </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="metrics.html#proteka.metrics.calculator.StructuralIntegrityMetrics">StructuralIntegrityMetrics (class in proteka.metrics.calculator)</a>
 </li>
@@ -202,6 +252,20 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="quantity.html#proteka.quantity.quantity.BaseQuantity.to_quantity_with_unit">to_quantity_with_unit() (proteka.quantity.quantity.BaseQuantity method)</a>
+</li>
+      <li><a href="ensemble.html#proteka.dataset.Ensemble.top">top (proteka.dataset.Ensemble property)</a>
+</li>
+      <li><a href="ensemble.html#proteka.dataset.Ensemble.topology">topology (proteka.dataset.Ensemble property)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="ensemble.html#proteka.dataset.Ensemble.trajectories">trajectories (proteka.dataset.Ensemble property)</a>
+</li>
+      <li><a href="ensemble.html#proteka.dataset.Ensemble.trajectory_indices">trajectory_indices (proteka.dataset.Ensemble property)</a>
+</li>
+      <li><a href="ensemble.html#proteka.dataset.Ensemble.trajectory_slices">trajectory_slices (proteka.dataset.Ensemble property)</a>
+</li>
+      <li><a href="ensemble.html#proteka.dataset.Ensemble.trjs">trjs (proteka.dataset.Ensemble property)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -215,6 +279,10 @@
         <li><a href="quantity.html#proteka.quantity.quantity.Quantity.unit">(proteka.quantity.quantity.Quantity property)</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="ensemble.html#proteka.dataset.Ensemble.unit_system">unit_system (proteka.dataset.Ensemble property)</a>
+</li>
   </ul></td>
 </tr></table>
 

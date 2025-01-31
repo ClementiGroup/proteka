@@ -45,8 +45,15 @@
               <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="dev/dev.html">Developer Documentation</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Ensemble</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#ensemble-class">Ensemble class</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#proteka.dataset.Ensemble"><code class="docutils literal notranslate"><span class="pre">Ensemble</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#introduction">Introduction</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#about-quantity">About <code class="docutils literal notranslate"><span class="pre">Quantity</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#trajectories">Trajectories:</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#properties">Properties</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#mdtraj-interface"><code class="docutils literal notranslate"><span class="pre">mdtraj</span></code> interface:</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#implementations">Implementations</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#proteka.dataset.Ensemble"><code class="docutils literal notranslate"><span class="pre">Ensemble</span></code></a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -82,8 +89,62 @@
              
   <section id="ensemble">
 <h1>Ensemble<a class="headerlink" href="#ensemble" title="Link to this heading"></a></h1>
-<section id="ensemble-class">
-<h2>Ensemble class<a class="headerlink" href="#ensemble-class" title="Link to this heading"></a></h2>
+<section id="introduction">
+<h2>Introduction<a class="headerlink" href="#introduction" title="Link to this heading"></a></h2>
+<section id="about-quantity">
+<h3>About <code class="docutils literal notranslate"><span class="pre">Quantity</span></code><a class="headerlink" href="#about-quantity" title="Link to this heading"></a></h3>
+<p>A <code class="docutils literal notranslate"><span class="pre">Quantity</span></code> wraps a <code class="docutils literal notranslate"><span class="pre">numpy.ndarray</span></code> and a <code class="docutils literal notranslate"><span class="pre">unit</span></code> (defined in <code class="docutils literal notranslate"><span class="pre">proteka.dataset.unit_quantity</span></code>). Assigning a <code class="docutils literal notranslate"><span class="pre">Quantity</span></code> to an <code class="docutils literal notranslate"><span class="pre">Ensemble</span></code> either during initialization or via the dot (.) notation as an attribute:</p>
+<ul class="simple">
+<li><p>If the input is a plain <code class="docutils literal notranslate"><span class="pre">numpy.ndarray</span></code>, then the unit is assumed as”dimensionless”</p></li>
+<li><p>If the input is a <code class="docutils literal notranslate"><span class="pre">Quantity</span></code>, the input unit will be stored</p></li>
+</ul>
+<p>Retrieving saved <code class="docutils literal notranslate"><span class="pre">Quantity</span></code>:</p>
+<ul class="simple">
+<li><p>Accessing as an attribute (via dot (.)): returns a <code class="docutils literal notranslate"><span class="pre">numpy.ndarray</span></code> with the value of the <code class="docutils literal notranslate"><span class="pre">Quantity</span></code> in unit of the stored unit</p></li>
+<li><p>Via index bracket ([]): returns the stored <code class="docutils literal notranslate"><span class="pre">Quantity</span></code> object, allowing flexible automated unit conversion</p></li>
+</ul>
+<p>List stored quantities: <code class="docutils literal notranslate"><span class="pre">.list_quantities()</span></code></p>
+<ul class="simple">
+<li><p>Special cases are “builtin quantities”, whose stored units are dictated by the <code class="docutils literal notranslate"><span class="pre">unit_system</span></code> (also used instead of the default “dimensionless” during assignment):</p></li>
+<li><p>“coords” (ATOMIC_VECTOR): [L]</p></li>
+<li><p>“time” (<em>per-frame</em> SCALAR): [T]</p></li>
+<li><p>“forces” (ATOMIC_VECTOR): [E]/[L]</p></li>
+<li><p>“velocities” (ATOMIC_VECTOR): [L]/[T]</p></li>
+<li><p>“cell_lengths” (BOX_QUANTITIES): [L]</p></li>
+<li><p>“cell_angles”: (BOX_QUANTITIES): degree</p></li>
+</ul>
+<p>In addition, the above quantities are tied to the system molecule via the shape,
+i.e., each <em>per-frame</em> quantity having the same number of frames as <code class="docutils literal notranslate"><span class="pre">self.coords</span></code>,
+and correspond to the same number of atoms as indicated by <code class="docutils literal notranslate"><span class="pre">self.top</span></code>, if it is an
+_ATOMIC_VECTOR_.</p>
+</section>
+<section id="trajectories">
+<h3>Trajectories:<a class="headerlink" href="#trajectories" title="Link to this heading"></a></h3>
+<p>Storing the information about which samples contained in the <code class="docutils literal notranslate"><span class="pre">Ensemble</span></code> come from
+which trajectory.
+Trajectories are sequential. Therefore, samples from different trajectories are
+expected to be non-overlapping slices.
+Trajectories info is supposed to be stored either during the Ensemble initialization
+or after with <code class="docutils literal notranslate"><span class="pre">.register_trjs</span></code> method.</p>
+</section>
+<section id="properties">
+<h3>Properties<a class="headerlink" href="#properties" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">.n_trjs</span></code> (int): number of trajectories</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">.n_frames_per_trj</span></code> (Dict[str, int]): dictionary of number of frames in each trajectory</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">.trajectory_slices</span></code> or <code class="docutils literal notranslate"><span class="pre">.trjs</span></code> or <code class="docutils literal notranslate"><span class="pre">.trajectories</span></code> (Dict[str, slice]): Python <code class="docutils literal notranslate"><span class="pre">slice``s</span> <span class="pre">for</span> <span class="pre">slicing</span> <span class="pre">Ensemble</span> <span class="pre">quantities</span> <span class="pre">according</span> <span class="pre">to</span> <span class="pre">the</span> <span class="pre">``.trjs</span></code> records</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">.trj_indices</span></code> (Dict[str, np.ndarray]): indices for different trajectoriesaccording to the <code class="docutils literal notranslate"><span class="pre">.trjs</span></code> records</p></li>
+</ul>
+</section>
+<section id="mdtraj-interface">
+<h3><code class="docutils literal notranslate"><span class="pre">mdtraj</span></code> interface:<a class="headerlink" href="#mdtraj-interface" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">.get_mdtraj_trjs()</span></code> (-&gt; Dict[str, mdtraj.Trajectory]): pack an <code class="docutils literal notranslate"><span class="pre">Ensemble</span></code>’s <code class="docutils literal notranslate"><span class="pre">top``and</span> <span class="pre">``coords</span></code> (and unitcell + simulation times, if available) into a dictionary of <code class="docutils literal notranslate"><span class="pre">mdtraj.Trajectory</span></code> for analyses according to <code class="docutils literal notranslate"><span class="pre">self.trjs</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">.get_all_in_one_mdtraj_trj()</span></code>: pack all <code class="docutils literal notranslate"><span class="pre">coords</span></code> into one <code class="docutils literal notranslate"><span class="pre">Trajectory</span></code> object (maybe not suitable for kinetic analyses, such as TICA and MSM!)</p></li>
+</ul>
+</section>
+<section id="implementations">
+<h3>Implementations<a class="headerlink" href="#implementations" title="Link to this heading"></a></h3>
 <dl class="py class">
 <dt class="sig sig-object py" id="proteka.dataset.Ensemble">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">proteka.dataset.</span></span><span class="sig-name descname"><span class="pre">Ensemble</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">top</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coords</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">quantities</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trajectory_slices</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit_system</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'nm-g/mol-ps-kJ/mol'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/proteka/dataset/ensemble.html#Ensemble"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#proteka.dataset.Ensemble" title="Link to this definition"></a></dt>
@@ -126,57 +187,365 @@ a JSON-serialized such object</p></li>
 <p class="rubric">Notes</p>
 <p>Alternative to the default <cite>__init__</cite> method, an <cite>Ensemble</cite> can also be created from
 a <cite>mdtraj.Trajectory</cite> object (see <cite>from_mdtraj_trj</cite>).</p>
-<p>## About <cite>Quantity</cite>:
-&gt; A <cite>Quantity</cite> wraps a <cite>numpy.ndarray</cite> and a <cite>unit</cite> (defined in
-<cite>proteka.dataset.unit_quantity</cite>). Assigning a <cite>Quantity</cite> to an <cite>Ensemble</cite> either
-during initialization or via the dot (.) notation as an attribute:
-- If the input is a plain <cite>numpy.ndarray</cite>, then the unit is assumed as
-“dimensionless”
-- If the input is a <cite>Quantity</cite>, the input unit will be stored</p>
-<p>Retrieving saved <cite>Quantity</cite>:
-- Accessing as an attribute (via dot (.)): returns a <cite>numpy.ndarray</cite> with the value
-of the <cite>Quantity</cite> in unit of the stored unit
-- Via index bracket ([]): returns the stored <cite>Quantity</cite> object, allowing flexible
-automated unit conversion</p>
-<p>List stored quantities:
-- .list_quantities()</p>
-<ul class="simple">
-<li><p>Special cases are “builtin quantities”, whose stored units are dictated by the</p></li>
+<dl class="py method">
+<dt class="sig sig-object py" id="proteka.dataset.Ensemble.from_hdf5">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_hdf5</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">h5grp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit_system</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'nm-g/mol-ps-kJ/mol'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">offset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stride</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">no_offset_stride_quantities</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/proteka/dataset/ensemble.html#Ensemble.from_hdf5"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#proteka.dataset.Ensemble.from_hdf5" title="Link to this definition"></a></dt>
+<dd><p>Create an instance from the content of HDF5 Group <cite>h5grp</cite> (h5py.Group).
+When given <cite>unit_system</cite> differs from the stored record, units will be converted
+when reading the <cite>Quantity</cite> into memory. Input <cite>offset</cite> and <cite>stride</cite> can be set
+to allow a partial loading of the non-scalar datasets with indexing
+<cite>[offset::stride]</cite>, unless the dataset’s name is contained in
+<cite>no_offset_stride_quantities</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>h5grp</strong> (<em>h5py.Group</em>) – The group should contain all necessary information to initialize an
+<cite>Ensemble</cite>. Notablly, the following Datasets are required:
+- top: serialized topology
+- coords (with Attribute “unit”)
+And all Datasets should come with an Attribute <cite>unit</cite> for the physical unit
+used in storage.</p></li>
+<li><p><strong>unit_system</strong> (<em>str</em><em>, </em><em>optional</em>) – Should have the format “[L]-[M]-[T]-[E(nergy)]” for units of builtin
+quantities (see class docstring), by default “nm-g/mol-ps-kJ/mol”</p></li>
+<li><p><strong>offset</strong> (<em>None</em><em> | </em><em>int</em><em>, </em><em>optional</em>) – The offset for loading from the HDF5 file. Default is <cite>None</cite>.</p></li>
+<li><p><strong>stride</strong> (<em>None</em><em> | </em><em>int</em><em>, </em><em>optional</em>) – The stride for loading from the HDF5 file. Default is <cite>None</cite>.</p></li>
+<li><p><strong>no_offset_stride_quantities</strong> (<em>List</em><em>[</em><em>str</em><em>]</em><em>, </em><em>optional</em>) – The names of entries, for which no offset or stride should be considered
+during loading, by default None</p></li>
 </ul>
-<p><cite>unit_system</cite> (also used instead of the default “dimensionless” during assignment):
-- “coords” (ATOMIC_VECTOR): [L]
-- “time” (_per-<a href="#id5"><span class="problematic" id="id6">frame_</span></a> SCALAR): [T]
-- “forces” (ATOMIC_VECTOR): [E]/[L]
-- “velocities” (ATOMIC_VECTOR): [L]/[T]
-- “cell_lengths” (BOX_QUANTITIES): [L]
-- “cell_angles”: (BOX_QUANTITIES): degree
-In addition, the above quantities are tied to the system molecule via the shape,
-i.e., each _per-<a href="#id7"><span class="problematic" id="id8">frame_</span></a> quantity having the same number of frames as <cite>self.coords</cite>,
-and correspond to the same number of atoms as indicated by <cite>self.top</cite>, if it is an
-_ATOMIC_VECTOR_.</p>
-<p>## Trajectories:
-Storing the information about which samples contained in the <cite>Ensemble</cite> come from
-which trajectory.
-Trajectories are sequential. Therefore, samples from different trajectories are
-expected to be non-overlapping slices.
-Trajectories info is supposed to be stored either during the Ensemble initialization
-or after with <cite>.register_trjs</cite> method.</p>
-<p>Properties:
-- <cite>.n_trjs</cite> (int): number of trajectories
-- <cite>.n_frames_per_trj</cite> (Dict[str, int]): dictionary of number of frames in each
-trajectory
-- <cite>.trajectory_slices</cite> or <cite>.trjs</cite> or <cite>.trajectories</cite> (Dict[str, slice]): Python
-<cite>slice`s for slicing Ensemble quantities according to the `.trjs</cite> records
-- <cite>.trj_indices</cite> (Dict[str, np.ndarray]): indices for different trajectories
-according to the <cite>.trjs</cite> records</p>
-<p>## <cite>mdtraj</cite> interface:
-- <cite>.get_mdtraj_trjs()</cite> (-&gt; Dict[str, mdtraj.Trajectory]): pack an <cite>Ensemble</cite>’s <cite>top</cite>
-and <cite>coords</cite> (and unitcell + simulation times, if available) into a dictionary of
-<cite>mdtraj.Trajectory</cite> for analyses according to <cite>self.trjs</cite>
-- <cite>.get_all_in_one_mdtraj_trj()</cite>: pack all <cite>coords</cite> into one <cite>Trajectory</cite> object
-(maybe not suitable for kinetic analyses, such as TICA and MSM!)</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>An instance containing all compatible content from HDF5 Group <cite>h5grp</cite>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#proteka.dataset.Ensemble" title="proteka.dataset.Ensemble">Ensemble</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – When the Dataset corresponding to <cite>top</cite>, <cite>coords</cite> or other fields does not
+    exist or has invalid format.</p>
+</dd>
+</dl>
 </dd></dl>
 
+<dl class="py method">
+<dt class="sig sig-object py" id="proteka.dataset.Ensemble.from_mdtraj_trj">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_mdtraj_trj</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trj</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">quantities</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trajectory_slices</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit_system</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'nm-g/mol-ps-kJ/mol'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/proteka/dataset/ensemble.html#Ensemble.from_mdtraj_trj"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#proteka.dataset.Ensemble.from_mdtraj_trj" title="Link to this definition"></a></dt>
+<dd><p>Create an <cite>Ensemble</cite> instance from <cite>mdtraj.Trajectory</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<em>str</em>) – a human-readable name of the system. Not necessarily corresponding to the
+HDF5 group name</p></li>
+<li><p><strong>trj</strong> (<em>mdtraj.Trajectory</em>) – A trajectory, whose topology and coordinates (and when applicable also the
+unit cell information) will be stored in the created <cite>Ensemble</cite>.</p></li>
+<li><p><strong>quantities</strong> (<em>Dict</em><em>[</em><em>str</em><em>, </em><em>np.ndarray</em><em> | </em><a class="reference internal" href="quantity.html#proteka.quantity.quantity.Quantity" title="proteka.quantity.quantity.Quantity"><em>Quantity</em></a><em>]</em><em>, </em><em>optional</em>) – <p>Example key and value pairs for builtin quantities:
+- forces: (n_frames, n_atoms, 3) _ATOMIC_VECTOR_.
+- velocities: (n_frames, n_atoms, 3) _ATOMIC_VECTOR_ with dimension [L]/[T].
+- time: (n_frames,) _per-<a href="#id5"><span class="problematic" id="id6">frame_</span></a> scalar indicating the elapsed simulation</p>
+<blockquote>
+<div><p>time with dimension [T].</p>
+</div></blockquote>
+<ul>
+<li><p>weights: (n_frames,) _per-<a href="#id7"><span class="problematic" id="id8">frame_</span></a> scalar indicating the Boltzmann weight of</p></li>
+</ul>
+<p>each frame.</p>
+</p></li>
+<li><p><strong>metadata</strong> (<em>dict</em><em>, </em><em>optional</em>) – Metadata to be saved, e.g., simulation temperature, forcefield information,
+saving time stride, etc, by default None</p></li>
+<li><p><strong>trajectory_slices</strong> (<em>Dict</em><em>[</em><em>str</em><em>, </em><em>slice</em><em>]</em><em>, </em><em>optional</em>) – a dictionary for trajectory name and its range expressed as a python slice
+object (similar to the usage of a [start:stop:stride] for indexing.), by
+default None</p></li>
+<li><p><strong>unit_system</strong> (<em>str</em><em> | </em><em>UnitSystem object</em><em>, </em><em>optional</em>) – In format “[L]-[M]-[T]-[E(nergy)]” for units of builtin quantities, by
+default “nm-g/mol-ps-kJ/mol”; alternatively, you can provide an existing
+<cite>UnitSystem</cite> or a JSON-serialized such object</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>An instance containing all information from the mdtraj object together with
+the provided <cite>quantities</cite>, <cite>metadata</cite>, <cite>trajectory_slices</cite> and <cite>unit_system</cite>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#proteka.dataset.Ensemble" title="proteka.dataset.Ensemble">Ensemble</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="proteka.dataset.Ensemble.get_all_in_one_mdtraj_trj">
+<span class="sig-name descname"><span class="pre">get_all_in_one_mdtraj_trj</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/proteka/dataset/ensemble.html#Ensemble.get_all_in_one_mdtraj_trj"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#proteka.dataset.Ensemble.get_all_in_one_mdtraj_trj" title="Link to this definition"></a></dt>
+<dd><p>Pack all <cite>coords</cite> into one <cite>Trajectory</cite> object (maybe not suitable for
+kinetic analyses, such as TICA and MSM!)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A trajectory, whose topology (and unitcell dimensions, if applicable) come
+from the <cite>Ensemble</cite> object and coordinates from <cite>coords</cite> concatenated</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>mdtraj.Trajectory</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="proteka.dataset.Ensemble.get_mdtraj_trjs">
+<span class="sig-name descname"><span class="pre">get_mdtraj_trjs</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/proteka/dataset/ensemble.html#Ensemble.get_mdtraj_trjs"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#proteka.dataset.Ensemble.get_mdtraj_trjs" title="Link to this definition"></a></dt>
+<dd><p>Pack this <cite>Ensemble</cite>’s <cite>top</cite> and <cite>coords</cite> (and unitcell + simulation times,
+if available) into a dictionary of <cite>Trajectory</cite> for analyses, according to
+the slicing given by <cite>self.trjs</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A dictionary containing all mdtraj Trjectories implied by the <cite>self.trjs</cite>.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dict[str, mdtraj.Trajectory]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="proteka.dataset.Ensemble.get_quantity">
+<span class="sig-name descname"><span class="pre">get_quantity</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/proteka/dataset/ensemble.html#Ensemble.get_quantity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#proteka.dataset.Ensemble.get_quantity" title="Link to this definition"></a></dt>
+<dd><p>Retrieve a Quantity in the <cite>Ensemble</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>key</strong> (<em>str</em>) – The name of the Quantity</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The Quantity under the name <cite>key</cite> in the <cite>Ensemble</cite></p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="quantity.html#proteka.quantity.quantity.Quantity" title="proteka.quantity.quantity.Quantity">Quantity</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>KeyError</strong> – When <cite>key</cite> does not correspond to a Quantity existing in the current
+    <cite>Ensemble</cite>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="proteka.dataset.Ensemble.get_unit">
+<span class="sig-name descname"><span class="pre">get_unit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/proteka/dataset/ensemble.html#Ensemble.get_unit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#proteka.dataset.Ensemble.get_unit" title="Link to this definition"></a></dt>
+<dd><p>Retrieve the builtin unit for a <cite>Quantity</cite> under name <cite>key</cite> in the Ensemble,
+or alternatively the preset unit of a builtin <cite>Quantity</cite>. If neither is the
+case, return <cite>None</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>key</strong> (<em>str</em>) – Name of the Quantity</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The bulitin unit of the Quantity under name <cite>key</cite></p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="proteka.dataset.Ensemble.list_quantities">
+<span class="sig-name descname"><span class="pre">list_quantities</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/proteka/dataset/ensemble.html#Ensemble.list_quantities"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#proteka.dataset.Ensemble.list_quantities" title="Link to this definition"></a></dt>
+<dd><p>List the name of quantities stored in the <cite>Ensemble</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Quantity names</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>List[str]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="proteka.dataset.Ensemble.n_atoms">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">n_atoms</span></span><a class="headerlink" href="#proteka.dataset.Ensemble.n_atoms" title="Link to this definition"></a></dt>
+<dd><p>Return the number of atoms of the molecule defined in <cite>top</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Number of atoms contained in the molecule.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="proteka.dataset.Ensemble.n_frames">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">n_frames</span></span><a class="headerlink" href="#proteka.dataset.Ensemble.n_frames" title="Link to this definition"></a></dt>
+<dd><p>Return the number of frames.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Number of frames contained in this <cite>Ensemble</cite>.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="proteka.dataset.Ensemble.n_frames_per_trj">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">n_frames_per_trj</span></span><a class="headerlink" href="#proteka.dataset.Ensemble.n_frames_per_trj" title="Link to this definition"></a></dt>
+<dd><p>Number of frames contained by each trajectory.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="proteka.dataset.Ensemble.n_trjs">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">n_trjs</span></span><a class="headerlink" href="#proteka.dataset.Ensemble.n_trjs" title="Link to this definition"></a></dt>
+<dd><p>Number of trajectories in the Ensemble.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="proteka.dataset.Ensemble.register_trjs">
+<span class="sig-name descname"><span class="pre">register_trjs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dict_of_slices</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/proteka/dataset/ensemble.html#Ensemble.register_trjs"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#proteka.dataset.Ensemble.register_trjs" title="Link to this definition"></a></dt>
+<dd><p>The input slices will be used to indicate which slice of the Ensemble samples
+(and other quantities) correspond to which trajectory.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>dict_of_slices</strong> (<em>Mapping</em><em>[</em><em>str</em><em>, </em><em>slice</em><em>]</em>) – Name and range of a trajectory.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="proteka.dataset.Ensemble.set_quantity">
+<span class="sig-name descname"><span class="pre">set_quantity</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">quant</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/proteka/dataset/ensemble.html#Ensemble.set_quantity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#proteka.dataset.Ensemble.set_quantity" title="Link to this definition"></a></dt>
+<dd><p>Store <cite>quant</cite> (Quantity | numpy.ndarray) under name <cite>key</cite> (str).
+When <cite>quant</cite> is a plain <cite>numpy.ndarray</cite>, the unit is assumed according to
+<cite>.unit_system</cite> if the <cite>key</cite> is one of the <cite>PRESET_BUILTIN_QUANTITIES</cite> (or
+<cite>self.unit_system.builtin_quantities</cite> in case of customized <cite>unit_system</cite> at
+initialization), or <cite>dimensionless</cite> otherwise.
+* When <cite>key</cite> is one of the <cite>PRESET_BUILTIN_QUANTITIES</cite> (or
+<cite>self.unit_system.builtin_quantities</cite>), the unit and shape of <cite>quant</cite>
+need to be compatible.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<em>str</em>) – The name/key to store the string.</p></li>
+<li><p><strong>quantity</strong> (<em>numpy.ndarray</em><em> | </em><a class="reference internal" href="quantity.html#proteka.quantity.quantity.Quantity" title="proteka.quantity.quantity.Quantity"><em>Quantity</em></a>) – The quantity to be saved. When input is a raw numpy array, the unit is
+assumed to be either the builtin unit (when exists) or “dimensionless”.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="proteka.dataset.Ensemble.top">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">top</span></span><a class="headerlink" href="#proteka.dataset.Ensemble.top" title="Link to this definition"></a></dt>
+<dd><p>Return the topology of the molecular system. Alias to <cite>.top</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>mdtraj.Topology</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="proteka.dataset.Ensemble.topology">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">topology</span></span><a class="headerlink" href="#proteka.dataset.Ensemble.topology" title="Link to this definition"></a></dt>
+<dd><p>Return the topology of the molecular system. Alias to <cite>.top</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>mdtraj.Topology</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="proteka.dataset.Ensemble.trajectories">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">trajectories</span></span><a class="headerlink" href="#proteka.dataset.Ensemble.trajectories" title="Link to this definition"></a></dt>
+<dd><p>Get the slices corresponding to each trajectory. These python slice objects
+can be used to retrive the correct portion for the corresponding trajectory for
+each _per-<a href="#id9"><span class="problematic" id="id10">frame_</span></a> quantity (e.g., coords, forces, …) via bracket ([]) operator.
+Alias to <cite>.trajectory_slices</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Key-slice pairs for each registered trajectory</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dict[str, slice]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="proteka.dataset.Ensemble.trajectory_indices">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">trajectory_indices</span></span><a class="headerlink" href="#proteka.dataset.Ensemble.trajectory_indices" title="Link to this definition"></a></dt>
+<dd><p>Indices of frames belonging to each Trajectory.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Key-(list of int) pairs for each registered trajectory</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dict[str, numpy.ndarray]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="proteka.dataset.Ensemble.trajectory_slices">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">trajectory_slices</span></span><a class="headerlink" href="#proteka.dataset.Ensemble.trajectory_slices" title="Link to this definition"></a></dt>
+<dd><p>Get the slices corresponding to each trajectory. These python slice objects
+can be used to retrive the correct portion for the corresponding trajectory for
+each _per-<a href="#id11"><span class="problematic" id="id12">frame_</span></a> quantity (e.g., coords, forces, …) via bracket ([]) operator.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Key-slice pairs for each registered trajectory</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dict[str, slice]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="proteka.dataset.Ensemble.trjs">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">trjs</span></span><a class="headerlink" href="#proteka.dataset.Ensemble.trjs" title="Link to this definition"></a></dt>
+<dd><p>Get the slices corresponding to each trajectory. These python slice objects
+can be used to retrive the correct portion for the corresponding trajectory for
+each _per-<a href="#id13"><span class="problematic" id="id14">frame_</span></a> quantity (e.g., coords, forces, …) via bracket ([]) operator.
+Alias to <cite>.trajectory_slices</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Key-slice pairs for each registered trajectory</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dict[str, slice]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="proteka.dataset.Ensemble.unit_system">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">unit_system</span></span><a class="headerlink" href="#proteka.dataset.Ensemble.unit_system" title="Link to this definition"></a></dt>
+<dd><p>Return a the unit system used by the <cite>Ensemble</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The unit system containing units for basic dimension “[X]” (X = L, M, T, E)
+and units for builtin quantities</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>UnitSystem</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
 </section>
 </section>
 
