@@ -1,21 +1,21 @@
+
+
 <!DOCTYPE html>
-<html class="writer-html5" lang="en" >
+<html class="writer-html5" lang="en" data-content_root="./">
 <head>
-  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Ensemble &mdash; proteka 1.0.0 documentation</title>
-      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-  <!--[if lt IE 9]>
-    <script src="_static/js/html5shiv.min.js"></script>
-  <![endif]-->
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
   
-        <script src="_static/jquery.js"></script>
-        <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
-        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-        <script src="_static/doctools.js"></script>
-        <script src="_static/sphinx_highlight.js"></script>
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -45,7 +45,10 @@
               <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="dev/dev.html">Developer Documentation</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Ensemble</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#ensemble-class">Ensemble class</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#ensemble-class">Ensemble class</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#proteka.dataset.Ensemble"><code class="docutils literal notranslate"><span class="pre">Ensemble</span></code></a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="metrics.html">Metrics</a></li>
@@ -78,9 +81,102 @@
            <div itemprop="articleBody">
              
   <section id="ensemble">
-<h1>Ensemble<a class="headerlink" href="#ensemble" title="Permalink to this heading"></a></h1>
+<h1>Ensemble<a class="headerlink" href="#ensemble" title="Link to this heading"></a></h1>
 <section id="ensemble-class">
-<h2>Ensemble class<a class="headerlink" href="#ensemble-class" title="Permalink to this heading"></a></h2>
+<h2>Ensemble class<a class="headerlink" href="#ensemble-class" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="proteka.dataset.Ensemble">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">proteka.dataset.</span></span><span class="sig-name descname"><span class="pre">Ensemble</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">top</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coords</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">quantities</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trajectory_slices</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit_system</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'nm-g/mol-ps-kJ/mol'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/proteka/dataset/ensemble.html#Ensemble"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#proteka.dataset.Ensemble" title="Link to this definition"></a></dt>
+<dd><p>An <cite>Ensemble</cite> is an in-memory data structure consisting of sample coordinates and
+other quantities for a certain system at a certain thermodynamic state. The samples
+usually correspond to a Boltzmann distribution.</p>
+<p>An <cite>Ensemble</cite> must have <cite>name</cite>, <cite>top</cite> (molecular topology) and <cite>coords</cite> (3D
+coordinates). In addition, a <cite>unit_system</cite> has to be provided either as a
+pre-defined <cite>UnitSystem</cite> object or a seralized JSON version of <cite>UnitSystem</cite> or a
+string in format of “[L]-[M]-[T]-[E(nergy)]” to specify the units used internally,
+default “nm-g/mol-ps-kJ/mol”.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<em>str</em>) – a human-readable name of the system. Not necessarily corresponding to the HDF5
+group name</p></li>
+<li><p><strong>top</strong> (<em>mdtraj.Topology</em>) – the molecular topology of the system</p></li>
+<li><p><strong>coords</strong> (<a class="reference internal" href="quantity.html#proteka.quantity.quantity.Quantity" title="proteka.quantity.quantity.Quantity"><em>Quantity</em></a><em> or </em><em>numpy.ndarray</em>) – 3D coordinates with shape (n_frames, n_atoms, 3) and dimension [L]</p></li>
+<li><p><strong>quantities</strong> (<em>Dict</em><em>[</em><em>str</em><em>, </em><em>np.ndarray</em><em> | </em><a class="reference internal" href="quantity.html#proteka.quantity.quantity.Quantity" title="proteka.quantity.quantity.Quantity"><em>Quantity</em></a><em>]</em><em>, </em><em>optional</em>) – Example key and value pairs for builtin quantities:
+- forces: (n_frames, n_atoms, 3) _ATOMIC_VECTOR_.
+- velocities: (n_frames, n_atoms, 3) _ATOMIC_VECTOR_ with dimension [L]/[T].
+- time: (n_frames,) _per-<a href="#id1"><span class="problematic" id="id2">frame_</span></a> scalar indicating the elapsed simulation time
+with dimension [T].
+- weights: (n_frames,) _per-<a href="#id3"><span class="problematic" id="id4">frame_</span></a> scalar indicating the Boltzmann weight of
+each frame.</p></li>
+<li><p><strong>metadata</strong> (<em>dict</em><em>, </em><em>optional</em>) – Metadata to be saved, e.g., simulation temperature, forcefield information,
+saving time stride, etc, by default None</p></li>
+<li><p><strong>trajectory_slices</strong> (<em>Dict</em><em>[</em><em>str</em><em>, </em><em>slice</em><em>]</em><em>, </em><em>optional</em>) – a dictionary for trajectory name and its range expressed as a python slice
+object (similar to the usage of a [start:stop:stride] for indexing.), by default
+None</p></li>
+<li><p><strong>unit_system</strong> (<em>str</em><em> | </em><em>UnitSystem object</em><em>, </em><em>optional</em>) – In format “[L]-[M]-[T]-[E(nergy)]” for units of builtin quantities, by default
+“nm-g/mol-ps-kJ/mol”; alternatively, you can provide an existing <cite>UnitSystem</cite> or
+a JSON-serialized such object</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – When input <cite>coords</cite> does not correspond to the input <cite>top</cite>.</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>Alternative to the default <cite>__init__</cite> method, an <cite>Ensemble</cite> can also be created from
+a <cite>mdtraj.Trajectory</cite> object (see <cite>from_mdtraj_trj</cite>).</p>
+<p>## About <cite>Quantity</cite>:
+&gt; A <cite>Quantity</cite> wraps a <cite>numpy.ndarray</cite> and a <cite>unit</cite> (defined in
+<cite>proteka.dataset.unit_quantity</cite>). Assigning a <cite>Quantity</cite> to an <cite>Ensemble</cite> either
+during initialization or via the dot (.) notation as an attribute:
+- If the input is a plain <cite>numpy.ndarray</cite>, then the unit is assumed as
+“dimensionless”
+- If the input is a <cite>Quantity</cite>, the input unit will be stored</p>
+<p>Retrieving saved <cite>Quantity</cite>:
+- Accessing as an attribute (via dot (.)): returns a <cite>numpy.ndarray</cite> with the value
+of the <cite>Quantity</cite> in unit of the stored unit
+- Via index bracket ([]): returns the stored <cite>Quantity</cite> object, allowing flexible
+automated unit conversion</p>
+<p>List stored quantities:
+- .list_quantities()</p>
+<ul class="simple">
+<li><p>Special cases are “builtin quantities”, whose stored units are dictated by the</p></li>
+</ul>
+<p><cite>unit_system</cite> (also used instead of the default “dimensionless” during assignment):
+- “coords” (ATOMIC_VECTOR): [L]
+- “time” (_per-<a href="#id5"><span class="problematic" id="id6">frame_</span></a> SCALAR): [T]
+- “forces” (ATOMIC_VECTOR): [E]/[L]
+- “velocities” (ATOMIC_VECTOR): [L]/[T]
+- “cell_lengths” (BOX_QUANTITIES): [L]
+- “cell_angles”: (BOX_QUANTITIES): degree
+In addition, the above quantities are tied to the system molecule via the shape,
+i.e., each _per-<a href="#id7"><span class="problematic" id="id8">frame_</span></a> quantity having the same number of frames as <cite>self.coords</cite>,
+and correspond to the same number of atoms as indicated by <cite>self.top</cite>, if it is an
+_ATOMIC_VECTOR_.</p>
+<p>## Trajectories:
+Storing the information about which samples contained in the <cite>Ensemble</cite> come from
+which trajectory.
+Trajectories are sequential. Therefore, samples from different trajectories are
+expected to be non-overlapping slices.
+Trajectories info is supposed to be stored either during the Ensemble initialization
+or after with <cite>.register_trjs</cite> method.</p>
+<p>Properties:
+- <cite>.n_trjs</cite> (int): number of trajectories
+- <cite>.n_frames_per_trj</cite> (Dict[str, int]): dictionary of number of frames in each
+trajectory
+- <cite>.trajectory_slices</cite> or <cite>.trjs</cite> or <cite>.trajectories</cite> (Dict[str, slice]): Python
+<cite>slice`s for slicing Ensemble quantities according to the `.trjs</cite> records
+- <cite>.trj_indices</cite> (Dict[str, np.ndarray]): indices for different trajectories
+according to the <cite>.trjs</cite> records</p>
+<p>## <cite>mdtraj</cite> interface:
+- <cite>.get_mdtraj_trjs()</cite> (-&gt; Dict[str, mdtraj.Trajectory]): pack an <cite>Ensemble</cite>’s <cite>top</cite>
+and <cite>coords</cite> (and unitcell + simulation times, if available) into a dictionary of
+<cite>mdtraj.Trajectory</cite> for analyses according to <cite>self.trjs</cite>
+- <cite>.get_all_in_one_mdtraj_trj()</cite>: pack all <cite>coords</cite> into one <cite>Trajectory</cite> object
+(maybe not suitable for kinetic analyses, such as TICA and MSM!)</p>
+</dd></dl>
+
 </section>
 </section>
 

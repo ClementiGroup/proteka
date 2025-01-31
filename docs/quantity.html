@@ -1,21 +1,21 @@
+
+
 <!DOCTYPE html>
-<html class="writer-html5" lang="en" >
+<html class="writer-html5" lang="en" data-content_root="./">
 <head>
-  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Quantity &mdash; proteka 1.0.0 documentation</title>
-      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-  <!--[if lt IE 9]>
-    <script src="_static/js/html5shiv.min.js"></script>
-  <![endif]-->
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
   
-        <script src="_static/jquery.js"></script>
-        <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
-        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-        <script src="_static/doctools.js"></script>
-        <script src="_static/sphinx_highlight.js"></script>
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -47,8 +47,26 @@
 <li class="toctree-l1"><a class="reference internal" href="ensemble.html">Ensemble</a></li>
 <li class="toctree-l1"><a class="reference internal" href="metrics.html">Metrics</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Quantity</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#abstract-interfaces">Abstract interfaces</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#implementations">Implementations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#abstract-interfaces">Abstract interfaces</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#proteka.quantity.quantity.BaseQuantity"><code class="docutils literal notranslate"><span class="pre">BaseQuantity</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#proteka.quantity.quantity.BaseQuantity.convert_unit_to_"><code class="docutils literal notranslate"><span class="pre">BaseQuantity.convert_unit_to_()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#proteka.quantity.quantity.BaseQuantity.in_unit_of"><code class="docutils literal notranslate"><span class="pre">BaseQuantity.in_unit_of()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#proteka.quantity.quantity.BaseQuantity.is_unit_convertible_with"><code class="docutils literal notranslate"><span class="pre">BaseQuantity.is_unit_convertible_with()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#proteka.quantity.quantity.BaseQuantity.raw_value"><code class="docutils literal notranslate"><span class="pre">BaseQuantity.raw_value</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#proteka.quantity.quantity.BaseQuantity.to_quantity_with_unit"><code class="docutils literal notranslate"><span class="pre">BaseQuantity.to_quantity_with_unit()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#proteka.quantity.quantity.BaseQuantity.unit"><code class="docutils literal notranslate"><span class="pre">BaseQuantity.unit</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#implementations">Implementations</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#proteka.quantity.quantity.Quantity"><code class="docutils literal notranslate"><span class="pre">Quantity</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#proteka.quantity.quantity.Quantity.from_hdf5"><code class="docutils literal notranslate"><span class="pre">Quantity.from_hdf5()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#proteka.quantity.quantity.Quantity.unit"><code class="docutils literal notranslate"><span class="pre">Quantity.unit</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="bibliography.html">Bibliography</a></li>
@@ -79,12 +97,194 @@
            <div itemprop="articleBody">
              
   <section id="quantity">
-<h1>Quantity<a class="headerlink" href="#quantity" title="Permalink to this heading"></a></h1>
+<h1>Quantity<a class="headerlink" href="#quantity" title="Link to this heading"></a></h1>
 <section id="abstract-interfaces">
-<h2>Abstract interfaces<a class="headerlink" href="#abstract-interfaces" title="Permalink to this heading"></a></h2>
+<h2>Abstract interfaces<a class="headerlink" href="#abstract-interfaces" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="proteka.quantity.quantity.BaseQuantity">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">proteka.quantity.quantity.</span></span><span class="sig-name descname"><span class="pre">BaseQuantity</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'dimensionless'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/proteka/quantity/quantity.html#BaseQuantity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#proteka.quantity.quantity.BaseQuantity" title="Link to this definition"></a></dt>
+<dd><p>Numbers or numpy arrays with a <cite>unit</cite> field. Retrive the value by <cite>in_unit_of</cite>
+method for unit compatibility.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>value</strong> (<em>numpy.ndarray</em><em> or </em><em>any array-like input</em>) – The raw value of the quantity.</p></li>
+<li><p><strong>unit</strong> (<em>str</em><em>, </em><em>optional</em>) – The unit of the quantity, by default “dimensionless”</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>This is only a wrapper around the actual array, so changing the array will change
+the quantity value as well, and vise versa.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="proteka.quantity.quantity.BaseQuantity.convert_unit_to_">
+<span class="sig-name descname"><span class="pre">convert_unit_to_</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">target_unit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'dimensionless'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/proteka/quantity/quantity.html#BaseQuantity.convert_unit_to_"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#proteka.quantity.quantity.BaseQuantity.convert_unit_to_" title="Link to this definition"></a></dt>
+<dd><p>Convert the quantity to target unit. If not possible, raise <cite>ValueError</cite>.
+Comparing to <cite>to_quantity_with_unit</cite>, the operation is in-place and thus no new
+<cite>Quantity</cite> will be created.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>target_unit</strong> (<em>str</em><em>, </em><em>optional</em>) – The unit string to convert the current quantity into, by default
+“dimensionless”.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><cite>self</cite> in <cite>target_unit</cite>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(Base)<a class="reference internal" href="#proteka.quantity.quantity.Quantity" title="proteka.quantity.quantity.Quantity">Quantity</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – When the current quantity is not convertible to <cite>target_unit</cite>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="proteka.quantity.quantity.BaseQuantity.in_unit_of">
+<span class="sig-name descname"><span class="pre">in_unit_of</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">target_unit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'dimensionless'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/proteka/quantity/quantity.html#BaseQuantity.in_unit_of"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#proteka.quantity.quantity.BaseQuantity.in_unit_of" title="Link to this definition"></a></dt>
+<dd><p>Return quantity value in target unit. If not possible, raise <cite>ValueError</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>target_unit</strong> (<em>str</em><em>, </em><em>optional</em>) – The value of the current quantity will be returned in this unit string, by
+default “dimensionless”</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The value of the current quantity in <cite>target_unit</cite>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>numpy.ndarray</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – When the current quantity is not convertible to <cite>target_unit</cite>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="proteka.quantity.quantity.BaseQuantity.is_unit_convertible_with">
+<span class="sig-name descname"><span class="pre">is_unit_convertible_with</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">unit_or_quantity</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/proteka/quantity/quantity.html#BaseQuantity.is_unit_convertible_with"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#proteka.quantity.quantity.BaseQuantity.is_unit_convertible_with" title="Link to this definition"></a></dt>
+<dd><p>Check whether it has convertible units with input units or <cite>Quantity</cite> object.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>unit_or_quantity</strong> (<em>str</em><em> | </em><em>(</em><em>Base</em><em>)</em><a class="reference internal" href="#proteka.quantity.quantity.Quantity" title="proteka.quantity.quantity.Quantity"><em>Quantity</em></a>) – A unit string or a quantity with unit</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>True if the unit is interconvertible.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="proteka.quantity.quantity.BaseQuantity.raw_value">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">raw_value</span></span><a class="headerlink" href="#proteka.quantity.quantity.BaseQuantity.raw_value" title="Link to this definition"></a></dt>
+<dd><p>The raw array inside the quantity object.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>numpy.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="proteka.quantity.quantity.BaseQuantity.to_quantity_with_unit">
+<span class="sig-name descname"><span class="pre">to_quantity_with_unit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">target_unit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'dimensionless'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/proteka/quantity/quantity.html#BaseQuantity.to_quantity_with_unit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#proteka.quantity.quantity.BaseQuantity.to_quantity_with_unit" title="Link to this definition"></a></dt>
+<dd><p>Convert the quantity to target unit. If not possible, raise <cite>ValueError</cite>.
+Comparing to <cite>in_unit_of</cite>, a Quantity object is returned.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>target_unit</strong> (<em>str</em><em>, </em><em>optional</em>) – The unit string to convert the current quantity into, by default
+“dimensionless”.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A new quantity in <cite>target_unit</cite>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(Base)<a class="reference internal" href="#proteka.quantity.quantity.Quantity" title="proteka.quantity.quantity.Quantity">Quantity</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – When the current quantity is not convertible to <cite>target_unit</cite>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="proteka.quantity.quantity.BaseQuantity.unit">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">unit</span></span><a class="headerlink" href="#proteka.quantity.quantity.BaseQuantity.unit" title="Link to this definition"></a></dt>
+<dd><p>The unit of the quantity object.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
 </section>
 <section id="implementations">
-<h2>Implementations<a class="headerlink" href="#implementations" title="Permalink to this heading"></a></h2>
+<h2>Implementations<a class="headerlink" href="#implementations" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="proteka.quantity.quantity.Quantity">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">proteka.quantity.quantity.</span></span><span class="sig-name descname"><span class="pre">Quantity</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'dimensionless'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">copy</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/proteka/quantity/quantity.html#Quantity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#proteka.quantity.quantity.Quantity" title="Link to this definition"></a></dt>
+<dd><p>Quantity (numpy.ndarray + unit str) with metadata (<cite>metadata</cite>). Specialized
+MetaArray with <cite>unit</cite> as a mandatory field in the metadata. Can be converted to and
+from a HDF5 Dataset.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>value</strong> (<em>numpy.ndarray</em><em> or </em><em>any array-like input</em>) – The raw value of the quantity.</p></li>
+<li><p><strong>unit</strong> (<em>str</em><em>, </em><em>optional</em>) – The unit of the quantity, by default “dimensionless”</p></li>
+<li><p><strong>metadata</strong> (<em>dict</em><em>, </em><em>optional</em>) – Metadata to be wrapped, a mapping from str to str or arrays, by default None</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – When the <cite>unit</cite> is a key in <cite>metadata</cite> and the value is not the identical as
+    the argument. Recommended to double check and either remove the <cite>unit</cite> in
+    <cite>metadata</cite> or make it identical with the argument.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="proteka.quantity.quantity.Quantity.from_hdf5">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_hdf5</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">h5dt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">offset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stride</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">suppress_unit_warn</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/proteka/quantity/quantity.html#Quantity.from_hdf5"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#proteka.quantity.quantity.Quantity.from_hdf5" title="Link to this definition"></a></dt>
+<dd><p>Create an instance from the content of HDF5 dataset <cite>h5dt</cite>. If no <cite>unit</cite> is
+present in the HDF5 attributes, then assumed as “dimensionless” with warning.
+For non-scalar dataset, <cite>offset</cite> and <cite>stride</cite> can be set, such that the slice
+<cite>h5dt[offset::stride]</cite> will be read to the memory. For scalar dataset, <cite>offset</cite>
+and <cite>stride</cite> will be simply ignored.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>h5dt</strong> (<em>h5py.Dataset</em>) – A HDF5 Dataset.</p></li>
+<li><p><strong>offset</strong> (<em>None</em><em> | </em><em>int</em><em>, </em><em>optional</em>) – The offset for loading from the HDF5 file. Default is <cite>None</cite>.</p></li>
+<li><p><strong>stride</strong> (<em>None</em><em> | </em><em>int</em><em>, </em><em>optional</em>) – The stride for loading from the HDF5 file. Default is <cite>None</cite>.</p></li>
+<li><p><strong>suppress_unit_warn</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to allow silently setting unit to “dimensionless”, by default False</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The quantity implied by the content in the input HDF5 Dataset.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#proteka.quantity.quantity.Quantity" title="proteka.quantity.quantity.Quantity">Quantity</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="proteka.quantity.quantity.Quantity.unit">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">unit</span></span><a class="headerlink" href="#proteka.quantity.quantity.Quantity.unit" title="Link to this definition"></a></dt>
+<dd><p>The unit of the quantity object.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
 </section>
 </section>
 

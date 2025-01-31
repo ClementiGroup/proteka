@@ -1,21 +1,21 @@
+
+
 <!DOCTYPE html>
-<html class="writer-html5" lang="en" >
+<html class="writer-html5" lang="en" data-content_root="./">
 <head>
-  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Metrics &mdash; proteka 1.0.0 documentation</title>
-      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-  <!--[if lt IE 9]>
-    <script src="_static/js/html5shiv.min.js"></script>
-  <![endif]-->
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
   
-        <script src="_static/jquery.js"></script>
-        <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
-        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-        <script src="_static/doctools.js"></script>
-        <script src="_static/sphinx_highlight.js"></script>
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -46,8 +46,30 @@
 <li class="toctree-l1"><a class="reference internal" href="dev/dev.html">Developer Documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ensemble.html">Ensemble</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Metrics</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#abstract-interfaces">Abstract interfaces</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#implementations">Implementations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#abstract-interfaces">Abstract interfaces</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#proteka.metrics.calculator.IMetrics"><code class="docutils literal notranslate"><span class="pre">IMetrics</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#proteka.metrics.calculator.IMetrics.compute"><code class="docutils literal notranslate"><span class="pre">IMetrics.compute()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#implementations">Implementations</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#proteka.metrics.calculator.StructuralIntegrityMetrics"><code class="docutils literal notranslate"><span class="pre">StructuralIntegrityMetrics</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#proteka.metrics.calculator.StructuralIntegrityMetrics.ca_clashes"><code class="docutils literal notranslate"><span class="pre">StructuralIntegrityMetrics.ca_clashes()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#proteka.metrics.calculator.StructuralIntegrityMetrics.ca_pseudobonds"><code class="docutils literal notranslate"><span class="pre">StructuralIntegrityMetrics.ca_pseudobonds()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#proteka.metrics.calculator.StructuralIntegrityMetrics.compute"><code class="docutils literal notranslate"><span class="pre">StructuralIntegrityMetrics.compute()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#proteka.metrics.calculator.StructuralIntegrityMetrics.general_clashes"><code class="docutils literal notranslate"><span class="pre">StructuralIntegrityMetrics.general_clashes()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#proteka.metrics.calculator.EnsembleQualityMetrics"><code class="docutils literal notranslate"><span class="pre">EnsembleQualityMetrics</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#proteka.metrics.calculator.EnsembleQualityMetrics.compute"><code class="docutils literal notranslate"><span class="pre">EnsembleQualityMetrics.compute()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#proteka.metrics.calculator.EnsembleQualityMetrics.compute_metric"><code class="docutils literal notranslate"><span class="pre">EnsembleQualityMetrics.compute_metric()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#proteka.metrics.calculator.EnsembleQualityMetrics.from_config"><code class="docutils literal notranslate"><span class="pre">EnsembleQualityMetrics.from_config()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#proteka.metrics.calculator.EnsembleQualityMetrics.parse_config"><code class="docutils literal notranslate"><span class="pre">EnsembleQualityMetrics.parse_config()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="quantity.html">Quantity</a></li>
@@ -79,12 +101,267 @@
            <div itemprop="articleBody">
              
   <section id="metrics">
-<h1>Metrics<a class="headerlink" href="#metrics" title="Permalink to this heading"></a></h1>
+<h1>Metrics<a class="headerlink" href="#metrics" title="Link to this heading"></a></h1>
 <section id="abstract-interfaces">
-<h2>Abstract interfaces<a class="headerlink" href="#abstract-interfaces" title="Permalink to this heading"></a></h2>
+<h2>Abstract interfaces<a class="headerlink" href="#abstract-interfaces" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="proteka.metrics.calculator.IMetrics">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">proteka.metrics.calculator.</span></span><span class="sig-name descname"><span class="pre">IMetrics</span></span><a class="reference internal" href="_modules/proteka/metrics/calculator.html#IMetrics"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#proteka.metrics.calculator.IMetrics" title="Link to this definition"></a></dt>
+<dd><p>Abstract class defining interface for metrics calculators</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="proteka.metrics.calculator.IMetrics.compute">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">compute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">Ensemble</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metrics</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/proteka/metrics/calculator.html#IMetrics.compute"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#proteka.metrics.calculator.IMetrics.compute" title="Link to this definition"></a></dt>
+<dd><p>Method to compute the metrics</p>
+</dd></dl>
+
+</dd></dl>
+
 </section>
 <section id="implementations">
-<h2>Implementations<a class="headerlink" href="#implementations" title="Permalink to this heading"></a></h2>
+<h2>Implementations<a class="headerlink" href="#implementations" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="proteka.metrics.calculator.StructuralIntegrityMetrics">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">proteka.metrics.calculator.</span></span><span class="sig-name descname"><span class="pre">StructuralIntegrityMetrics</span></span><a class="reference internal" href="_modules/proteka/metrics/calculator.html#StructuralIntegrityMetrics"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#proteka.metrics.calculator.StructuralIntegrityMetrics" title="Link to this definition"></a></dt>
+<dd><p>Class takes a dataset and checks if for chemical integrity</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="proteka.metrics.calculator.StructuralIntegrityMetrics.ca_clashes">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ca_clashes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ensemble</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/proteka/metrics/calculator.html#StructuralIntegrityMetrics.ca_clashes"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#proteka.metrics.calculator.StructuralIntegrityMetrics.ca_clashes" title="Link to this definition"></a></dt>
+<dd><p>Compute total number of instances when there is a clash between CA atoms
+Clashes are defined as any 2 nonconsecutive CA atoms been closer than  0.4 nm</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dict</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>]</span></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="proteka.metrics.calculator.StructuralIntegrityMetrics.ca_pseudobonds">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ca_pseudobonds</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ensemble</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/proteka/metrics/calculator.html#StructuralIntegrityMetrics.ca_pseudobonds"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#proteka.metrics.calculator.StructuralIntegrityMetrics.ca_pseudobonds" title="Link to this definition"></a></dt>
+<dd><p>Computes maximum and rms z-score for d_ca_ca bonds over ensemble.
+Z-score is defined as (d_ca_ca - mean(d_ca_ca)) / std(d_ca_ca)
+d_ca_ca and std(d_ca_ca) are parametrized based on analysis of the proteka
+and pdb databases. Beware, that this metric will give high deviations for
+cis-proline peptide bonds</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dict</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>]</span></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="proteka.metrics.calculator.StructuralIntegrityMetrics.compute">
+<span class="sig-name descname"><span class="pre">compute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ensemble</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metrics</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">['ca_clashes',</span> <span class="pre">'ca_pseudobonds']</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/proteka/metrics/calculator.html#StructuralIntegrityMetrics.compute"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#proteka.metrics.calculator.StructuralIntegrityMetrics.compute" title="Link to this definition"></a></dt>
+<dd><p>Method to compute the metrics</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="proteka.metrics.calculator.StructuralIntegrityMetrics.general_clashes">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">general_clashes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ensemble</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">atom_name_pairs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">thresholds</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">res_offset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stride</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">allowance</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.07</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_frames</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/proteka/metrics/calculator.html#StructuralIntegrityMetrics.general_clashes"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#proteka.metrics.calculator.StructuralIntegrityMetrics.general_clashes" title="Link to this definition"></a></dt>
+<dd><p>“Compute clashes between atoms of types <cite>atom_name_1/2</cite> according
+to user-supplied thresholds or according to the method of allowance-modified
+VDW radii overlap described here:</p>
+<p><a class="reference external" href="https://www.cgl.usf.edu/chimera/docs/ContributedSoftware/findclash/findclash.html">https://www.cgl.usf.edu/chimera/docs/ContributedSoftware/findclash/findclash.html</a></p>
+<p>with VDW radii in nm taken from <cite>mdtraj.core.element.Element</cite>. If the pair
+is composed of atom species that can potentially form hydrogen bonds
+(e.g., (“N”, “O”, “S”)), then an additional default allowance of 0.07 nm is permitted.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ensemble</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference internal" href="ensemble.html#proteka.dataset.Ensemble" title="proteka.dataset.ensemble.Ensemble"><code class="xref py py-class docutils literal notranslate"><span class="pre">Ensemble</span></code></a></span>) – <cite>Ensemble</cite> over which clashes should be detected</p></li>
+<li><p><strong>atom_name_pairs</strong> (<span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>]]</span>) – List of <cite>str</cite> tuples that denote the first atom type pairs according to
+the MDTraj selection language</p></li>
+<li><p><strong>thresholds</strong> (<span class="sphinx_autodoc_typehints-type"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>]]</span>) – <p>List of clash thresholds for each type pair in atom_name_pairs. If <cite>None</cite>,
+the clash thresholds are calculated according to:</p>
+<blockquote>
+<div><p>thresh = r_vdw_i + r_vdw_j - allowance</p>
+</div></blockquote>
+<p>for atoms i,j.</p>
+</p></li>
+<li><p><strong>allowance</strong> (<span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></span>) – Additional distance tolerance for atoms involved in hydrogen bonding. Only
+used if thresholds is <cite>None</cite>. Set to 0.07 nm by default</p></li>
+<li><p><strong>res_offset</strong> (<span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></span>) – <cite>int</cite> that determines the minimum residue separation for inclusion in distance
+calculations; two atoms that belong to residues i and j are included in the
+calculations if <cite>|i-j| &gt; res_offset</cite>.</p></li>
+<li><p><strong>stride</strong> (<span class="sphinx_autodoc_typehints-type"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>]</span>) – If specified, this stride is applied to the trajectory before the distance
+calculations</p></li>
+<li><p><strong>save_frames</strong> (<span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></span>) – If True, the results also contain a keyword <cite>frames</cite> which denotes the frame
+indices in which clashes are detected.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dictionary with keys <cite>{name1}_{name2}_clashes</cite> and values reporting
+the number of clashes found for those name pairs</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dict[str, int]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="proteka.metrics.calculator.EnsembleQualityMetrics">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">proteka.metrics.calculator.</span></span><span class="sig-name descname"><span class="pre">EnsembleQualityMetrics</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">metrics</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/proteka/metrics/calculator.html#EnsembleQualityMetrics"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#proteka.metrics.calculator.EnsembleQualityMetrics" title="Link to this definition"></a></dt>
+<dd><p>Metrics to compare a target ensemble to the reference ensemble.
+Input metric configs must be a dictionary of the following form:</p>
+<blockquote>
+<div><blockquote>
+<div><dl>
+<dt>{</dt><dd><dl>
+<dt>“features”: {</dt><dd><dl class="simple">
+<dt>“rg”: {</dt><dd><p>“feature_params”: {“atom_selection”: “name CA”},
+“metric_params”: {“js_div”: {“bins”: 100}},</p>
+</dd>
+</dl>
+<p>},
+“ca_distances”: {</p>
+<blockquote>
+<div><p>“feature_params”: None,
+“metric_params”: {“js_div”: {“bins”: 100}},</p>
+</div></blockquote>
+<p>},
+“dssp”: {</p>
+<blockquote>
+<div><p>“feature_params”: {“digitize”: True},
+“metric_params”: {</p>
+<blockquote>
+<div><p>“mse_ldist”: {“bins”: np.array([0, 1, 2, 3, 4])}</p>
+</div></blockquote>
+<p>},</p>
+</div></blockquote>
+<p>},</p>
+</dd>
+</dl>
+<p>}</p>
+</dd>
+</dl>
+</div></blockquote>
+<p>},</p>
+</div></blockquote>
+<p>Specifying computation and metric parameters for each feature/metric
+for comparisons between target and reference ensembles.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="proteka.metrics.calculator.EnsembleQualityMetrics.compute">
+<span class="sig-name descname"><span class="pre">compute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">target</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reference</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/proteka/metrics/calculator.html#EnsembleQualityMetrics.compute"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#proteka.metrics.calculator.EnsembleQualityMetrics.compute" title="Link to this definition"></a></dt>
+<dd><p>compute the metrics that compare the target ensemble to the reference over
+the specified features. comute metrics are stored in the <cite>EnsembleQualityMetrics.results</cite>
+attribute.</p>
+<section id="parameters">
+<h3>parameters:<a class="headerlink" href="#parameters" title="Link to this heading"></a></h3>
+<dl class="simple">
+<dt>target: Ensemble</dt><dd><p>the target ensemble</p>
+</dd>
+<dt>reference: Ensemble</dt><dd><p>the reference ensemble, against which the target ensemble is compared</p>
+</dd>
+</dl>
+</section>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="proteka.metrics.calculator.EnsembleQualityMetrics.compute_metric">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">compute_metric</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">target</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reference</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">feature</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metric</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'kl_div'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bins</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/proteka/metrics/calculator.html#EnsembleQualityMetrics.compute_metric"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#proteka.metrics.calculator.EnsembleQualityMetrics.compute_metric" title="Link to this definition"></a></dt>
+<dd><p>computes metric for desired feature between two ensembles.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>target</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference internal" href="ensemble.html#proteka.dataset.Ensemble" title="proteka.dataset.ensemble.Ensemble"><code class="xref py py-class docutils literal notranslate"><span class="pre">Ensemble</span></code></a></span>) – target ensemble</p></li>
+<li><p><strong>reference</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference internal" href="ensemble.html#proteka.dataset.Ensemble" title="proteka.dataset.ensemble.Ensemble"><code class="xref py py-class docutils literal notranslate"><span class="pre">Ensemble</span></code></a></span>) – refernce ensemble</p></li>
+<li><p><strong>feature</strong> (<span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></span>) – string specifying the feature for which the desired metric should be computed
+over from the target to the reference ensemble. valid features can be
+scalars (eg, <cite>EnsembleQualityMetrics.scalar_features</cite>) or vector features
+(eg, <cite>EnsembleQualityMetrics.vector_features</cite>)</p></li>
+<li><p><strong>metric</strong> (<span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></span>) – string specifying the metric to compute for the desire feature between the
+target and reference ensembles. valid metrics are contained in
+<cite>EnsembleQualityMetrics.metrics</cite></p></li>
+<li><p><strong>bins</strong> (<span class="sphinx_autodoc_typehints-type"><code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code>]</span>) – in the case that the metric is calculated over probability distributions,
+this integer number of bins or <cite>np.ndarray</cite> of bins is used to compute
+histograms for both the target and reference ensembles</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict of the form {“{feature}, {metric}” : metric_result} for
+the specified feature and metric between the target and
+reference ensembles.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>result</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="proteka.metrics.calculator.EnsembleQualityMetrics.from_config">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_config</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config_file</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/proteka/metrics/calculator.html#EnsembleQualityMetrics.from_config"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#proteka.metrics.calculator.EnsembleQualityMetrics.from_config" title="Link to this definition"></a></dt>
+<dd><p>instances an EnsembleQualityMetrics
+from a config file. the config should have the example following structure:</p>
+<blockquote>
+<div><dl>
+<dt>EnsembleQualityMetrics:</dt><dd><dl>
+<dt>features:</dt><dd><dl class="simple">
+<dt>rmsd:</dt><dd><dl class="simple">
+<dt>feature_params:</dt><dd><p>reference_structure: path_to_struct.pdb
+atom_selection: “name ca”</p>
+</dd>
+<dt>metric_params:</dt><dd><dl class="simple">
+<dt>js_div:</dt><dd><p>bins: 100</p>
+</dd>
+<dt>mse_ldist:</dt><dd><dl class="simple">
+<dt>-bins:</dt><dd><p>start: 0
+stop: 100
+num: 1000</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd>
+</dl>
+<p>…</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</div></blockquote>
+<p>for specific metrics, bins can be either an integer or a dictionary
+of key value pairs corresponding to kwargs of <cite>np.linspace</cite> to instance
+equal-width bins over a specific range of values. For 2D metrics, a
+list of binopts can be specified through the “-” operator.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>config_file</strong> (<span class="sphinx_autodoc_typehints-type"><code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Dict</span></code>]</span>) – If str, a path to a YAML file specifying feature and config options.
+If Dict, a dictionary of a loaded YAML file</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="proteka.metrics.calculator.EnsembleQualityMetrics.parse_config">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">parse_config</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">eqm_config</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/proteka/metrics/calculator.html#EnsembleQualityMetrics.parse_config"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#proteka.metrics.calculator.EnsembleQualityMetrics.parse_config" title="Link to this definition"></a></dt>
+<dd><p>Parser for input configuration loaded
+from YAML or otherwise dictionaries that
+have unparsed bin options</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>eqm_config</strong> (<span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dict</span></code></span>) – Unparsed EnsembleQualityMetrics configuration
+options dictionary</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Parsed EnsembleQualityMetrics configuration
+options dictionary that can be used for class
+instantiation.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>eqm_config</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
 </section>
 </section>
 

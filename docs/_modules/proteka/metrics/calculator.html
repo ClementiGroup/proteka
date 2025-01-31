@@ -1,0 +1,913 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>proteka.metrics.calculator &mdash; proteka 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            proteka
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../dev/dev.html">Developer Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ensemble.html">Ensemble</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../metrics.html">Metrics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../quantity.html">Quantity</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../bibliography.html">Bibliography</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">proteka</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">proteka.metrics.calculator</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for proteka.metrics.calculator</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Main entry point for calculating the metrics</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">ABCMeta</span><span class="p">,</span> <span class="n">abstractmethod</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">Mapping</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">mdtraj</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">md</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ruamel.yaml</span><span class="w"> </span><span class="kn">import</span> <span class="n">YAML</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">copy</span><span class="w"> </span><span class="kn">import</span> <span class="n">deepcopy</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mdtraj.core.element</span><span class="w"> </span><span class="kn">import</span> <span class="n">Element</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Tuple</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.featurizer</span><span class="w"> </span><span class="kn">import</span> <span class="n">Featurizer</span><span class="p">,</span> <span class="n">TICATransform</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..dataset</span><span class="w"> </span><span class="kn">import</span> <span class="n">Ensemble</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Dict</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.divergence</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.utils</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">get_general_distances</span><span class="p">,</span>
+    <span class="n">histogram_features</span><span class="p">,</span>
+    <span class="n">histogram_vector_features</span><span class="p">,</span>
+    <span class="n">histogram_features2d</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;StructuralIntegrityMetrics&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;StructuralQualityMetrics&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;EnsembleQualityMetrics&quot;</span><span class="p">,</span>
+<span class="p">]</span>
+
+<span class="n">yaml</span> <span class="o">=</span> <span class="n">YAML</span><span class="p">(</span><span class="n">typ</span><span class="o">=</span><span class="s2">&quot;safe&quot;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="IMetrics">
+<a class="viewcode-back" href="../../../metrics.html#proteka.metrics.calculator.IMetrics">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">IMetrics</span><span class="p">(</span><span class="n">metaclass</span><span class="o">=</span><span class="n">ABCMeta</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Abstract class defining interface for metrics calculators&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">results</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ensemble</span><span class="p">:</span> <span class="n">Ensemble</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">report</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">results</span>
+
+<div class="viewcode-block" id="IMetrics.compute">
+<a class="viewcode-back" href="../../../metrics.html#proteka.metrics.calculator.IMetrics.compute">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">compute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">Ensemble</span><span class="p">,</span> <span class="n">metrics</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Method to compute the metrics&quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="StructuralIntegrityMetrics">
+<a class="viewcode-back" href="../../../metrics.html#proteka.metrics.calculator.StructuralIntegrityMetrics">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">StructuralIntegrityMetrics</span><span class="p">(</span><span class="n">IMetrics</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Class takes a dataset and checks if for chemical integrity&quot;&quot;&quot;</span>
+
+    <span class="n">acceptors_or_donors</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;N&quot;</span><span class="p">,</span> <span class="s2">&quot;O&quot;</span><span class="p">,</span> <span class="s2">&quot;S&quot;</span><span class="p">]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">metrics_dict</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;ca_clashes&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ca_clashes</span><span class="p">,</span>
+            <span class="s2">&quot;ca_pseudobonds&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ca_pseudobonds</span><span class="p">,</span>
+        <span class="p">}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">ensemble</span><span class="p">:</span> <span class="n">Ensemble</span><span class="p">,</span>
+        <span class="n">metrics</span><span class="p">:</span> <span class="n">Iterable</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;ca_clashes&quot;</span><span class="p">,</span> <span class="s2">&quot;ca_pseudobonds&quot;</span><span class="p">],</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="n">ensemble</span><span class="p">,</span> <span class="n">metrics</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">report</span><span class="p">()</span>
+
+<div class="viewcode-block" id="StructuralIntegrityMetrics.compute">
+<a class="viewcode-back" href="../../../metrics.html#proteka.metrics.calculator.StructuralIntegrityMetrics.compute">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">compute</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">ensemble</span><span class="p">:</span> <span class="n">Ensemble</span><span class="p">,</span>
+        <span class="n">metrics</span><span class="p">:</span> <span class="n">Iterable</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;ca_clashes&quot;</span><span class="p">,</span> <span class="s2">&quot;ca_pseudobonds&quot;</span><span class="p">],</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Method to compute the metrics&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">metric</span> <span class="ow">in</span> <span class="n">metrics</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">metrics_dict</span><span class="p">[</span><span class="n">metric</span><span class="p">](</span><span class="n">ensemble</span><span class="p">))</span>
+        <span class="k">return</span></div>
+
+
+<div class="viewcode-block" id="StructuralIntegrityMetrics.ca_clashes">
+<a class="viewcode-back" href="../../../metrics.html#proteka.metrics.calculator.StructuralIntegrityMetrics.ca_clashes">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">ca_clashes</span><span class="p">(</span><span class="n">ensemble</span><span class="p">:</span> <span class="n">Ensemble</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute total number of instances when there is a clash between CA atoms</span>
+<span class="sd">        Clashes are defined as any 2 nonconsecutive CA atoms been closer than  0.4 nm</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Only consider distances between nonconsecutive CA atoms, hence the offset=1</span>
+        <span class="n">distances</span> <span class="o">=</span> <span class="n">Featurizer</span><span class="o">.</span><span class="n">get_feature</span><span class="p">(</span><span class="n">ensemble</span><span class="p">,</span> <span class="s2">&quot;ca_distances&quot;</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">clashes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">distances</span> <span class="o">&lt;</span> <span class="mf">0.4</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;CA-CA clashes&quot;</span><span class="p">:</span> <span class="n">clashes</span><span class="o">.</span><span class="n">size</span><span class="p">}</span></div>
+
+
+<div class="viewcode-block" id="StructuralIntegrityMetrics.general_clashes">
+<a class="viewcode-back" href="../../../metrics.html#proteka.metrics.calculator.StructuralIntegrityMetrics.general_clashes">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">general_clashes</span><span class="p">(</span>
+        <span class="n">ensemble</span><span class="p">:</span> <span class="n">Ensemble</span><span class="p">,</span>
+        <span class="n">atom_name_pairs</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]],</span>
+        <span class="n">thresholds</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">res_offset</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="n">stride</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">allowance</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.07</span><span class="p">,</span>
+        <span class="n">save_frames</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; &quot;Compute clashes between atoms of types `atom_name_1/2` according</span>
+<span class="sd">        to user-supplied thresholds or according to the method of allowance-modified</span>
+<span class="sd">        VDW radii overlap described here:</span>
+
+<span class="sd">        https://www.cgl.usf.edu/chimera/docs/ContributedSoftware/findclash/findclash.html</span>
+
+<span class="sd">        with VDW radii in nm taken from `mdtraj.core.element.Element`. If the pair</span>
+<span class="sd">        is composed of atom species that can potentially form hydrogen bonds</span>
+<span class="sd">        (e.g., (&quot;N&quot;, &quot;O&quot;, &quot;S&quot;)), then an additional default allowance of 0.07 nm is permitted.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        ensemble:</span>
+<span class="sd">            `Ensemble` over which clashes should be detected</span>
+<span class="sd">        atom_name_pairs:</span>
+<span class="sd">            List of `str` tuples that denote the first atom type pairs according to</span>
+<span class="sd">            the MDTraj selection language</span>
+<span class="sd">        thresholds:</span>
+<span class="sd">            List of clash thresholds for each type pair in atom_name_pairs. If `None`,</span>
+<span class="sd">            the clash thresholds are calculated according to:</span>
+
+<span class="sd">                thresh = r_vdw_i + r_vdw_j - allowance</span>
+
+<span class="sd">            for atoms i,j.</span>
+<span class="sd">        allowance:</span>
+<span class="sd">            Additional distance tolerance for atoms involved in hydrogen bonding. Only</span>
+<span class="sd">            used if thresholds is `None`. Set to 0.07 nm by default</span>
+<span class="sd">        res_offset:</span>
+<span class="sd">            `int` that determines the minimum residue separation for inclusion in distance</span>
+<span class="sd">            calculations; two atoms that belong to residues i and j are included in the</span>
+<span class="sd">            calculations if `|i-j| &gt; res_offset`.</span>
+<span class="sd">        stride:</span>
+<span class="sd">            If specified, this stride is applied to the trajectory before the distance</span>
+<span class="sd">            calculations</span>
+<span class="sd">        save_frames:</span>
+<span class="sd">            If True, the results also contain a keyword `frames` which denotes the frame</span>
+<span class="sd">            indices in which clashes are detected.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Dict[str, int]:</span>
+<span class="sd">            Dictionary with keys `{name1}_{name2}_clashes` and values reporting</span>
+<span class="sd">            the number of clashes found for those name pairs</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">atom_name_pairs</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;atom_name_pairs must be a list of tuples of strings&quot;</span>
+            <span class="p">)</span>
+
+        <span class="c1"># populate default thresholds</span>
+        <span class="k">if</span> <span class="n">thresholds</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">thresholds</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">atoms</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">ensemble</span><span class="o">.</span><span class="n">top</span><span class="o">.</span><span class="n">atoms</span><span class="p">))</span>
+            <span class="k">for</span> <span class="n">pair</span> <span class="ow">in</span> <span class="n">atom_name_pairs</span><span class="p">:</span>
+                <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">pair</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span>
+                <span class="c1"># Take elements from first occurrence in topology - selection language gaurantees that they</span>
+                <span class="c1"># all should be the same (unless you have made a very nonstandard topology)</span>
+                <span class="n">idx1</span><span class="p">,</span> <span class="n">idx2</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="n">ensemble</span><span class="o">.</span><span class="n">top</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;name </span><span class="si">{</span><span class="n">pair</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">],</span>
+                    <span class="n">ensemble</span><span class="o">.</span><span class="n">top</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;name </span><span class="si">{</span><span class="n">pair</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">],</span>
+                <span class="p">)</span>
+                <span class="n">vdw_r1</span><span class="p">,</span> <span class="n">vdw_r2</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="n">atoms</span><span class="p">[</span><span class="n">idx1</span><span class="p">]</span><span class="o">.</span><span class="n">element</span><span class="o">.</span><span class="n">radius</span><span class="p">,</span>
+                    <span class="n">atoms</span><span class="p">[</span><span class="n">idx2</span><span class="p">]</span><span class="o">.</span><span class="n">element</span><span class="o">.</span><span class="n">radius</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="n">threshold</span> <span class="o">=</span> <span class="n">vdw_r1</span> <span class="o">+</span> <span class="n">vdw_r2</span>
+
+                <span class="c1"># Handle hydrogen bonding allowances</span>
+                <span class="c1"># between donors and acceptors</span>
+                <span class="k">if</span> <span class="nb">all</span><span class="p">(</span>
+                    <span class="p">[</span>
+                        <span class="n">p</span> <span class="ow">in</span> <span class="n">StructuralIntegrityMetrics</span><span class="o">.</span><span class="n">acceptors_or_donors</span>
+                        <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">pair</span>
+                    <span class="p">]</span>
+                <span class="p">):</span>
+                    <span class="n">threshold</span> <span class="o">=</span> <span class="n">threshold</span> <span class="o">-</span> <span class="n">allowance</span>
+                <span class="n">thresholds</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">threshold</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">thresholds</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;thresholds must be a list of floats&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">atom_name_pairs</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">thresholds</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;atom_name_pairs and thresholds are </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">atom_name_pairs</span><span class="p">)</span><span class="si">}</span><span class="s2"> and </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">thresholds</span><span class="p">)</span><span class="si">}</span><span class="s2"> long, &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;respectively, but they should be the same length&quot;</span>
+            <span class="p">)</span>
+
+        <span class="n">clash_dictionary</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">for</span> <span class="n">atom_names</span><span class="p">,</span> <span class="n">threshold</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">atom_name_pairs</span><span class="p">,</span> <span class="n">thresholds</span><span class="p">):</span>
+            <span class="n">atom_name_1</span><span class="p">,</span> <span class="n">atom_name_2</span> <span class="o">=</span> <span class="n">atom_names</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">atom_names</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">distances</span> <span class="o">=</span> <span class="n">get_general_distances</span><span class="p">(</span>
+                <span class="n">ensemble</span><span class="p">,</span> <span class="n">atom_names</span><span class="p">,</span> <span class="n">res_offset</span><span class="p">,</span> <span class="n">stride</span>
+            <span class="p">)</span>
+            <span class="n">clashes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">distances</span> <span class="o">&lt;</span> <span class="n">threshold</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">save_frames</span><span class="p">:</span>
+                <span class="n">frame_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">argwhere</span><span class="p">(</span><span class="n">distances</span> <span class="o">&lt;</span> <span class="n">threshold</span><span class="p">)[:,</span> <span class="mi">0</span><span class="p">])</span>
+                <span class="n">clash_dictionary</span><span class="p">[</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">atom_name_1</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">atom_name_2</span><span class="si">}</span><span class="s2"> frames&quot;</span>
+                <span class="p">]</span> <span class="o">=</span> <span class="n">frame_idx</span>
+            <span class="n">clash_dictionary</span><span class="p">[</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">atom_name_1</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">atom_name_2</span><span class="si">}</span><span class="s2"> clashes&quot;</span>
+            <span class="p">]</span> <span class="o">=</span> <span class="n">clashes</span><span class="o">.</span><span class="n">size</span>
+        <span class="k">return</span> <span class="n">clash_dictionary</span></div>
+
+
+<div class="viewcode-block" id="StructuralIntegrityMetrics.ca_pseudobonds">
+<a class="viewcode-back" href="../../../metrics.html#proteka.metrics.calculator.StructuralIntegrityMetrics.ca_pseudobonds">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">ca_pseudobonds</span><span class="p">(</span><span class="n">ensemble</span><span class="p">:</span> <span class="n">Ensemble</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Computes maximum and rms z-score for d_ca_ca bonds over ensemble.</span>
+<span class="sd">        Z-score is defined as (d_ca_ca - mean(d_ca_ca)) / std(d_ca_ca)</span>
+<span class="sd">        d_ca_ca and std(d_ca_ca) are parametrized based on analysis of the proteka</span>
+<span class="sd">        and pdb databases. Beware, that this metric will give high deviations for</span>
+<span class="sd">        cis-proline peptide bonds</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Get the mean and std of d_ca_ca</span>
+        <span class="n">mean</span> <span class="o">=</span> <span class="mf">0.38</span>  <span class="c1"># nm</span>
+        <span class="n">std</span> <span class="o">=</span> <span class="mf">0.05</span>  <span class="c1"># nm</span>
+        <span class="n">d_ca_ca</span> <span class="o">=</span> <span class="n">Featurizer</span><span class="o">.</span><span class="n">get_feature</span><span class="p">(</span><span class="n">ensemble</span><span class="p">,</span> <span class="s2">&quot;ca_bonds&quot;</span><span class="p">)</span>
+        <span class="n">z</span> <span class="o">=</span> <span class="p">(</span><span class="n">d_ca_ca</span> <span class="o">-</span> <span class="n">mean</span><span class="p">)</span> <span class="o">/</span> <span class="n">std</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;max z-score&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">z</span><span class="p">),</span>
+            <span class="s2">&quot;rms z-score&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">z</span><span class="o">**</span><span class="mi">2</span><span class="p">)),</span>
+        <span class="p">}</span></div>
+</div>
+
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">StructuralQualityMetrics</span><span class="p">(</span><span class="n">IMetrics</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Metrics that compare an ensemble to a single structure</span>
+
+<span class="sd">        {</span>
+<span class="sd">            &quot;reference_structure&quot;: md.Trajectory</span>
+<span class="sd">            &quot;features&quot;: {</span>
+<span class="sd">                &quot;rmsd&quot;: {</span>
+<span class="sd">                    &quot;feature_params&quot;: {&quot;atom_selection&quot;: &quot;name CA&quot;},</span>
+<span class="sd">                    &quot;metric_params&quot;: {&quot;fraction_smaller&quot;: 0.25},</span>
+<span class="sd">                },</span>
+<span class="sd">                ...</span>
+<span class="sd">            }</span>
+<span class="sd">        },</span>
+
+<span class="sd">    Specifying computation and metric parameters for each feature/metric</span>
+<span class="sd">    for comparisons between target and reference structure.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">does_not_require_ref_struct</span> <span class="o">=</span> <span class="nb">set</span><span class="p">([</span><span class="s2">&quot;rmsd, fraction_smaller&quot;</span><span class="p">])</span>
+    <span class="n">scalar_features</span> <span class="o">=</span> <span class="nb">set</span><span class="p">([</span><span class="s2">&quot;rmsd&quot;</span><span class="p">])</span>
+    <span class="n">scalar_metrics</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;fraction_smaller&quot;</span><span class="p">:</span> <span class="n">fraction_smaller</span><span class="p">,</span>
+    <span class="p">}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metrics</span><span class="p">:</span> <span class="n">Dict</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span>
+            <span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;reference_structure&quot;</span><span class="p">],</span> <span class="n">md</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">trajectory</span><span class="o">.</span><span class="n">Trajectory</span>
+        <span class="p">)</span>
+        <span class="k">assert</span> <span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;reference_structure&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">n_frames</span> <span class="o">==</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span> <span class="o">=</span> <span class="n">metrics</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">results</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_config</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">config_file</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Instances an StructuralQualityMetrics</span>
+<span class="sd">        from a config file. The config should have the example following structure:</span>
+
+<span class="sd">            StructuralQualityMetrics:</span>
+<span class="sd">              reference_structure: &quot;my_structure.pdb&quot;</span>
+<span class="sd">              features:</span>
+<span class="sd">                rmsd:</span>
+<span class="sd">                  feature_params:</span>
+<span class="sd">                    atom_selection: &quot;name CA&quot;</span>
+<span class="sd">                  metric_params:</span>
+<span class="sd">                    fraction_smaller:</span>
+<span class="sd">                      threshold: 0.25</span>
+<span class="sd">                ...</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        config_file:</span>
+<span class="sd">            YAML file specifying feature and config options</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">config</span> <span class="o">=</span> <span class="n">yaml</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="n">config_file</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">))</span>
+        <span class="n">sqm_config</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;StructuralQualityMetrics&quot;</span><span class="p">]</span>
+        <span class="c1"># load reference structure</span>
+        <span class="n">reference_structure_path</span> <span class="o">=</span> <span class="n">sqm_config</span><span class="p">[</span><span class="s2">&quot;reference_structure&quot;</span><span class="p">]</span>
+        <span class="n">sqm_config</span><span class="p">[</span><span class="s2">&quot;reference_structure&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">md</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">reference_structure_path</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">sqm_config</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">target</span><span class="p">:</span> <span class="n">Ensemble</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;calls the `compute` method and reports the results</span>
+<span class="sd">        as a dictionary of metric_name: metric_value pairs</span>
+<span class="sd">        see compute() for more details.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="n">target</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">report</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">compute</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">target</span><span class="p">:</span> <span class="n">Ensemble</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        compute the metrics that compare the target ensemble to the reference strucure over</span>
+<span class="sd">        the specified features. compute metrics are stored in the `StructuralQualityMetrics.results`</span>
+<span class="sd">        attribute.</span>
+
+<span class="sd">        parameters:</span>
+<span class="sd">        -----------</span>
+<span class="sd">        target: Ensemble</span>
+<span class="sd">            the target ensemble</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">feature</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;features&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="c1"># compute feature in target ensemble if needed</span>
+            <span class="k">if</span> <span class="s2">&quot;feature_params&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;features&quot;</span><span class="p">][</span><span class="n">feature</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+            <span class="p">):</span>
+                <span class="n">feature_params</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">feature_params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;features&quot;</span><span class="p">][</span><span class="n">feature</span><span class="p">][</span>
+                    <span class="s2">&quot;feature_params&quot;</span>
+                <span class="p">]</span>
+
+            <span class="c1"># additional args</span>
+            <span class="n">args</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;reference_structure&quot;</span><span class="p">]]</span>
+            <span class="n">Featurizer</span><span class="o">.</span><span class="n">get_feature</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">feature</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">feature_params</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">metric</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;features&quot;</span><span class="p">][</span><span class="n">feature</span><span class="p">][</span>
+                <span class="s2">&quot;metric_params&quot;</span>
+            <span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="n">params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;features&quot;</span><span class="p">][</span><span class="n">feature</span><span class="p">][</span><span class="s2">&quot;metric_params&quot;</span><span class="p">][</span>
+                    <span class="n">metric</span>
+                <span class="p">]</span>
+                <span class="k">if</span> <span class="n">params</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">params</span> <span class="o">=</span> <span class="p">{}</span>
+                <span class="n">result</span> <span class="o">=</span> <span class="n">StructuralQualityMetrics</span><span class="o">.</span><span class="n">compute_metric</span><span class="p">(</span>
+                    <span class="n">target</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;reference_structure&quot;</span><span class="p">],</span>
+                    <span class="n">feature</span><span class="p">,</span>
+                    <span class="n">metric</span><span class="p">,</span>
+                    <span class="o">**</span><span class="n">params</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">compute_metric</span><span class="p">(</span>
+        <span class="n">target</span><span class="p">:</span> <span class="n">Ensemble</span><span class="p">,</span>
+        <span class="n">reference_structure</span><span class="p">:</span> <span class="n">md</span><span class="o">.</span><span class="n">Trajectory</span><span class="p">,</span>
+        <span class="n">feature</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">metric</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;fraction_smaller&quot;</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;computes metric for desired feature between two ensembles.</span>
+
+<span class="sd">        parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        target:</span>
+<span class="sd">            target ensemble</span>
+<span class="sd">        reference_structure:</span>
+<span class="sd">            reference structure</span>
+<span class="sd">        feature:</span>
+<span class="sd">            string specifying the feature for which the desired metric should be computed</span>
+<span class="sd">            over from the target to the reference structure.</span>
+<span class="sd">        metric:</span>
+<span class="sd">            string specifying the metric to compute for the desired feature between the</span>
+<span class="sd">            target and reference structure.</span>
+<span class="sd">        bins:</span>
+<span class="sd">            in the case that the metric is calculated over probability distributions,</span>
+<span class="sd">            this integer number of bins or `np.ndarray` of bins is used to compute</span>
+<span class="sd">            histograms for both the target and reference ensembles</span>
+
+<span class="sd">        returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        result:</span>
+<span class="sd">            dict of the form {&quot;{feature}, {metric}&quot; : metric_result} for</span>
+<span class="sd">            the specified feature and metric between the target and</span>
+<span class="sd">            reference ensembles.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">target_feat</span> <span class="o">=</span> <span class="n">Featurizer</span><span class="o">.</span><span class="n">get_feature</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">feature</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">feature</span> <span class="ow">in</span> <span class="n">StructuralQualityMetrics</span><span class="o">.</span><span class="n">scalar_features</span><span class="p">:</span>
+            <span class="n">metric_computer</span> <span class="o">=</span> <span class="n">StructuralQualityMetrics</span><span class="o">.</span><span class="n">scalar_metrics</span><span class="p">[</span><span class="n">metric</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">feature</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">metric</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="ow">in</span> <span class="n">StructuralQualityMetrics</span><span class="o">.</span><span class="n">does_not_require_ref_struct</span>
+        <span class="p">):</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">metric_computer</span><span class="p">(</span><span class="n">target_feat</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">metric_computer</span><span class="p">(</span><span class="n">target_feat</span><span class="p">,</span> <span class="n">reference_structure</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">{</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">feature</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">metric</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">:</span> <span class="n">result</span><span class="p">}</span>
+
+
+<div class="viewcode-block" id="EnsembleQualityMetrics">
+<a class="viewcode-back" href="../../../metrics.html#proteka.metrics.calculator.EnsembleQualityMetrics">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">EnsembleQualityMetrics</span><span class="p">(</span><span class="n">IMetrics</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Metrics to compare a target ensemble to the reference ensemble.</span>
+<span class="sd">    Input metric configs must be a dictionary of the following form:</span>
+
+<span class="sd">         {</span>
+<span class="sd">            &quot;features&quot;: {</span>
+<span class="sd">                &quot;rg&quot;: {</span>
+<span class="sd">                    &quot;feature_params&quot;: {&quot;atom_selection&quot;: &quot;name CA&quot;},</span>
+<span class="sd">                    &quot;metric_params&quot;: {&quot;js_div&quot;: {&quot;bins&quot;: 100}},</span>
+<span class="sd">                },</span>
+<span class="sd">                &quot;ca_distances&quot;: {</span>
+<span class="sd">                    &quot;feature_params&quot;: None,</span>
+<span class="sd">                    &quot;metric_params&quot;: {&quot;js_div&quot;: {&quot;bins&quot;: 100}},</span>
+<span class="sd">                },</span>
+<span class="sd">                &quot;dssp&quot;: {</span>
+<span class="sd">                    &quot;feature_params&quot;: {&quot;digitize&quot;: True},</span>
+<span class="sd">                    &quot;metric_params&quot;: {</span>
+<span class="sd">                        &quot;mse_ldist&quot;: {&quot;bins&quot;: np.array([0, 1, 2, 3, 4])}</span>
+<span class="sd">                    },</span>
+<span class="sd">                },</span>
+<span class="sd">            }</span>
+<span class="sd">        },</span>
+
+<span class="sd">    Specifying computation and metric parameters for each feature/metric</span>
+<span class="sd">    for comparisons between target and reference ensembles.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">metric_types</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span>
+        <span class="p">[</span>
+            <span class="s2">&quot;kl_div&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;js_div&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;mse&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;mse_dist&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;mse_ldist&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;fraction_smaller&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;wasserstein&quot;</span><span class="p">,</span>
+        <span class="p">]</span>
+    <span class="p">)</span>
+    <span class="n">scalar_metrics</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;kl_div&quot;</span><span class="p">:</span> <span class="n">kl_divergence</span><span class="p">,</span>
+        <span class="s2">&quot;js_div&quot;</span><span class="p">:</span> <span class="n">js_divergence</span><span class="p">,</span>
+        <span class="s2">&quot;mse&quot;</span><span class="p">:</span> <span class="n">mse</span><span class="p">,</span>
+        <span class="s2">&quot;mse_dist&quot;</span><span class="p">:</span> <span class="n">mse_dist</span><span class="p">,</span>
+        <span class="s2">&quot;mse_ldist&quot;</span><span class="p">:</span> <span class="n">mse_log</span><span class="p">,</span>
+        <span class="s2">&quot;fraction_smaller&quot;</span><span class="p">:</span> <span class="n">fraction_smaller</span><span class="p">,</span>
+        <span class="s2">&quot;wasserstein&quot;</span><span class="p">:</span> <span class="n">wasserstein</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="n">vector_metrics</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;kl_div&quot;</span><span class="p">:</span> <span class="n">vector_kl_divergence</span><span class="p">,</span>
+        <span class="s2">&quot;js_div&quot;</span><span class="p">:</span> <span class="n">vector_js_divergence</span><span class="p">,</span>
+        <span class="s2">&quot;mse&quot;</span><span class="p">:</span> <span class="n">vector_mse</span><span class="p">,</span>
+        <span class="s2">&quot;mse_dist&quot;</span><span class="p">:</span> <span class="n">vector_mse_dist</span><span class="p">,</span>
+        <span class="s2">&quot;mse_ldist&quot;</span><span class="p">:</span> <span class="n">vector_mse_log</span><span class="p">,</span>
+        <span class="s2">&quot;wasserstein&quot;</span><span class="p">:</span> <span class="n">vector_wasserstein</span><span class="p">,</span>
+    <span class="p">}</span>
+
+    <span class="n">metrics_2d</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;kl_div&quot;</span><span class="p">:</span> <span class="n">kl_divergence</span><span class="p">,</span>
+        <span class="s2">&quot;js_div&quot;</span><span class="p">:</span> <span class="n">js_divergence</span><span class="p">,</span>
+        <span class="s2">&quot;mse&quot;</span><span class="p">:</span> <span class="n">mse</span><span class="p">,</span>
+        <span class="s2">&quot;mse_dist&quot;</span><span class="p">:</span> <span class="n">mse_dist</span><span class="p">,</span>
+        <span class="s2">&quot;mse_ldist&quot;</span><span class="p">:</span> <span class="n">mse_log</span><span class="p">,</span>
+        <span class="s2">&quot;fraction_smaller&quot;</span><span class="p">:</span> <span class="n">fraction_smaller</span><span class="p">,</span>
+        <span class="s2">&quot;wasserstein&quot;</span><span class="p">:</span> <span class="n">wasserstein</span><span class="p">,</span>
+    <span class="p">}</span>
+
+    <span class="n">excluded_quantities</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span>
+        <span class="p">[</span>
+            <span class="s2">&quot;top&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;coords&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;time&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;forces&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;cell_angles&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;cell_lengths&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;trjs&quot;</span><span class="p">,</span>
+        <span class="p">]</span>
+    <span class="p">)</span>
+
+    <span class="n">scalar_features</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span>
+        <span class="p">[</span>
+            <span class="s2">&quot;rg&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;helicity&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;ca_distances&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;rmsd&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;end2end_distance&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;tic1&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;tic2&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;fraction_native_contacts&quot;</span><span class="p">,</span>
+        <span class="p">]</span>
+    <span class="p">)</span>
+    <span class="n">vector_features</span> <span class="o">=</span> <span class="nb">set</span><span class="p">([</span><span class="s2">&quot;local_contact_number&quot;</span><span class="p">,</span> <span class="s2">&quot;dssp&quot;</span><span class="p">])</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metrics</span><span class="p">:</span> <span class="n">Dict</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span> <span class="o">=</span> <span class="n">metrics</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">metrics_results</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">target</span><span class="p">:</span> <span class="n">Ensemble</span><span class="p">,</span>
+        <span class="n">reference</span><span class="p">:</span> <span class="n">Ensemble</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;calls the `compute` method and reports the results</span>
+<span class="sd">        as a dictionary of metric_name: metric_value pairs</span>
+<span class="sd">        see compute() for more details.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">reference</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">report</span><span class="p">()</span>
+
+<div class="viewcode-block" id="EnsembleQualityMetrics.parse_config">
+<a class="viewcode-back" href="../../../metrics.html#proteka.metrics.calculator.EnsembleQualityMetrics.parse_config">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">parse_config</span><span class="p">(</span><span class="n">eqm_config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Parser for input configuration loaded</span>
+<span class="sd">        from YAML or otherwise dictionaries that</span>
+<span class="sd">        have unparsed bin options</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        eqm_config:</span>
+<span class="sd">            Unparsed EnsembleQualityMetrics configuration</span>
+<span class="sd">            options dictionary</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        eqm_config:</span>
+<span class="sd">            Parsed EnsembleQualityMetrics configuration</span>
+<span class="sd">            options dictionary that can be used for class</span>
+<span class="sd">            instantiation.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">eqm_config</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="n">eqm_config</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">feature</span> <span class="ow">in</span> <span class="n">eqm_config</span><span class="p">[</span><span class="s2">&quot;features&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">feature_dict</span> <span class="o">=</span> <span class="n">eqm_config</span><span class="p">[</span><span class="s2">&quot;features&quot;</span><span class="p">][</span><span class="n">feature</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">metric</span> <span class="ow">in</span> <span class="n">feature_dict</span><span class="p">[</span><span class="s2">&quot;metric_params&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="k">if</span> <span class="s2">&quot;bins&quot;</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">feature_dict</span><span class="p">[</span><span class="s2">&quot;metric_params&quot;</span><span class="p">][</span><span class="n">metric</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+                    <span class="n">binopts</span> <span class="o">=</span> <span class="n">feature_dict</span><span class="p">[</span><span class="s2">&quot;metric_params&quot;</span><span class="p">][</span><span class="n">metric</span><span class="p">][</span><span class="s2">&quot;bins&quot;</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">binopts</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="ow">or</span> <span class="n">binopts</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="c1"># Simple &quot;num bins&quot; or histogram default</span>
+                        <span class="k">continue</span>
+                    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">binopts</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">):</span>
+                        <span class="c1"># 1D specified bin array using np.linspace</span>
+                        <span class="n">eqm_config</span><span class="p">[</span><span class="s2">&quot;features&quot;</span><span class="p">][</span><span class="n">feature</span><span class="p">][</span><span class="s2">&quot;metric_params&quot;</span><span class="p">][</span>
+                            <span class="n">metric</span>
+                        <span class="p">][</span><span class="s2">&quot;bins&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">**</span><span class="n">binopts</span><span class="p">)</span>
+                    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">binopts</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+                        <span class="c1"># 2D histogram handling for np.histogram2d</span>
+                        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">binopts</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+                            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                                <span class="sa">f</span><span class="s2">&quot;Currently only 2D distributions are supported&quot;</span>
+                            <span class="p">)</span>
+
+                        <span class="k">if</span> <span class="nb">all</span><span class="p">([</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">opt</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="k">for</span> <span class="n">opt</span> <span class="ow">in</span> <span class="n">binopts</span><span class="p">]):</span>
+                            <span class="c1"># List of ints</span>
+                            <span class="k">continue</span>
+                        <span class="k">elif</span> <span class="nb">all</span><span class="p">([</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">opt</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">)</span> <span class="k">for</span> <span class="n">opt</span> <span class="ow">in</span> <span class="n">binopts</span><span class="p">]):</span>
+                            <span class="c1"># list of 1D arrays for each dimension</span>
+                            <span class="n">converted_bins</span> <span class="o">=</span> <span class="p">[]</span>
+                            <span class="k">for</span> <span class="n">bin_opt</span> <span class="ow">in</span> <span class="n">binopts</span><span class="p">:</span>
+                                <span class="c1"># reinstance bins with np.linspace</span>
+                                <span class="n">c_bins</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">**</span><span class="n">bin_opt</span><span class="p">)</span>
+                                <span class="n">converted_bins</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">c_bins</span><span class="p">)</span>
+
+                            <span class="n">eqm_config</span><span class="p">[</span><span class="s2">&quot;features&quot;</span><span class="p">][</span><span class="n">feature</span><span class="p">][</span><span class="s2">&quot;metric_params&quot;</span><span class="p">][</span>
+                                <span class="n">metric</span>
+                            <span class="p">][</span><span class="s2">&quot;bins&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">converted_bins</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                                <span class="sa">f</span><span class="s2">&quot;Currently, only List[int] or List[dict] are accepted for multiple bin specifications, but </span><span class="si">{</span><span class="n">binopts</span><span class="si">}</span><span class="s2"> was supplied&quot;</span>
+                            <span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;unknown bin options </span><span class="si">{</span><span class="n">binopts</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="s2">&quot;feature_params&quot;</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">feature_dict</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+                <span class="k">for</span> <span class="n">feat_param</span> <span class="ow">in</span> <span class="n">feature_dict</span><span class="p">[</span><span class="s2">&quot;feature_params&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                    <span class="k">if</span> <span class="n">feat_param</span> <span class="o">==</span> <span class="s2">&quot;reference_structure&quot;</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span>
+                            <span class="n">eqm_config</span><span class="p">[</span><span class="s2">&quot;features&quot;</span><span class="p">][</span><span class="n">feature</span><span class="p">][</span><span class="s2">&quot;feature_params&quot;</span><span class="p">][</span>
+                                <span class="n">feat_param</span>
+                            <span class="p">],</span>
+                            <span class="nb">str</span><span class="p">,</span>
+                        <span class="p">):</span>
+                            <span class="n">eqm_config</span><span class="p">[</span><span class="s2">&quot;features&quot;</span><span class="p">][</span><span class="n">feature</span><span class="p">][</span><span class="s2">&quot;feature_params&quot;</span><span class="p">][</span>
+                                <span class="n">feat_param</span>
+                            <span class="p">]</span> <span class="o">=</span> <span class="n">md</span><span class="o">.</span><span class="n">load</span><span class="p">(</span>
+                                <span class="n">eqm_config</span><span class="p">[</span><span class="s2">&quot;features&quot;</span><span class="p">][</span><span class="n">feature</span><span class="p">][</span>
+                                    <span class="s2">&quot;feature_params&quot;</span>
+                                <span class="p">][</span><span class="n">feat_param</span><span class="p">]</span>
+                            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">eqm_config</span></div>
+
+
+<div class="viewcode-block" id="EnsembleQualityMetrics.from_config">
+<a class="viewcode-back" href="../../../metrics.html#proteka.metrics.calculator.EnsembleQualityMetrics.from_config">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_config</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">config_file</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">]):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;instances an EnsembleQualityMetrics</span>
+<span class="sd">        from a config file. the config should have the example following structure:</span>
+
+<span class="sd">            EnsembleQualityMetrics:</span>
+<span class="sd">              features:</span>
+<span class="sd">                rmsd:</span>
+<span class="sd">                  feature_params:</span>
+<span class="sd">                    reference_structure: path_to_struct.pdb</span>
+<span class="sd">                    atom_selection: &quot;name ca&quot;</span>
+<span class="sd">                  metric_params:</span>
+<span class="sd">                    js_div:</span>
+<span class="sd">                      bins: 100</span>
+<span class="sd">                    mse_ldist:</span>
+<span class="sd">                      -bins:</span>
+<span class="sd">                        start: 0</span>
+<span class="sd">                        stop: 100</span>
+<span class="sd">                        num: 1000</span>
+<span class="sd">                ...</span>
+
+<span class="sd">        for specific metrics, bins can be either an integer or a dictionary</span>
+<span class="sd">        of key value pairs corresponding to kwargs of `np.linspace` to instance</span>
+<span class="sd">        equal-width bins over a specific range of values. For 2D metrics, a</span>
+<span class="sd">        list of binopts can be specified through the &quot;-&quot; operator.</span>
+
+<span class="sd">        parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        config_file:</span>
+<span class="sd">            If str, a path to a YAML file specifying feature and config options.</span>
+<span class="sd">            If Dict, a dictionary of a loaded YAML file</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">config_file</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span>
+            <span class="n">config_file</span><span class="p">,</span> <span class="nb">dict</span>
+        <span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;`config_file` must be str/dict but type </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">config_file</span><span class="p">)</span><span class="si">}</span><span class="s2"> was supplied.&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">config_file</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">config</span> <span class="o">=</span> <span class="n">yaml</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="n">config_file</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">))</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">config_file</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="n">config</span> <span class="o">=</span> <span class="n">config_file</span>
+        <span class="n">eqm_config</span> <span class="o">=</span> <span class="n">EnsembleQualityMetrics</span><span class="o">.</span><span class="n">parse_config</span><span class="p">(</span>
+            <span class="n">deepcopy</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;EnsembleQualityMetrics&quot;</span><span class="p">])</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">eqm_config</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="EnsembleQualityMetrics.compute">
+<a class="viewcode-back" href="../../../metrics.html#proteka.metrics.calculator.EnsembleQualityMetrics.compute">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">compute</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">target</span><span class="p">:</span> <span class="n">Ensemble</span><span class="p">,</span>
+        <span class="n">reference</span><span class="p">:</span> <span class="n">Ensemble</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        compute the metrics that compare the target ensemble to the reference over</span>
+<span class="sd">        the specified features. comute metrics are stored in the `EnsembleQualityMetrics.results`</span>
+<span class="sd">        attribute.</span>
+
+<span class="sd">        parameters:</span>
+<span class="sd">        -----------</span>
+<span class="sd">        target: Ensemble</span>
+<span class="sd">            the target ensemble</span>
+<span class="sd">        reference: Ensemble</span>
+<span class="sd">            the reference ensemble, against which the target ensemble is compared</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">feature</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;features&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="c1"># compute feature in target/ref ensemble if needed</span>
+            <span class="k">if</span> <span class="s2">&quot;feature_params&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;features&quot;</span><span class="p">][</span><span class="n">feature</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+            <span class="p">):</span>
+                <span class="n">feature_params</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">feature_params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;features&quot;</span><span class="p">][</span><span class="n">feature</span><span class="p">][</span>
+                    <span class="s2">&quot;feature_params&quot;</span>
+                <span class="p">]</span>
+            <span class="c1"># Compute features if needed but</span>
+            <span class="c1"># don&#39;t compute compound features, as they can only be composed from existing 1-D features</span>
+            <span class="c1"># at metric computation time downstream</span>
+            <span class="k">if</span> <span class="s2">&quot;_AND_&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">feature</span><span class="p">:</span>
+                <span class="n">Featurizer</span><span class="o">.</span><span class="n">get_feature</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">feature</span><span class="p">,</span> <span class="o">**</span><span class="n">feature_params</span><span class="p">)</span>
+                <span class="n">Featurizer</span><span class="o">.</span><span class="n">get_feature</span><span class="p">(</span><span class="n">reference</span><span class="p">,</span> <span class="n">feature</span><span class="p">,</span> <span class="o">**</span><span class="n">feature_params</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">metric</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;features&quot;</span><span class="p">][</span><span class="n">feature</span><span class="p">][</span>
+                <span class="s2">&quot;metric_params&quot;</span>
+            <span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="n">params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;features&quot;</span><span class="p">][</span><span class="n">feature</span><span class="p">][</span><span class="s2">&quot;metric_params&quot;</span><span class="p">][</span>
+                    <span class="n">metric</span>
+                <span class="p">]</span>
+                <span class="k">if</span> <span class="n">params</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">params</span> <span class="o">=</span> <span class="p">{}</span>
+                <span class="n">result</span> <span class="o">=</span> <span class="n">EnsembleQualityMetrics</span><span class="o">.</span><span class="n">compute_metric</span><span class="p">(</span>
+                    <span class="n">target</span><span class="p">,</span> <span class="n">reference</span><span class="p">,</span> <span class="n">feature</span><span class="p">,</span> <span class="n">metric</span><span class="p">,</span> <span class="o">**</span><span class="n">params</span>
+                <span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+        <span class="k">return</span></div>
+
+
+<div class="viewcode-block" id="EnsembleQualityMetrics.compute_metric">
+<a class="viewcode-back" href="../../../metrics.html#proteka.metrics.calculator.EnsembleQualityMetrics.compute_metric">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">compute_metric</span><span class="p">(</span>
+        <span class="n">target</span><span class="p">:</span> <span class="n">Ensemble</span><span class="p">,</span>
+        <span class="n">reference</span><span class="p">:</span> <span class="n">Ensemble</span><span class="p">,</span>
+        <span class="n">feature</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">metric</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;kl_div&quot;</span><span class="p">,</span>
+        <span class="n">bins</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;computes metric for desired feature between two ensembles.</span>
+
+<span class="sd">        parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        target:</span>
+<span class="sd">            target ensemble</span>
+<span class="sd">        reference:</span>
+<span class="sd">            refernce ensemble</span>
+<span class="sd">        feature:</span>
+<span class="sd">            string specifying the feature for which the desired metric should be computed</span>
+<span class="sd">            over from the target to the reference ensemble. valid features can be</span>
+<span class="sd">            scalars (eg, `EnsembleQualityMetrics.scalar_features`) or vector features</span>
+<span class="sd">            (eg, `EnsembleQualityMetrics.vector_features`)</span>
+<span class="sd">        metric:</span>
+<span class="sd">            string specifying the metric to compute for the desire feature between the</span>
+<span class="sd">            target and reference ensembles. valid metrics are contained in</span>
+<span class="sd">            `EnsembleQualityMetrics.metrics`</span>
+<span class="sd">        bins:</span>
+<span class="sd">            in the case that the metric is calculated over probability distributions,</span>
+<span class="sd">            this integer number of bins or `np.ndarray` of bins is used to compute</span>
+<span class="sd">            histograms for both the target and reference ensembles</span>
+
+<span class="sd">        returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        result:</span>
+<span class="sd">            dict of the form {&quot;{feature}, {metric}&quot; : metric_result} for</span>
+<span class="sd">            the specified feature and metric between the target and</span>
+<span class="sd">            reference ensembles.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">metric</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">EnsembleQualityMetrics</span><span class="o">.</span><span class="n">metric_types</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;metric &#39;</span><span class="si">{</span><span class="n">metric</span><span class="si">}</span><span class="s2">&#39; not defined.&quot;</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># catch and compute compound features</span>
+            <span class="k">if</span> <span class="p">(</span><span class="s2">&quot;_AND_&quot;</span> <span class="ow">in</span> <span class="n">feature</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">feature</span> <span class="o">!=</span> <span class="s2">&quot;tic1_tic2&quot;</span><span class="p">):</span>
+                <span class="n">target_feat</span> <span class="o">=</span> <span class="n">Featurizer</span><span class="o">.</span><span class="n">compose_2d_feature</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">feature</span><span class="p">)</span>
+                <span class="n">reference_feat</span> <span class="o">=</span> <span class="n">Featurizer</span><span class="o">.</span><span class="n">compose_2d_feature</span><span class="p">(</span>
+                    <span class="n">reference</span><span class="p">,</span> <span class="n">feature</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">target_feat</span> <span class="o">=</span> <span class="n">Featurizer</span><span class="o">.</span><span class="n">get_feature</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">feature</span><span class="p">)</span>
+                <span class="n">reference_feat</span> <span class="o">=</span> <span class="n">Featurizer</span><span class="o">.</span><span class="n">get_feature</span><span class="p">(</span><span class="n">reference</span><span class="p">,</span> <span class="n">feature</span><span class="p">)</span>
+
+        <span class="n">reference_weights</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">reference</span><span class="o">.</span><span class="n">weights</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">reference</span><span class="p">,</span> <span class="s2">&quot;weights&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="p">)</span>
+        <span class="n">target_weights</span> <span class="o">=</span> <span class="n">target</span><span class="o">.</span><span class="n">weights</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="s2">&quot;weights&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="n">feature</span> <span class="ow">in</span> <span class="n">EnsembleQualityMetrics</span><span class="o">.</span><span class="n">scalar_features</span><span class="p">:</span>
+            <span class="n">metric_computer</span> <span class="o">=</span> <span class="n">EnsembleQualityMetrics</span><span class="o">.</span><span class="n">scalar_metrics</span><span class="p">[</span><span class="n">metric</span><span class="p">]</span>
+            <span class="n">hist_target</span><span class="p">,</span> <span class="n">hist_ref</span> <span class="o">=</span> <span class="n">histogram_features</span><span class="p">(</span>
+                <span class="n">target_feat</span><span class="p">,</span>
+                <span class="n">reference_feat</span><span class="p">,</span>
+                <span class="n">bins</span><span class="o">=</span><span class="n">bins</span><span class="p">,</span>
+                <span class="n">target_weights</span><span class="o">=</span><span class="n">target_weights</span><span class="p">,</span>
+                <span class="n">reference_weights</span><span class="o">=</span><span class="n">reference_weights</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">elif</span> <span class="n">feature</span> <span class="ow">in</span> <span class="n">EnsembleQualityMetrics</span><span class="o">.</span><span class="n">vector_features</span><span class="p">:</span>
+            <span class="n">metric_computer</span> <span class="o">=</span> <span class="n">EnsembleQualityMetrics</span><span class="o">.</span><span class="n">vector_metrics</span><span class="p">[</span><span class="n">metric</span><span class="p">]</span>
+            <span class="n">hist_target</span><span class="p">,</span> <span class="n">hist_ref</span> <span class="o">=</span> <span class="n">histogram_vector_features</span><span class="p">(</span>
+                <span class="n">target_feat</span><span class="p">,</span>
+                <span class="n">reference_feat</span><span class="p">,</span>
+                <span class="n">bins</span><span class="o">=</span><span class="n">bins</span><span class="p">,</span>
+                <span class="n">target_weights</span><span class="o">=</span><span class="n">target_weights</span><span class="p">,</span>
+                <span class="n">reference_weights</span><span class="o">=</span><span class="n">reference_weights</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">elif</span> <span class="n">target_feat</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="n">reference_feat</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="n">metric_computer</span> <span class="o">=</span> <span class="n">EnsembleQualityMetrics</span><span class="o">.</span><span class="n">metrics_2d</span><span class="p">[</span><span class="n">metric</span><span class="p">]</span>
+            <span class="n">hist_target</span><span class="p">,</span> <span class="n">hist_ref</span> <span class="o">=</span> <span class="n">histogram_features2d</span><span class="p">(</span>
+                <span class="n">target_feat</span><span class="p">,</span>
+                <span class="n">reference_feat</span><span class="p">,</span>
+                <span class="n">bins</span><span class="o">=</span><span class="n">bins</span><span class="p">,</span>
+                <span class="n">target_weights</span><span class="o">=</span><span class="n">target_weights</span><span class="p">,</span>
+                <span class="n">reference_weights</span><span class="o">=</span><span class="n">reference_weights</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">hist_target</span> <span class="o">=</span> <span class="n">hist_target</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
+            <span class="n">hist_ref</span> <span class="o">=</span> <span class="n">hist_ref</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;feature </span><span class="si">{</span><span class="n">feature</span><span class="si">}</span><span class="s2"> not registered in vector or scalar features&quot;</span>
+            <span class="p">)</span>
+        <span class="n">metric_args</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">k</span><span class="p">:</span> <span class="n">v</span>
+            <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">k</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;bins&quot;</span><span class="p">,</span> <span class="s2">&quot;reference_weights&quot;</span><span class="p">]</span>
+        <span class="p">}</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">metric_computer</span><span class="p">(</span><span class="n">hist_target</span><span class="p">,</span> <span class="n">hist_ref</span><span class="p">,</span> <span class="o">**</span><span class="n">metric_args</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">{</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">feature</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">metric</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">:</span> <span class="n">result</span><span class="p">}</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Iryna Zaporozhets, Felix Musil, Yoayi Chen, Andreas Kramer.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

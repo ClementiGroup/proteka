@@ -1,0 +1,393 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>proteka.quantity.quantity &mdash; proteka 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            proteka
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../dev/dev.html">Developer Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ensemble.html">Ensemble</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../metrics.html">Metrics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../quantity.html">Quantity</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../bibliography.html">Bibliography</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">proteka</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">proteka.quantity.quantity</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for proteka.quantity.quantity</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">warnings</span><span class="w"> </span><span class="kn">import</span> <span class="n">warn</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.unit</span><span class="w"> </span><span class="kn">import</span> <span class="n">format_unit</span><span class="p">,</span> <span class="n">is_unit_convertible</span><span class="p">,</span> <span class="n">unit_conv</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.meta_array</span><span class="w"> </span><span class="kn">import</span> <span class="n">MetaArray</span>
+
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;BaseQuantity&quot;</span><span class="p">,</span> <span class="s2">&quot;Quantity&quot;</span><span class="p">]</span>
+
+
+<div class="viewcode-block" id="BaseQuantity">
+<a class="viewcode-back" href="../../../quantity.html#proteka.quantity.quantity.BaseQuantity">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">BaseQuantity</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Numbers or numpy arrays with a `unit` field. Retrive the value by `in_unit_of`</span>
+<span class="sd">    method for unit compatibility.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    value : numpy.ndarray or any array-like input</span>
+<span class="sd">        The raw value of the quantity.</span>
+<span class="sd">    unit : str, optional</span>
+<span class="sd">        The unit of the quantity, by default &quot;dimensionless&quot;</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    This is only a wrapper around the actual array, so changing the array will change</span>
+<span class="sd">    the quantity value as well, and vise versa.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s2">&quot;dimensionless&quot;</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_value</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_unit</span> <span class="o">=</span> <span class="n">format_unit</span><span class="p">(</span><span class="n">unit</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">raw_value</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The raw array inside the quantity object.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        numpy.ndarray</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_value</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">unit</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The unit of the quantity object.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        str</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_unit</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_set_unit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_unit</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Private method to directly change the unit of the quantity. Should not be</span>
+<span class="sd">        used by the user, since the value should be changed accordingly when doing a</span>
+<span class="sd">        proper unit conversion.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        new_unit : str</span>
+<span class="sd">            The new unit of the Quantity</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_unit</span> <span class="o">=</span> <span class="n">new_unit</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">shape</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">raw_value</span><span class="o">.</span><span class="n">shape</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">dim</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">raw_value</span><span class="p">)</span>
+
+<div class="viewcode-block" id="BaseQuantity.is_unit_convertible_with">
+<a class="viewcode-back" href="../../../quantity.html#proteka.quantity.quantity.BaseQuantity.is_unit_convertible_with">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">is_unit_convertible_with</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">unit_or_quantity</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check whether it has convertible units with input units or `Quantity` object.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        unit_or_quantity : str | (Base)Quantity</span>
+<span class="sd">            A unit string or a quantity with unit</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        bool</span>
+<span class="sd">            True if the unit is interconvertible.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">is_unit_convertible</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">unit</span><span class="p">,</span> <span class="n">unit_or_quantity</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="BaseQuantity.in_unit_of">
+<a class="viewcode-back" href="../../../quantity.html#proteka.quantity.quantity.BaseQuantity.in_unit_of">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">in_unit_of</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target_unit</span><span class="o">=</span><span class="s2">&quot;dimensionless&quot;</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return quantity value in target unit. If not possible, raise `ValueError`.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        target_unit : str, optional</span>
+<span class="sd">            The value of the current quantity will be returned in this unit string, by</span>
+<span class="sd">            default &quot;dimensionless&quot;</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        numpy.ndarray</span>
+<span class="sd">            The value of the current quantity in `target_unit`.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        ValueError</span>
+<span class="sd">            When the current quantity is not convertible to `target_unit`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">target_unit</span> <span class="o">=</span> <span class="n">format_unit</span><span class="p">(</span><span class="n">target_unit</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_unit_convertible_with</span><span class="p">(</span><span class="n">target_unit</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Quantity unit </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">unit</span><span class="si">}</span><span class="s2"> is not compatible with desired unit </span><span class="si">{</span><span class="n">target_unit</span><span class="si">}</span><span class="s2">.&quot;</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">raw_value</span> <span class="o">*</span> <span class="n">unit_conv</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">unit</span><span class="p">,</span> <span class="n">target_unit</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="BaseQuantity.to_quantity_with_unit">
+<a class="viewcode-back" href="../../../quantity.html#proteka.quantity.quantity.BaseQuantity.to_quantity_with_unit">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">to_quantity_with_unit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target_unit</span><span class="o">=</span><span class="s2">&quot;dimensionless&quot;</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert the quantity to target unit. If not possible, raise `ValueError`.</span>
+<span class="sd">        Comparing to `in_unit_of`, a Quantity object is returned.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        target_unit : str, optional</span>
+<span class="sd">            The unit string to convert the current quantity into, by default</span>
+<span class="sd">            &quot;dimensionless&quot;.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        (Base)Quantity</span>
+<span class="sd">            A new quantity in `target_unit`.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        ValueError</span>
+<span class="sd">            When the current quantity is not convertible to `target_unit`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">new_unit</span> <span class="o">=</span> <span class="n">format_unit</span><span class="p">(</span><span class="n">target_unit</span><span class="p">)</span>
+        <span class="n">new_raw_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">in_unit_of</span><span class="p">(</span><span class="n">target_unit</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">(</span><span class="n">new_raw_value</span><span class="p">,</span> <span class="n">new_unit</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="BaseQuantity.convert_unit_to_">
+<a class="viewcode-back" href="../../../quantity.html#proteka.quantity.quantity.BaseQuantity.convert_unit_to_">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">convert_unit_to_</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target_unit</span><span class="o">=</span><span class="s2">&quot;dimensionless&quot;</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert the quantity to target unit. If not possible, raise `ValueError`.</span>
+<span class="sd">        Comparing to `to_quantity_with_unit`, the operation is in-place and thus no new</span>
+<span class="sd">        `Quantity` will be created.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        target_unit : str, optional</span>
+<span class="sd">            The unit string to convert the current quantity into, by default</span>
+<span class="sd">            &quot;dimensionless&quot;.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        (Base)Quantity</span>
+<span class="sd">            `self` in `target_unit`.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        ValueError</span>
+<span class="sd">            When the current quantity is not convertible to `target_unit`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">target_unit</span> <span class="o">=</span> <span class="n">format_unit</span><span class="p">(</span><span class="n">target_unit</span><span class="p">)</span>
+        <span class="n">ucf</span> <span class="o">=</span> <span class="n">unit_conv</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">unit</span><span class="p">,</span> <span class="n">target_unit</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">ucf</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Quantity unit </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">unit</span><span class="si">}</span><span class="s2"> is not compatible with desired unit </span><span class="si">{</span><span class="n">target_unit</span><span class="si">}</span><span class="s2">.&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isclose</span><span class="p">(</span><span class="n">ucf</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_value</span> <span class="o">*=</span> <span class="n">unit_conv</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">unit</span><span class="p">,</span> <span class="n">target_unit</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_unit</span><span class="p">(</span><span class="n">target_unit</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="Quantity">
+<a class="viewcode-back" href="../../../quantity.html#proteka.quantity.quantity.Quantity">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">Quantity</span><span class="p">(</span><span class="n">MetaArray</span><span class="p">,</span> <span class="n">BaseQuantity</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Quantity (numpy.ndarray + unit str) with metadata (`metadata`). Specialized</span>
+<span class="sd">    MetaArray with `unit` as a mandatory field in the metadata. Can be converted to and</span>
+<span class="sd">    from a HDF5 Dataset.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    value : numpy.ndarray or any array-like input</span>
+<span class="sd">        The raw value of the quantity.</span>
+<span class="sd">    unit : str, optional</span>
+<span class="sd">        The unit of the quantity, by default &quot;dimensionless&quot;</span>
+<span class="sd">    metadata : dict, optional</span>
+<span class="sd">        Metadata to be wrapped, a mapping from str to str or arrays, by default None</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        When the `unit` is a key in `metadata` and the value is not the identical as</span>
+<span class="sd">        the argument. Recommended to double check and either remove the `unit` in</span>
+<span class="sd">        `metadata` or make it identical with the argument.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s2">&quot;dimensionless&quot;</span><span class="p">,</span> <span class="n">metadata</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">metadata</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">metadata</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="s2">&quot;unit&quot;</span> <span class="ow">in</span> <span class="n">metadata</span> <span class="ow">and</span> <span class="n">unit</span> <span class="o">!=</span> <span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;unit&quot;</span><span class="p">]:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s1">&#39;Ambigious `unit` assignment: &quot;unit&quot; should not appear in `metadata`.&#39;</span>
+            <span class="p">)</span>
+        <span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;unit&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">unit</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">value</span><span class="p">),</span> <span class="n">metadata</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="n">copy</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">unit</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The unit of the quantity object.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        str</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;unit&quot;</span><span class="p">]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_set_unit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_unit</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Private method to directly change the unit of the quantity. Should not be</span>
+<span class="sd">        used by the user, since the value should be changed accordingly when doing a</span>
+<span class="sd">        proper unit conversion.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        new_unit : str</span>
+<span class="sd">            The new unit of the Quantity</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;unit&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_unit</span>
+
+<div class="viewcode-block" id="Quantity.from_hdf5">
+<a class="viewcode-back" href="../../../quantity.html#proteka.quantity.quantity.Quantity.from_hdf5">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_hdf5</span><span class="p">(</span>
+        <span class="n">h5dt</span><span class="p">,</span>
+        <span class="n">offset</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">stride</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">suppress_unit_warn</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create an instance from the content of HDF5 dataset `h5dt`. If no `unit` is</span>
+<span class="sd">        present in the HDF5 attributes, then assumed as &quot;dimensionless&quot; with warning.</span>
+<span class="sd">        For non-scalar dataset, `offset` and `stride` can be set, such that the slice</span>
+<span class="sd">        `h5dt[offset::stride]` will be read to the memory. For scalar dataset, `offset`</span>
+<span class="sd">        and `stride` will be simply ignored.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        h5dt : h5py.Dataset</span>
+<span class="sd">            A HDF5 Dataset.</span>
+<span class="sd">        offset : None | int, optional</span>
+<span class="sd">            The offset for loading from the HDF5 file. Default is `None`.</span>
+<span class="sd">        stride : None | int, optional</span>
+<span class="sd">            The stride for loading from the HDF5 file. Default is `None`.</span>
+<span class="sd">        suppress_unit_warn : bool, optional</span>
+<span class="sd">            Whether to allow silently setting unit to &quot;dimensionless&quot;, by default False</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Quantity</span>
+<span class="sd">            The quantity implied by the content in the input HDF5 Dataset.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">meta_array</span> <span class="o">=</span> <span class="n">MetaArray</span><span class="o">.</span><span class="n">from_hdf5</span><span class="p">(</span><span class="n">h5dt</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="n">offset</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="n">stride</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s2">&quot;unit&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">meta_array</span><span class="o">.</span><span class="n">metadata</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">suppress_unit_warn</span><span class="p">:</span>
+                <span class="n">warn</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s1">&#39;Input HDF5 dataset </span><span class="si">{</span><span class="n">h5dt</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s1"> does not contain a &quot;unit&quot; field, treating as dimensionless.&#39;</span>
+                <span class="p">)</span>
+            <span class="n">unit</span> <span class="o">=</span> <span class="s2">&quot;dimensionless&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">unit</span> <span class="o">=</span> <span class="n">meta_array</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;unit&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Quantity</span><span class="p">(</span><span class="n">meta_array</span><span class="o">.</span><span class="n">_value</span><span class="p">,</span> <span class="n">unit</span><span class="p">,</span> <span class="n">metadata</span><span class="o">=</span><span class="n">meta_array</span><span class="o">.</span><span class="n">metadata</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s1">&#39;&lt;Quantity: shape </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">raw_value</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s1">, type &quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">raw_value</span><span class="o">.</span><span class="n">dtype</span><span class="si">}</span><span class="s1">&quot;, unit &quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">unit</span><span class="si">}</span><span class="s1">&quot;&gt;&#39;</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Iryna Zaporozhets, Felix Musil, Yoayi Chen, Andreas Kramer.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

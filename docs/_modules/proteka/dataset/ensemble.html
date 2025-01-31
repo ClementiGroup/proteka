@@ -1,0 +1,1150 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>proteka.dataset.ensemble &mdash; proteka 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            proteka
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../dev/dev.html">Developer Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ensemble.html">Ensemble</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../metrics.html">Metrics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../quantity.html">Quantity</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../bibliography.html">Bibliography</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">proteka</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">proteka.dataset.ensemble</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for proteka.dataset.ensemble</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;An `Ensemble` object contains samples and other information for a system at</span>
+<span class="sd">a certain thermodynamic state. The samples usually correspond to a</span>
+<span class="sd">Boltzmann distribution.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">types</span><span class="w"> </span><span class="kn">import</span> <span class="n">MappingProxyType</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">List</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">warnings</span><span class="w"> </span><span class="kn">import</span> <span class="n">warn</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">mdtraj</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">md</span>
+
+<span class="c1"># from .unit_utils import format_unit, unit_conv, is_unit_compatible</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">h5py</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">proteka.quantity</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">BaseQuantity</span><span class="p">,</span>
+    <span class="n">Quantity</span><span class="p">,</span>
+    <span class="n">UnitSystem</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.top_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">json2top</span><span class="p">,</span> <span class="n">top2json</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Ensemble&quot;</span><span class="p">]</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">HDF5Group</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Interface for saving and loading from a HDF5 Group which contains only one</span>
+<span class="sd">    Dataset (i.e., leaf group).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    data : Dict[str, Quantity]</span>
+<span class="sd">        A dictionary of `Quantity`s, which map to HDF5&#39;s Datasets under a Group</span>
+<span class="sd">    metadata : Dict[str, str | ...], optional</span>
+<span class="sd">        Metadata, which map to HDF5&#39;s Group Attributes, by default None</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">metadata</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_data</span> <span class="o">=</span> <span class="n">data</span>
+        <span class="k">if</span> <span class="n">metadata</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">metadata</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_attrs</span> <span class="o">=</span> <span class="n">metadata</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">metadata</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Accessor of the `metadata` field.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        dict</span>
+<span class="sd">            The `metadata` field.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_attrs</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__dir__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+        <span class="k">return</span> <span class="p">[</span><span class="o">*</span><span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__dir__</span><span class="p">(),</span> <span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">keys</span><span class="p">()]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__delitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__contains__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">write_to_hdf5</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">h5_node</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">overwrite_strategy</span><span class="o">=</span><span class="s2">&quot;do_not_replace&quot;</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Write the content to a HDF5 group at `h5_node` or `h5_node[name]` when `name`</span>
+<span class="sd">        is not `None`. If the desired group already exists and `overwrite_strategy` is</span>
+<span class="sd">        &quot;replace_all&quot;, then the original content will be discarded.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        h5_node : h5py.Group</span>
+<span class="sd">            The target of dumping is `h5_node`, or `h5_node[name]` if `name` is not</span>
+<span class="sd">            `None`.</span>
+<span class="sd">        name : str, optional</span>
+<span class="sd">            The subgroup to create or overwrite, by default None</span>
+<span class="sd">        overwrite_strategy : str, optional</span>
+<span class="sd">            When equals &quot;replace_all&quot;, will overwrite the existing group under</span>
+<span class="sd">            `h5_node`, by default &quot;do_not_replace&quot;</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        ValueError</span>
+<span class="sd">            When input `h5_node` is not a valid h5py.Group</span>
+<span class="sd">        ValueError</span>
+<span class="sd">            When destination group already exists</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">h5_node</span><span class="p">,</span> <span class="n">h5py</span><span class="o">.</span><span class="n">Group</span><span class="p">):</span>
+            <span class="c1"># h5_node correponds to a Group in HDF5 file</span>
+            <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;.&quot;</span>  <span class="c1"># path: current group</span>
+            <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">h5_node</span><span class="p">:</span>
+                <span class="c1"># TODO: more intelligent incremental update</span>
+                <span class="k">if</span> <span class="n">overwrite_strategy</span> <span class="o">!=</span> <span class="s2">&quot;replace_all&quot;</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Group/Dataset </span><span class="si">{</span><span class="n">h5_node</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="si">}</span><span class="s2"> already exists.&quot;</span>
+                    <span class="p">)</span>
+                <span class="n">grp</span> <span class="o">=</span> <span class="n">h5_node</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+                <span class="c1"># delete everything existing</span>
+                <span class="k">for</span> <span class="n">child_name</span> <span class="ow">in</span> <span class="n">grp</span><span class="p">:</span>
+                    <span class="k">del</span> <span class="n">grp</span><span class="p">[</span><span class="n">child_name</span><span class="p">]</span>
+                <span class="k">for</span> <span class="n">attr_name</span> <span class="ow">in</span> <span class="n">grp</span><span class="o">.</span><span class="n">attrs</span><span class="p">:</span>
+                    <span class="k">del</span> <span class="n">grp</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="n">attr_name</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># create a new group under h5_node</span>
+                <span class="n">grp</span> <span class="o">=</span> <span class="n">h5_node</span><span class="o">.</span><span class="n">create_group</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">dt_name</span><span class="p">,</span> <span class="n">dt</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="c1"># dt is a Quantity</span>
+                <span class="n">dt</span><span class="o">.</span><span class="n">write_to_hdf5</span><span class="p">(</span><span class="n">grp</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">dt_name</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">attr_k</span><span class="p">,</span> <span class="n">attr_v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_attrs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">grp</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="n">attr_k</span><span class="p">]</span> <span class="o">=</span> <span class="n">attr_v</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;Input `h5_node` should be an instance of `h5py.Group`.&quot;</span>
+            <span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_hdf5</span><span class="p">(</span>
+        <span class="n">h5grp</span><span class="p">,</span>
+        <span class="n">skip</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">offset</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">stride</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">no_offset_stride_quantities</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create an instance from the content of HDF5 Group `h5grp`. The Datasets under</span>
+<span class="sd">        `h5grp`, except for those contained in `skip`, will be read in and interpreted</span>
+<span class="sd">        as a `Quantity`. The attributes on `h5grp` will be interpreted as metadata. Input</span>
+<span class="sd">        `offset` and `stride` can be set to allow a partial loading of the non-scalar</span>
+<span class="sd">        datasets with indexing `[offset::stride]`, unless the dataset&#39;s name is contained</span>
+<span class="sd">        in `no_offset_stride_quantities`.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        h5grp : h5py.Group</span>
+<span class="sd">            The HDF5 Group to be read in.</span>
+<span class="sd">        skip : List[str], optional</span>
+<span class="sd">            The names of entries to skip, e.g., when it is a subgroup or not compatible</span>
+<span class="sd">            with `Quantity`, by default None</span>
+<span class="sd">        offset : None | int, optional</span>
+<span class="sd">            The offset for loading from the HDF5 file. Default is `None`.</span>
+<span class="sd">        stride : None | int, optional</span>
+<span class="sd">            The stride for loading from the HDF5 file. Default is `None`.</span>
+<span class="sd">        no_offset_stride_quantities : List[str], optional</span>
+<span class="sd">            The names of entries, for which no offset or stride should be considered</span>
+<span class="sd">            during loading, by default None</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        HDF5Group</span>
+<span class="sd">            An instance with the content from input `h5grp`.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        ValueError</span>
+<span class="sd">            When `h5grp` is not a `h5py.Group` or when it has child that is not a valid</span>
+<span class="sd">            HDF5 Dataset.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">h5grp</span><span class="p">,</span> <span class="n">h5py</span><span class="o">.</span><span class="n">Group</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Input </span><span class="si">{</span><span class="n">h5grp</span><span class="si">}</span><span class="s2">&#39;s type is </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">h5grp</span><span class="p">)</span><span class="si">}</span><span class="s2">, expecting a h5py.Group.&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">skip</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">skip</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="n">no_offset_stride_quantities</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">no_offset_stride_quantities</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="c1"># TODO: check there is no sub group</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">dt_name</span><span class="p">,</span> <span class="n">dt</span> <span class="ow">in</span> <span class="n">h5grp</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dt</span><span class="p">,</span> <span class="n">h5py</span><span class="o">.</span><span class="n">Dataset</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;`</span><span class="si">{</span><span class="n">h5grp</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">dt_name</span><span class="si">}</span><span class="s2">` is not a valid Dataset.&quot;</span>
+                <span class="p">)</span>
+            <span class="k">if</span> <span class="n">dt_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">skip</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">dt_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">no_offset_stride_quantities</span><span class="p">:</span>
+                    <span class="n">data</span><span class="p">[</span><span class="n">dt_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">Quantity</span><span class="o">.</span><span class="n">from_hdf5</span><span class="p">(</span>
+                        <span class="n">dt</span><span class="p">,</span>
+                        <span class="n">offset</span><span class="o">=</span><span class="n">offset</span><span class="p">,</span>
+                        <span class="n">stride</span><span class="o">=</span><span class="n">stride</span><span class="p">,</span>
+                        <span class="n">suppress_unit_warn</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">data</span><span class="p">[</span><span class="n">dt_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">Quantity</span><span class="o">.</span><span class="n">from_hdf5</span><span class="p">(</span>
+                        <span class="n">dt</span><span class="p">,</span> <span class="n">suppress_unit_warn</span><span class="o">=</span><span class="kc">True</span>
+                    <span class="p">)</span>
+        <span class="n">metadata</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">h5grp</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">metadata</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
+        <span class="k">return</span> <span class="n">HDF5Group</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">metadata</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_to_quantity</span><span class="p">(</span><span class="n">array_like</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s2">&quot;dimensionless&quot;</span><span class="p">):</span>
+    <span class="c1"># check and convert `quant` to a Quantity</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">array_like</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">quant</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">array_like</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;O&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">quant</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">array_like</span><span class="p">)</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Input is not an array.&quot;</span><span class="p">)</span>
+    <span class="c1"># float? cast to single-precision</span>
+    <span class="k">if</span> <span class="n">quant</span><span class="o">.</span><span class="n">dtype</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="s2">&quot;f&quot;</span><span class="p">:</span>
+        <span class="n">quant</span> <span class="o">=</span> <span class="n">quant</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">casting</span><span class="o">=</span><span class="s2">&quot;same_kind&quot;</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">quant</span> <span class="o">=</span> <span class="n">Quantity</span><span class="p">(</span><span class="n">quant</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="n">unit</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">quant</span>
+
+
+<div class="viewcode-block" id="Ensemble">
+<a class="viewcode-back" href="../../../ensemble.html#proteka.dataset.Ensemble">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">Ensemble</span><span class="p">(</span><span class="n">HDF5Group</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;An `Ensemble` is an in-memory data structure consisting of sample coordinates and</span>
+<span class="sd">    other quantities for a certain system at a certain thermodynamic state. The samples</span>
+<span class="sd">    usually correspond to a Boltzmann distribution.</span>
+
+<span class="sd">    An `Ensemble` must have `name`, `top` (molecular topology) and `coords` (3D</span>
+<span class="sd">    coordinates). In addition, a `unit_system` has to be provided either as a</span>
+<span class="sd">    pre-defined `UnitSystem` object or a seralized JSON version of `UnitSystem` or a</span>
+<span class="sd">    string in format of &quot;[L]-[M]-[T]-[E(nergy)]&quot; to specify the units used internally,</span>
+<span class="sd">    default &quot;nm-g/mol-ps-kJ/mol&quot;.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    name : str</span>
+<span class="sd">        a human-readable name of the system. Not necessarily corresponding to the HDF5</span>
+<span class="sd">        group name</span>
+<span class="sd">    top : mdtraj.Topology</span>
+<span class="sd">        the molecular topology of the system</span>
+<span class="sd">    coords : Quantity or numpy.ndarray</span>
+<span class="sd">        3D coordinates with shape (n_frames, n_atoms, 3) and dimension [L]</span>
+<span class="sd">    quantities : Dict[str, np.ndarray | Quantity], optional</span>
+<span class="sd">        Example key and value pairs for builtin quantities:</span>
+<span class="sd">        - forces: (n_frames, n_atoms, 3) _ATOMIC_VECTOR_.</span>
+<span class="sd">        - velocities: (n_frames, n_atoms, 3) _ATOMIC_VECTOR_ with dimension [L]/[T].</span>
+<span class="sd">        - time: (n_frames,) _per-frame_ scalar indicating the elapsed simulation time</span>
+<span class="sd">        with dimension [T].</span>
+<span class="sd">        - weights: (n_frames,) _per-frame_ scalar indicating the Boltzmann weight of</span>
+<span class="sd">        each frame.</span>
+<span class="sd">    metadata : dict, optional</span>
+<span class="sd">        Metadata to be saved, e.g., simulation temperature, forcefield information,</span>
+<span class="sd">        saving time stride, etc, by default None</span>
+<span class="sd">    trajectory_slices : Dict[str, slice], optional</span>
+<span class="sd">        a dictionary for trajectory name and its range expressed as a python slice</span>
+<span class="sd">        object (similar to the usage of a [start:stop:stride] for indexing.), by default</span>
+<span class="sd">        None</span>
+<span class="sd">    unit_system : str | UnitSystem object, optional</span>
+<span class="sd">        In format &quot;[L]-[M]-[T]-[E(nergy)]&quot; for units of builtin quantities, by default</span>
+<span class="sd">        &quot;nm-g/mol-ps-kJ/mol&quot;; alternatively, you can provide an existing `UnitSystem` or</span>
+<span class="sd">        a JSON-serialized such object</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        When input `coords` does not correspond to the input `top`.</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    Alternative to the default `__init__` method, an `Ensemble` can also be created from</span>
+<span class="sd">    a `mdtraj.Trajectory` object (see `from_mdtraj_trj`).</span>
+
+<span class="sd">    ## About `Quantity`:</span>
+<span class="sd">    &gt; A `Quantity` wraps a `numpy.ndarray` and a `unit` (defined in</span>
+<span class="sd">    `proteka.dataset.unit_quantity`). Assigning a `Quantity` to an `Ensemble` either</span>
+<span class="sd">    during initialization or via the dot (.) notation as an attribute:</span>
+<span class="sd">    - If the input is a plain `numpy.ndarray`, then the unit is assumed as</span>
+<span class="sd">    &quot;dimensionless&quot;</span>
+<span class="sd">    - If the input is a `Quantity`, the input unit will be stored</span>
+
+<span class="sd">    Retrieving saved `Quantity`:</span>
+<span class="sd">    - Accessing as an attribute (via dot (.)): returns a `numpy.ndarray` with the value</span>
+<span class="sd">    of the `Quantity` in unit of the stored unit</span>
+<span class="sd">    - Via index bracket ([]): returns the stored `Quantity` object, allowing flexible</span>
+<span class="sd">    automated unit conversion</span>
+
+<span class="sd">    List stored quantities:</span>
+<span class="sd">    - .list_quantities()</span>
+
+<span class="sd">    * Special cases are &quot;builtin quantities&quot;, whose stored units are dictated by the</span>
+<span class="sd">    `unit_system` (also used instead of the default &quot;dimensionless&quot; during assignment):</span>
+<span class="sd">    - &quot;coords&quot; (ATOMIC_VECTOR): [L]</span>
+<span class="sd">    - &quot;time&quot; (_per-frame_ SCALAR): [T]</span>
+<span class="sd">    - &quot;forces&quot; (ATOMIC_VECTOR): [E]/[L]</span>
+<span class="sd">    - &quot;velocities&quot; (ATOMIC_VECTOR): [L]/[T]</span>
+<span class="sd">    - &quot;cell_lengths&quot; (BOX_QUANTITIES): [L]</span>
+<span class="sd">    - &quot;cell_angles&quot;: (BOX_QUANTITIES): degree</span>
+<span class="sd">    In addition, the above quantities are tied to the system molecule via the shape,</span>
+<span class="sd">    i.e., each _per-frame_ quantity having the same number of frames as `self.coords`,</span>
+<span class="sd">    and correspond to the same number of atoms as indicated by `self.top`, if it is an</span>
+<span class="sd">    _ATOMIC_VECTOR_.</span>
+
+<span class="sd">    ## Trajectories:</span>
+<span class="sd">    Storing the information about which samples contained in the `Ensemble` come from</span>
+<span class="sd">    which trajectory.</span>
+<span class="sd">    Trajectories are sequential. Therefore, samples from different trajectories are</span>
+<span class="sd">    expected to be non-overlapping slices.</span>
+<span class="sd">    Trajectories info is supposed to be stored either during the Ensemble initialization</span>
+<span class="sd">    or after with `.register_trjs` method.</span>
+
+<span class="sd">    Properties:</span>
+<span class="sd">    - `.n_trjs` (int): number of trajectories</span>
+<span class="sd">    - `.n_frames_per_trj` (Dict[str, int]): dictionary of number of frames in each</span>
+<span class="sd">    trajectory</span>
+<span class="sd">    - `.trajectory_slices` or `.trjs` or `.trajectories` (Dict[str, slice]): Python</span>
+<span class="sd">    `slice`s for slicing Ensemble quantities according to the `.trjs` records</span>
+<span class="sd">    - `.trj_indices` (Dict[str, np.ndarray]): indices for different trajectories</span>
+<span class="sd">    according to the `.trjs` records</span>
+
+<span class="sd">    ## `mdtraj` interface:</span>
+<span class="sd">    - `.get_mdtraj_trjs()` (-&gt; Dict[str, mdtraj.Trajectory]): pack an `Ensemble`&#39;s `top`</span>
+<span class="sd">    and `coords` (and unitcell + simulation times, if available) into a dictionary of</span>
+<span class="sd">    `mdtraj.Trajectory` for analyses according to `self.trjs`</span>
+<span class="sd">    - `.get_all_in_one_mdtraj_trj()`: pack all `coords` into one `Trajectory` object</span>
+<span class="sd">    (maybe not suitable for kinetic analyses, such as TICA and MSM!)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">name</span><span class="p">,</span>
+        <span class="n">top</span><span class="p">,</span>
+        <span class="n">coords</span><span class="p">,</span>
+        <span class="n">quantities</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">metadata</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">trajectory_slices</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">unit_system</span><span class="o">=</span><span class="s2">&quot;nm-g/mol-ps-kJ/mol&quot;</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="n">top_str</span> <span class="o">=</span> <span class="n">top2json</span><span class="p">(</span><span class="n">top</span><span class="p">)</span>  <span class="c1"># let `top2json` do the type check</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="nb">len</span><span class="p">(</span><span class="n">coords</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">3</span>
+            <span class="ow">or</span> <span class="n">coords</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="n">top</span><span class="o">.</span><span class="n">n_atoms</span>
+            <span class="ow">or</span> <span class="n">coords</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">3</span>
+        <span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Invalid input `coords`, expecting shape [N_frames, </span><span class="si">{</span><span class="n">top</span><span class="o">.</span><span class="n">n_atoms</span><span class="si">}</span><span class="s2">, 3].&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">unit_system</span><span class="p">,</span> <span class="n">UnitSystem</span><span class="p">):</span>
+            <span class="c1"># serialize and</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_unit_system</span> <span class="o">=</span> <span class="n">UnitSystem</span><span class="o">.</span><span class="n">parse_from_json</span><span class="p">(</span>
+                <span class="n">unit_system</span><span class="o">.</span><span class="n">to_json</span><span class="p">()</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_unit_system</span> <span class="o">=</span> <span class="n">UnitSystem</span><span class="o">.</span><span class="n">parse_from_str</span><span class="p">(</span><span class="n">unit_system</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">({},</span> <span class="n">metadata</span><span class="o">=</span><span class="n">metadata</span><span class="p">)</span>
+        <span class="c1"># setting the coords properly</span>
+        <span class="n">preset_coords_unit</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">unit_system</span><span class="o">.</span><span class="n">get_preset_unit</span><span class="p">(</span><span class="s2">&quot;coords&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">coords</span><span class="p">,</span> <span class="n">BaseQuantity</span><span class="p">):</span>
+            <span class="n">coords</span> <span class="o">=</span> <span class="n">coords</span><span class="o">.</span><span class="n">convert_unit_to_</span><span class="p">(</span><span class="n">preset_coords_unit</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Assuming the input `coords` to be in unit &quot;</span>
+                <span class="sa">f</span><span class="s1">&#39;&quot;</span><span class="si">{</span><span class="n">preset_coords_unit</span><span class="si">}</span><span class="s1">&quot;&#39;</span>
+            <span class="p">)</span>
+            <span class="c1"># coords = Quantity(coords, preset_coords_unit)</span>
+            <span class="n">coords</span> <span class="o">=</span> <span class="n">_to_quantity</span><span class="p">(</span><span class="n">coords</span><span class="p">,</span> <span class="n">preset_coords_unit</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_save_quantity</span><span class="p">(</span>
+            <span class="s2">&quot;coords&quot;</span><span class="p">,</span>
+            <span class="n">coords</span><span class="p">,</span>
+            <span class="n">shape</span><span class="o">=</span><span class="n">coords</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span>
+        <span class="p">)</span>  <span class="c1"># overriding shape checks, which depend on coords themselves</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_save_quantity</span><span class="p">(</span><span class="s2">&quot;top&quot;</span><span class="p">,</span> <span class="n">_to_quantity</span><span class="p">(</span><span class="n">top_str</span><span class="p">),</span> <span class="n">shape</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+        <span class="c1"># self.top = top_str</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;unit_system&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_unit_system</span><span class="o">.</span><span class="n">to_json</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">quantities</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">quantities</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">k</span> <span class="o">==</span> <span class="s2">&quot;coords&quot;</span><span class="p">:</span>
+                    <span class="n">warn</span><span class="p">(</span><span class="s1">&#39;Omitting input `quantities[&quot;coords&quot;]`&#39;</span><span class="p">)</span>
+                    <span class="k">continue</span>
+                <span class="k">elif</span> <span class="n">k</span> <span class="o">==</span> <span class="s2">&quot;top&quot;</span><span class="p">:</span>
+                    <span class="n">warn</span><span class="p">(</span><span class="s1">&#39;Omitting input `quantities[&quot;top&quot;]`&#39;</span><span class="p">)</span>
+                    <span class="k">continue</span>
+                <span class="bp">self</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">trajectory_slices</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">register_trjs</span><span class="p">(</span><span class="n">trajectory_slices</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="s2">&quot;trjs&quot;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="p">:</span>
+            <span class="c1"># quantity `trjs` (json) has been set via quantities</span>
+            <span class="c1"># in this case, we simply need to parse it from json</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_set_trjs_dict_from_json</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="p">[</span><span class="s2">&quot;trjs&quot;</span><span class="p">][()])</span>
+            <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s2">&quot;Invalid `trjs` (trajectories) information in the input quantities.&quot;</span>
+                <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># register a default sequence for the whole length for compatibility</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">register_trjs</span><span class="p">({</span><span class="s2">&quot;default&quot;</span><span class="p">:</span> <span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">)})</span>  <span class="c1"># same as [:]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;trjs&quot;</span><span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_mdtraj_trj</span><span class="p">(</span>
+        <span class="n">name</span><span class="p">,</span>
+        <span class="n">trj</span><span class="p">,</span>
+        <span class="n">quantities</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">metadata</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">trajectory_slices</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">unit_system</span><span class="o">=</span><span class="s2">&quot;nm-g/mol-ps-kJ/mol&quot;</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create an `Ensemble` instance from `mdtraj.Trajectory`.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        name : str</span>
+<span class="sd">            a human-readable name of the system. Not necessarily corresponding to the</span>
+<span class="sd">            HDF5 group name</span>
+<span class="sd">        trj : mdtraj.Trajectory</span>
+<span class="sd">            A trajectory, whose topology and coordinates (and when applicable also the</span>
+<span class="sd">            unit cell information) will be stored in the created `Ensemble`.</span>
+<span class="sd">        quantities : Dict[str, np.ndarray | Quantity], optional</span>
+<span class="sd">            Example key and value pairs for builtin quantities:</span>
+<span class="sd">            - forces: (n_frames, n_atoms, 3) _ATOMIC_VECTOR_.</span>
+<span class="sd">            - velocities: (n_frames, n_atoms, 3) _ATOMIC_VECTOR_ with dimension [L]/[T].</span>
+<span class="sd">            - time: (n_frames,) _per-frame_ scalar indicating the elapsed simulation</span>
+<span class="sd">                time with dimension [T].</span>
+<span class="sd">            - weights: (n_frames,) _per-frame_ scalar indicating the Boltzmann weight of</span>
+<span class="sd">            each frame.</span>
+<span class="sd">        metadata : dict, optional</span>
+<span class="sd">            Metadata to be saved, e.g., simulation temperature, forcefield information,</span>
+<span class="sd">            saving time stride, etc, by default None</span>
+<span class="sd">        trajectory_slices : Dict[str, slice], optional</span>
+<span class="sd">            a dictionary for trajectory name and its range expressed as a python slice</span>
+<span class="sd">            object (similar to the usage of a [start:stop:stride] for indexing.), by</span>
+<span class="sd">            default None</span>
+<span class="sd">        unit_system : str | UnitSystem object, optional</span>
+<span class="sd">            In format &quot;[L]-[M]-[T]-[E(nergy)]&quot; for units of builtin quantities, by</span>
+<span class="sd">            default &quot;nm-g/mol-ps-kJ/mol&quot;; alternatively, you can provide an existing</span>
+<span class="sd">            `UnitSystem` or a JSON-serialized such object</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Ensemble</span>
+<span class="sd">            An instance containing all information from the mdtraj object together with</span>
+<span class="sd">            the provided `quantities`, `metadata`, `trajectory_slices` and `unit_system`.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        ValueError</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">coords</span> <span class="o">=</span> <span class="n">Quantity</span><span class="p">(</span><span class="n">trj</span><span class="o">.</span><span class="n">xyz</span><span class="p">,</span> <span class="s2">&quot;nm&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">quantities</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">quantities</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="n">trj</span><span class="o">.</span><span class="n">time</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">quantities</span><span class="p">[</span><span class="s2">&quot;time&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">Quantity</span><span class="p">(</span><span class="n">trj</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="s2">&quot;ps&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">trj</span><span class="o">.</span><span class="n">unitcell_angles</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">quantities</span><span class="p">[</span><span class="s2">&quot;cell_angles&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">Quantity</span><span class="p">(</span><span class="n">trj</span><span class="o">.</span><span class="n">unitcell_angles</span><span class="p">,</span> <span class="s2">&quot;degree&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">trj</span><span class="o">.</span><span class="n">unitcell_lengths</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">quantities</span><span class="p">[</span><span class="s2">&quot;cell_lengths&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">Quantity</span><span class="p">(</span><span class="n">trj</span><span class="o">.</span><span class="n">unitcell_lengths</span><span class="p">,</span> <span class="s2">&quot;nm&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Ensemble</span><span class="p">(</span>
+            <span class="n">name</span><span class="p">,</span>
+            <span class="n">trj</span><span class="o">.</span><span class="n">top</span><span class="p">,</span>
+            <span class="n">coords</span><span class="p">,</span>
+            <span class="n">quantities</span><span class="o">=</span><span class="n">quantities</span><span class="p">,</span>
+            <span class="n">metadata</span><span class="o">=</span><span class="n">metadata</span><span class="p">,</span>
+            <span class="n">trajectory_slices</span><span class="o">=</span><span class="n">trajectory_slices</span><span class="p">,</span>
+            <span class="n">unit_system</span><span class="o">=</span><span class="n">unit_system</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span>
+
+    <span class="nd">@name</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_name</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">new_name</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;`name` should be a string&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_name</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">unit_system</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return a the unit system used by the `Ensemble`.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        UnitSystem</span>
+<span class="sd">            The unit system containing units for basic dimension &quot;[X]&quot; (X = L, M, T, E)</span>
+<span class="sd">            and units for builtin quantities</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_unit_system</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">top</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the topology of the molecular system. Alias to `.top`.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        mdtraj.Topology</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_top&quot;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_top</span> <span class="o">=</span> <span class="n">json2top</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="p">[</span><span class="s2">&quot;top&quot;</span><span class="p">][()])</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_top</span>
+
+    <span class="nd">@top</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">top</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
+            <span class="s2">&quot;`Ensemble` is always initialized with a fixed `top`.&quot;</span>
+        <span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">topology</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the topology of the molecular system. Alias to `.top`.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        mdtraj.Topology</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">top</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">n_atoms</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the number of atoms of the molecule defined in `top`.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        int</span>
+<span class="sd">            Number of atoms contained in the molecule.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">top</span><span class="o">.</span><span class="n">n_atoms</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">n_frames</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the number of frames.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        int</span>
+<span class="sd">            Number of frames contained in this `Ensemble`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="p">[</span><span class="s2">&quot;coords&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">trajectories</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get the slices corresponding to each trajectory. These python slice objects</span>
+<span class="sd">        can be used to retrive the correct portion for the corresponding trajectory for</span>
+<span class="sd">        each _per-frame_ quantity (e.g., coords, forces, ...) via bracket ([]) operator.</span>
+<span class="sd">        Alias to `.trajectory_slices`.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Dict[str, slice]</span>
+<span class="sd">            Key-slice pairs for each registered trajectory</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">trajectory_slices</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">trjs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get the slices corresponding to each trajectory. These python slice objects</span>
+<span class="sd">        can be used to retrive the correct portion for the corresponding trajectory for</span>
+<span class="sd">        each _per-frame_ quantity (e.g., coords, forces, ...) via bracket ([]) operator.</span>
+<span class="sd">        Alias to `.trajectory_slices`.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Dict[str, slice]</span>
+<span class="sd">            Key-slice pairs for each registered trajectory</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">trajectory_slices</span>
+
+    <span class="nd">@trajectories</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">trajectories</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
+            <span class="s2">&quot;Please change the trajectory records with `.register_trjs`&quot;</span>
+        <span class="p">)</span>
+
+    <span class="nd">@trjs</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">trjs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
+            <span class="s2">&quot;Please change the trajectory records with `.register_trjs`&quot;</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">register_trjs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dict_of_slices</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The input slices will be used to indicate which slice of the Ensemble samples</span>
+<span class="sd">        (and other quantities) correspond to which trajectory.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        dict_of_slices : Mapping[str, slice]</span>
+<span class="sd">            Name and range of a trajectory.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">trjs</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">k</span><span class="p">:</span> <span class="n">slice_</span><span class="o">.</span><span class="n">indices</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_frames</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">slice_</span> <span class="ow">in</span> <span class="n">dict_of_slices</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+        <span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_save_quantity</span><span class="p">(</span>
+            <span class="s2">&quot;trjs&quot;</span><span class="p">,</span>
+            <span class="n">_to_quantity</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">trjs</span><span class="p">)),</span>
+            <span class="n">shape</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">verbose</span><span class="o">=</span><span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_trjs&quot;</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_trjs</span> <span class="o">=</span> <span class="n">trjs</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">n_trjs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Number of trajectories in the Ensemble.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        int</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_trjs&quot;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_trjs</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">0</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">n_frames_per_trj</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Number of frames contained by each trajectory.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        int</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_trjs</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># immutable to discourage assignment to the returned value</span>
+            <span class="k">return</span> <span class="n">MappingProxyType</span><span class="p">(</span>
+                <span class="p">{</span>
+                    <span class="n">k</span><span class="p">:</span> <span class="p">(</span><span class="n">trj</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">trj</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">//</span> <span class="n">trj</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+                    <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">trj</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_trjs</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+                <span class="p">}</span>
+            <span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">trajectory_slices</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get the slices corresponding to each trajectory. These python slice objects</span>
+<span class="sd">        can be used to retrive the correct portion for the corresponding trajectory for</span>
+<span class="sd">        each _per-frame_ quantity (e.g., coords, forces, ...) via bracket ([]) operator.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Dict[str, slice]</span>
+<span class="sd">            Key-slice pairs for each registered trajectory</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_trjs</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># immutable to discourage assignment to the returned value</span>
+            <span class="k">return</span> <span class="n">MappingProxyType</span><span class="p">(</span>
+                <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="nb">slice</span><span class="p">(</span><span class="o">*</span><span class="n">trj</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">trj</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_trjs</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+            <span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">trajectory_indices</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Indices of frames belonging to each Trajectory.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Dict[str, numpy.ndarray]</span>
+<span class="sd">            Key-(list of int) pairs for each registered trajectory</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_trjs</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># immutable to discourage assignment to the returned value</span>
+            <span class="k">return</span> <span class="n">MappingProxyType</span><span class="p">(</span>
+                <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="o">*</span><span class="n">trj</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">trj</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_trjs</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+            <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">list_quantities</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;List the name of quantities stored in the `Ensemble`.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        List[str]</span>
+<span class="sd">            Quantity names</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_quantity</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Retrieve a Quantity in the `Ensemble`.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        key : str</span>
+<span class="sd">            The name of the Quantity</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Quantity</span>
+<span class="sd">            The Quantity under the name `key` in the `Ensemble`</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        KeyError</span>
+<span class="sd">            When `key` does not correspond to a Quantity existing in the current</span>
+<span class="sd">            `Ensemble`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Quantity `</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">` does not exist&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_unit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Retrieve the builtin unit for a `Quantity` under name `key` in the Ensemble,</span>
+<span class="sd">        or alternatively the preset unit of a builtin `Quantity`. If neither is the</span>
+<span class="sd">        case, return `None`.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        key : str</span>
+<span class="sd">            Name of the Quantity</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        str | None</span>
+<span class="sd">            The bulitin unit of the Quantity under name `key`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_quantity</span><span class="p">(</span><span class="n">key</span><span class="p">)</span><span class="o">.</span><span class="n">unit</span>
+        <span class="k">elif</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">unit_system</span><span class="o">.</span><span class="n">builtin_quantities</span><span class="p">:</span>
+            <span class="n">preset_unit</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">unit_system</span><span class="o">.</span><span class="n">get_preset_unit</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">preset_unit</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">quant</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">key</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;_&quot;</span><span class="p">):</span>
+            <span class="c1"># not to block normal class initializations of `HDF5Group` which has `_data` and `_attrs` attributes</span>
+            <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">quant</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_quantity</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">quant</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__delattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__delattr__</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">set_quantity</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">quant</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Store `quant` (Quantity | numpy.ndarray) under name `key` (str).</span>
+<span class="sd">        When `quant` is a plain `numpy.ndarray`, the unit is assumed according to</span>
+<span class="sd">        `.unit_system` if the `key` is one of the `PRESET_BUILTIN_QUANTITIES` (or</span>
+<span class="sd">        `self.unit_system.builtin_quantities` in case of customized `unit_system` at</span>
+<span class="sd">        initialization), or `dimensionless` otherwise.</span>
+<span class="sd">        * When `key` is one of the `PRESET_BUILTIN_QUANTITIES` (or</span>
+<span class="sd">        `self.unit_system.builtin_quantities`), the unit and shape of `quant`</span>
+<span class="sd">        need to be compatible.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        name : str</span>
+<span class="sd">            The name/key to store the string.</span>
+<span class="sd">        quantity : numpy.ndarray | Quantity</span>
+<span class="sd">            The quantity to be saved. When input is a raw numpy array, the unit is</span>
+<span class="sd">            assumed to be either the builtin unit (when exists) or &quot;dimensionless&quot;.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># built-in quantities?</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">unit_system</span><span class="o">.</span><span class="n">builtin_quantities</span><span class="p">:</span>
+            <span class="n">shape_hint</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">unit_system</span><span class="o">.</span><span class="n">builtin_quantities</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">preset_unit</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">unit_system</span><span class="o">.</span><span class="n">get_preset_unit</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">shape_hint</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="n">preset_unit</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="c1"># check and convert `quant` to a Quantity</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">quant</span><span class="p">,</span> <span class="n">BaseQuantity</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">preset_unit</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">preset_unit</span> <span class="o">=</span> <span class="s2">&quot;dimensionless&quot;</span>
+            <span class="k">if</span> <span class="n">preset_unit</span> <span class="o">!=</span> <span class="s2">&quot;dimensionless&quot;</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Assuming unit of input &quot;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s1">&quot; to be &quot;</span><span class="si">{</span><span class="n">preset_unit</span><span class="si">}</span><span class="s1">&quot;.&#39;</span><span class="p">)</span>
+            <span class="n">quant</span> <span class="o">=</span> <span class="n">_to_quantity</span><span class="p">(</span><span class="n">quant</span><span class="p">,</span> <span class="n">preset_unit</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">quant</span><span class="p">,</span> <span class="n">BaseQuantity</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span>
+                <span class="n">quant</span><span class="p">,</span> <span class="n">Quantity</span>
+            <span class="p">):</span>
+                <span class="c1"># transform BaseQuantity (without metadata) to a Quantity</span>
+                <span class="n">quant</span> <span class="o">=</span> <span class="n">Quantity</span><span class="p">(</span><span class="n">quant</span><span class="o">.</span><span class="n">raw_value</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="n">quant</span><span class="o">.</span><span class="n">unit</span><span class="p">)</span>
+            <span class="c1"># convert to preset unit</span>
+            <span class="k">if</span> <span class="n">preset_unit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="c1"># print(f&quot;Convert \&quot;{key}\&quot; to internal unit {preset_unit}&quot;)</span>
+                <span class="n">quant</span> <span class="o">=</span> <span class="n">quant</span><span class="o">.</span><span class="n">convert_unit_to_</span><span class="p">(</span><span class="n">preset_unit</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_save_quantity</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">quant</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="n">shape_hint</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_all_in_one_mdtraj_trj</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Pack all `coords` into one `Trajectory` object (maybe not suitable for</span>
+<span class="sd">        kinetic analyses, such as TICA and MSM!)</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        mdtraj.Trajectory</span>
+<span class="sd">            A trajectory, whose topology (and unitcell dimensions, if applicable) come</span>
+<span class="sd">            from the `Ensemble` object and coordinates from `coords` concatenated</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">time</span> <span class="o">=</span> <span class="bp">self</span><span class="p">[</span><span class="s2">&quot;time&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">in_unit_of</span><span class="p">(</span><span class="s2">&quot;ps&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="s2">&quot;time&quot;</span> <span class="ow">in</span> <span class="bp">self</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="n">cell_lengths</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="p">[</span><span class="s2">&quot;cell_lengths&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">in_unit_of</span><span class="p">(</span><span class="s2">&quot;nm&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="s2">&quot;cell_lengths&quot;</span> <span class="ow">in</span> <span class="bp">self</span>
+            <span class="k">else</span> <span class="kc">None</span>
+        <span class="p">)</span>
+        <span class="n">cell_angles</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="p">[</span><span class="s2">&quot;cell_angles&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">in_unit_of</span><span class="p">(</span><span class="s2">&quot;degree&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="s2">&quot;cell_angles&quot;</span> <span class="ow">in</span> <span class="bp">self</span>
+            <span class="k">else</span> <span class="kc">None</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">md</span><span class="o">.</span><span class="n">Trajectory</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">[</span><span class="s2">&quot;coords&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">in_unit_of</span><span class="p">(</span><span class="s2">&quot;nm&quot;</span><span class="p">),</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">top</span><span class="p">,</span>
+            <span class="n">time</span><span class="o">=</span><span class="n">time</span><span class="p">,</span>
+            <span class="n">unitcell_lengths</span><span class="o">=</span><span class="n">cell_lengths</span><span class="p">,</span>
+            <span class="n">unitcell_angles</span><span class="o">=</span><span class="n">cell_angles</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_mdtraj_trjs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Pack this `Ensemble`&#39;s `top` and `coords` (and unitcell + simulation times,</span>
+<span class="sd">        if available) into a dictionary of `Trajectory` for analyses, according to</span>
+<span class="sd">        the slicing given by `self.trjs`.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Dict[str, mdtraj.Trajectory]</span>
+<span class="sd">            A dictionary containing all mdtraj Trjectories implied by the `self.trjs`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">trj</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_all_in_one_mdtraj_trj</span><span class="p">()</span>
+        <span class="k">return</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">trj</span><span class="p">[</span><span class="n">slice_</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">slice_</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">trajectory_slices</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_save_quantity</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">name</span><span class="p">,</span>
+        <span class="n">quantity</span><span class="p">,</span>
+        <span class="n">shape</span><span class="o">=</span><span class="s2">&quot;[n_frames, n_atoms, 3]&quot;</span><span class="p">,</span>
+        <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Save a `quantity` under name `name` with the shape defined by `shape`.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        name : str</span>
+<span class="sd">            The name/key to store the string.</span>
+<span class="sd">        quantity : Quantity</span>
+<span class="sd">            The quantity to be saved.</span>
+<span class="sd">        shape : str | Tuple, optional</span>
+<span class="sd">            A shape string/tuple to indicate the allowed shape of input; for string,</span>
+<span class="sd">            the &quot;n_frames&quot; and &quot;n_atoms&quot; will be substituted automatically to</span>
+<span class="sd">            `Ensemble`&#39;s property; shape check is bypassed when set to `None`, by</span>
+<span class="sd">            default &quot;[n_frames, n_atoms, 3]&quot;</span>
+<span class="sd">        verbose : bool, optional</span>
+<span class="sd">            Whether to notify about overwriting an existing Quantity, by default True</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        ValueError</span>
+<span class="sd">            When the shape check fails</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># parsing the shape hint</span>
+        <span class="k">if</span> <span class="n">shape</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="kn">import</span><span class="w"> </span><span class="nn">ast</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+                <span class="n">shape</span> <span class="o">=</span> <span class="n">shape</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;n_frames&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_frames</span><span class="p">))</span>
+                <span class="n">shape</span> <span class="o">=</span> <span class="n">shape</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;n_atoms&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_atoms</span><span class="p">))</span>
+                <span class="n">shape</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">ast</span><span class="o">.</span><span class="n">literal_eval</span><span class="p">(</span><span class="n">shape</span><span class="p">))</span>
+            <span class="c1"># check whether the input shape matches the hint</span>
+            <span class="k">if</span> <span class="n">quantity</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="n">shape</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Incompatible input value shape, expecting </span><span class="si">{</span><span class="n">shape</span><span class="si">}</span><span class="s2"> but got </span><span class="si">{</span><span class="n">quantity</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">.&quot;</span>
+                <span class="p">)</span>
+        <span class="c1"># already exists? check and warn about overwriting and unit compatibility</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="p">:</span>
+            <span class="n">old_quant</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+                <span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Overwriting the previously saved record </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">quantity</span><span class="o">.</span><span class="n">is_unit_convertible_with</span><span class="p">(</span><span class="n">old_quant</span><span class="p">):</span>
+                    <span class="n">warn</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Overwriting record </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> with incompatible unit: &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">old_quant</span><span class="o">.</span><span class="n">unit</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">quantity</span><span class="o">.</span><span class="n">unit</span><span class="si">}</span><span class="s2">.&quot;</span>
+                    <span class="p">)</span>
+        <span class="c1"># save data</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">quantity</span>
+        <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">quantity</span><span class="o">.</span><span class="n">raw_value</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_hdf5</span><span class="p">(</span>
+        <span class="bp">cls</span><span class="p">,</span>
+        <span class="n">h5grp</span><span class="p">,</span>
+        <span class="n">unit_system</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;nm-g/mol-ps-kJ/mol&quot;</span><span class="p">,</span>
+        <span class="n">offset</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">stride</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">no_offset_stride_quantities</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create an instance from the content of HDF5 Group `h5grp` (h5py.Group).</span>
+<span class="sd">        When given `unit_system` differs from the stored record, units will be converted</span>
+<span class="sd">        when reading the `Quantity` into memory. Input `offset` and `stride` can be set</span>
+<span class="sd">        to allow a partial loading of the non-scalar datasets with indexing</span>
+<span class="sd">        `[offset::stride]`, unless the dataset&#39;s name is contained in</span>
+<span class="sd">        `no_offset_stride_quantities`.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        h5grp : h5py.Group</span>
+<span class="sd">            The group should contain all necessary information to initialize an</span>
+<span class="sd">            `Ensemble`. Notablly, the following Datasets are required:</span>
+<span class="sd">            - top: serialized topology</span>
+<span class="sd">            - coords (with Attribute &quot;unit&quot;)</span>
+<span class="sd">            And all Datasets should come with an Attribute `unit` for the physical unit</span>
+<span class="sd">            used in storage.</span>
+<span class="sd">        unit_system : str, optional</span>
+<span class="sd">            Should have the format &quot;[L]-[M]-[T]-[E(nergy)]&quot; for units of builtin</span>
+<span class="sd">            quantities (see class docstring), by default &quot;nm-g/mol-ps-kJ/mol&quot;</span>
+<span class="sd">        offset : None | int, optional</span>
+<span class="sd">            The offset for loading from the HDF5 file. Default is `None`.</span>
+<span class="sd">        stride : None | int, optional</span>
+<span class="sd">            The stride for loading from the HDF5 file. Default is `None`.</span>
+<span class="sd">        no_offset_stride_quantities : List[str], optional</span>
+<span class="sd">            The names of entries, for which no offset or stride should be considered</span>
+<span class="sd">            during loading, by default None</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Ensemble</span>
+<span class="sd">            An instance containing all compatible content from HDF5 Group `h5grp`.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        ValueError</span>
+<span class="sd">            When the Dataset corresponding to `top`, `coords` or other fields does not</span>
+<span class="sd">            exist or has invalid format.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">hdf5grp</span> <span class="o">=</span> <span class="n">HDF5Group</span><span class="o">.</span><span class="n">from_hdf5</span><span class="p">(</span>
+            <span class="n">h5grp</span><span class="p">,</span>
+            <span class="n">offset</span><span class="o">=</span><span class="n">offset</span><span class="p">,</span>
+            <span class="n">stride</span><span class="o">=</span><span class="n">stride</span><span class="p">,</span>
+            <span class="n">no_offset_stride_quantities</span><span class="o">=</span><span class="n">no_offset_stride_quantities</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">dataset_unit_system_str</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span>
+            <span class="n">UnitSystem</span><span class="o">.</span><span class="n">parse_from_str</span><span class="p">(</span><span class="n">hdf5grp</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;unit_system&quot;</span><span class="p">])</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">unit_system</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># no unit system given, fall back to the unit system stored in the h5 file</span>
+            <span class="n">formatted_unit_system_str</span> <span class="o">=</span> <span class="n">dataset_unit_system_str</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">formatted_unit_system_str</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span>
+                <span class="n">UnitSystem</span><span class="o">.</span><span class="n">parse_from_str</span><span class="p">(</span><span class="n">unit_system</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">dataset_unit_system_str</span> <span class="o">!=</span> <span class="n">formatted_unit_system_str</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s1">&#39;Adapting unit system from &quot;</span><span class="si">{</span><span class="n">dataset_unit_system_str</span><span class="si">}</span><span class="s1">&quot; (storage) &#39;</span>
+                    <span class="sa">f</span><span class="s1">&#39;to &quot;</span><span class="si">{</span><span class="n">formatted_unit_system_str</span><span class="si">}</span><span class="s1">&quot; (memory).&#39;</span>
+                <span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">coords</span> <span class="o">=</span> <span class="n">hdf5grp</span><span class="p">[</span><span class="s2">&quot;coords&quot;</span><span class="p">]</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Missing required Dataset `coords` from input HDF5 Group `</span><span class="si">{</span><span class="n">h5grp</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">`.&quot;</span>
+            <span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">top_str</span> <span class="o">=</span> <span class="n">hdf5grp</span><span class="p">[</span><span class="s2">&quot;top&quot;</span><span class="p">]</span>
+            <span class="n">top</span> <span class="o">=</span> <span class="n">json2top</span><span class="p">(</span><span class="n">top_str</span><span class="p">[()])</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Missing or invalid required Dataset `top` from input HDF5 Group `</span><span class="si">{</span><span class="n">h5grp</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">`.&quot;</span>
+            <span class="p">)</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="n">hdf5grp</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="n">other_quantities</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">hdf5grp</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">k</span> <span class="o">!=</span> <span class="s2">&quot;coords&quot;</span> <span class="ow">and</span> <span class="n">k</span> <span class="o">!=</span> <span class="s2">&quot;top&quot;</span><span class="p">:</span>
+                <span class="n">other_quantities</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
+        <span class="c1"># adapt the `trjs` records to the striding</span>
+        <span class="c1"># Only implemented for simple cases where the `start` and `stop` are both</span>
+        <span class="c1"># nonnegative and `step` = 1 for slice `[start:stop:step]`</span>
+        <span class="k">if</span> <span class="s2">&quot;trjs&quot;</span> <span class="ow">in</span> <span class="n">other_quantities</span> <span class="ow">and</span> <span class="p">(</span>
+            <span class="n">offset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">stride</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="p">):</span>
+            <span class="k">if</span> <span class="n">offset</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">offset</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">if</span> <span class="n">stride</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">stride</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">math</span><span class="w"> </span><span class="kn">import</span> <span class="n">ceil</span>
+
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">trjs_dict</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">other_quantities</span><span class="p">[</span><span class="s2">&quot;trjs&quot;</span><span class="p">][()])</span>
+            <span class="k">except</span> <span class="n">json</span><span class="o">.</span><span class="n">JSONDecodeError</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s2">&quot;Invalid `trjs` (trajectories) information in the H5 dataset &quot;</span>
+                    <span class="s2">&quot;(invalid JSON)?&quot;</span>
+                <span class="p">)</span>
+            <span class="n">new_trjs_dict</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">for</span> <span class="n">slice_name</span> <span class="ow">in</span> <span class="n">trjs_dict</span><span class="p">:</span>
+                <span class="n">start</span><span class="p">,</span> <span class="n">stop</span><span class="p">,</span> <span class="n">step</span> <span class="o">=</span> <span class="n">trjs_dict</span><span class="p">[</span><span class="n">slice_name</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">start</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">stop</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">step</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="n">warn</span><span class="p">(</span>
+                        <span class="s2">&quot;Auto adjusting of the `trjs` records is only implemented for &quot;</span>
+                        <span class="s2">&quot;simple cases where all slices has nonnegative `start`s and &quot;</span>
+                        <span class="s2">&quot;`stop`s and the `step` is 1. (as for a slice operation &quot;</span>
+                        <span class="s2">&quot;`[start:stop:step]`) Therefore, the `trjs` records are &quot;</span>
+                        <span class="s2">&quot;discarded due to inconsistency.&quot;</span>
+                    <span class="p">)</span>
+                    <span class="n">new_trjs_dict</span> <span class="o">=</span> <span class="p">{}</span>
+                <span class="n">new_range</span> <span class="o">=</span> <span class="p">[</span>
+                    <span class="n">ceil</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">start</span> <span class="o">-</span> <span class="n">offset</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">/</span> <span class="n">stride</span><span class="p">),</span>
+                    <span class="n">ceil</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">stop</span> <span class="o">-</span> <span class="n">offset</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">/</span> <span class="n">stride</span><span class="p">),</span>
+                    <span class="mi">1</span><span class="p">,</span>
+                <span class="p">]</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">new_range</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">new_range</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="c1"># non-empty slice</span>
+                    <span class="n">new_trjs_dict</span><span class="p">[</span><span class="n">slice_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_range</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">new_trjs_dict</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">other_quantities</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;trjs&quot;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">other_quantities</span><span class="p">[</span><span class="s2">&quot;trjs&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">Quantity</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">new_trjs_dict</span><span class="p">))</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">new_ensemble</span> <span class="o">=</span> <span class="bp">cls</span><span class="p">(</span>
+                <span class="n">name</span><span class="p">,</span>
+                <span class="n">top</span><span class="p">,</span>
+                <span class="n">coords</span><span class="p">,</span>
+                <span class="n">quantities</span><span class="o">=</span><span class="n">other_quantities</span><span class="p">,</span>
+                <span class="n">metadata</span><span class="o">=</span><span class="n">hdf5grp</span><span class="o">.</span><span class="n">metadata</span><span class="p">,</span>
+                <span class="n">unit_system</span><span class="o">=</span><span class="n">formatted_unit_system_str</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Invalid information in the input HDF5 Group `</span><span class="si">{</span><span class="n">h5grp</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">`.&quot;</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">new_ensemble</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_set_trjs_dict_from_json</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trjs_dict_in_json</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Set the `trjs` quantity (as json str) and `_trjs` entry (as Dict[List[int]])</span>
+<span class="sd">        coherently from input json string.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        trjs_dict_in_json : str</span>
+<span class="sd">            A json string that contains valid trajectory record as a serialized</span>
+<span class="sd">            Dict[List[int]].</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        ValueError</span>
+<span class="sd">            When input `trjs_dict_in_json` is not a valid json str.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">trjs_dict</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">trjs_dict_in_json</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">json</span><span class="o">.</span><span class="n">JSONDecodeError</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;Invalid `trjs` (trajectories) information in the input json.&quot;</span>
+            <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_save_quantity</span><span class="p">(</span>
+            <span class="s2">&quot;trjs&quot;</span><span class="p">,</span>
+            <span class="n">_to_quantity</span><span class="p">(</span><span class="n">trjs_dict_in_json</span><span class="p">),</span>
+            <span class="n">shape</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>  <span class="c1"># always False, since not called except for init</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_trjs</span> <span class="o">=</span> <span class="n">trjs_dict</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s1">&#39;&lt;Ensemble for molecule &quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s1">&quot; with </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">n_atoms</span><span class="si">}</span><span class="s1"> atoms and &#39;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">n_frames</span><span class="si">}</span><span class="s2"> frames&gt;&quot;</span>
+        <span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Iryna Zaporozhets, Felix Musil, Yoayi Chen, Andreas Kramer.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
