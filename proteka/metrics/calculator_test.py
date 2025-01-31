@@ -1,5 +1,4 @@
-"""Test calculator
-"""
+"""Test calculator"""
 
 import numpy as np
 import mdtraj as md

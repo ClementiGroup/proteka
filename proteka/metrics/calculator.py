@@ -1,5 +1,4 @@
-"""Main entry point for calculating the metrics
-"""
+"""Main entry point for calculating the metrics"""
 
 import warnings
 from abc import ABCMeta, abstractmethod
